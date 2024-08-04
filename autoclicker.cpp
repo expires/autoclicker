@@ -1,7 +1,6 @@
 #include <Windows.h>
 #include <chrono>
 #include <thread>
-#include <iostream>
 #include "SDK/Minecraft.h"
 #include "Clicker/Clicker.h"
 
@@ -16,15 +15,15 @@ struct Settings
     bool destruct;
 };
 
-Settings currentSettings = { true, 8, true, false }; 
+Settings currentSettings = {true,8,true,false};
 Clicker clicker;
 
 LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
-    if (msg == WM_COPYDATA) 
+    if (msg == WM_COPYDATA)
     {
         PCOPYDATASTRUCT pcds = (PCOPYDATASTRUCT)lParam;
-        if (pcds->dwData == 1) { 
+        if (pcds->dwData == 1) {
             Settings* newSettings = (Settings*)pcds->lpData;
             currentSettings = *newSettings;
             clicker.setCps(currentSettings.cps);
@@ -34,15 +33,14 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
     return DefWindowProc(hwnd, msg, wParam, lParam);
 }
 
-void static init(void* instance)
+void static init(HMODULE instance)
 {
     jsize count;
-    if (JNI_GetCreatedJavaVMs(&lc->vm, 1, &count) != JNI_OK || count == 0) return;
+    jint result = JNI_GetCreatedJavaVMs(&lc->vm, 1, nullptr);
 
-    jint res = lc->vm->GetEnv(reinterpret_cast<void**>(&lc->env), JNI_VERSION_1_8);
-    if (res == JNI_EDETACHED) res = lc->vm->AttachCurrentThread(reinterpret_cast<void**>(&lc->env), nullptr);
+    lc->vm->AttachCurrentThread((void**)&lc->env, nullptr);
 
-    if (lc->env != nullptr) 
+    if (lc->env != nullptr)
     {
         lc->GetLoadedClasses();
         const auto mc = std::make_unique<Minecraft>();
@@ -60,46 +58,43 @@ void static init(void* instance)
 
 
         while (true) {
+            MSG msg;
+            while (PeekMessage(&msg, hwndReceiver, 0, 0, PM_REMOVE))
+            {
+                TranslateMessage(&msg);
+                DispatchMessage(&msg);
+            }
+
             if (currentSettings.destruct) break;
-        	HWND activeWindow = GetForegroundWindow();
-            DELAY(50)
+
+            HWND activeWindow = GetForegroundWindow();
+            DELAY(50);
 
             while (activeWindow == mcWindow && currentSettings.active) {
+
                 if (currentSettings.destruct) break;
-
-                if (GetAsyncKeyState(VK_END))
-                {
-	                currentSettings.destruct = true; break;
-                }
-
+                if (GetAsyncKeyState(VK_END)) currentSettings.destruct = true;
+                if (currentSettings.destruct) break;
                 if (mc->GetScreen().isPauseScreen()) break;
-
                 if (mc->GetScreen().shouldCloseOnEsc()) break;
 
-                if (currentSettings.breakBlocks && (GetAsyncKeyState(VK_LBUTTON) < 0) && mc->GetMultiPlayerGameMode().isDestroying()) 
+                if (currentSettings.breakBlocks && (GetAsyncKeyState(VK_LBUTTON) < 0) && mc->GetMultiPlayerGameMode().isDestroying())
                 {
                     bool isFirst = true;
                     while (true) {
-                        if (isFirst) 
+                        if (isFirst)
                         {
                             if (!mc->GetMultiPlayerGameMode().isDestroying()) continue;
                             clicker.mouseDown(mcWindow);
                             isFirst = false;
                         }
 
-                        if (!mc->GetMultiPlayerGameMode().isDestroying() && !isFirst) 
-                        {
-                            break;
-                        }
-
-                        if (mc->GetMultiPlayerGameMode().getDestroyStage() > 8 && mc->GetMultiPlayerGameMode().getDestroyStage() < 255) 
-                        {
-                            DELAY(750);
-                        }
+                        if (!mc->GetMultiPlayerGameMode().isDestroying() && !isFirst) break;
+                        if (mc->GetMultiPlayerGameMode().getDestroyStage() > 8 && mc->GetMultiPlayerGameMode().getDestroyStage() < 255) DELAY(750);
                     }
                 }
 
-                if ((GetAsyncKeyState(VK_LBUTTON) < 0) && GetAsyncKeyState(VK_RBUTTON) >= 0) 
+                if ((GetAsyncKeyState(VK_LBUTTON) < 0) && GetAsyncKeyState(VK_RBUTTON) >= 0)
                 {
                     if (currentSettings.breakBlocks && clicker.getClicksPerSecond() == 0 && mc->GetMultiPlayerGameMode().isDestroying()) continue;
                     clicker.click(mcWindow);
@@ -107,44 +102,27 @@ void static init(void* instance)
 
                 DELAY(5)
             }
-
-            // Process messages for settings window
-            MSG msg;
-            while (PeekMessage(&msg, hwndReceiver, 0, 0, PM_REMOVE)) 
-            {
-                TranslateMessage(&msg);
-                DispatchMessage(&msg);
-                std::cout << "Received message: " << msg.message << std::endl;
-            }
         }
 
-        if (hwndReceiver) 
+        if (hwndReceiver)
         {
             DestroyWindow(hwndReceiver);
             hwndReceiver = nullptr;
         }
-
-        // Unregister the class
         UnregisterClass("SettingsReceiverClass", GetModuleHandle(NULL));
     }
-    FreeLibraryAndExitThread(static_cast<HMODULE>(instance), 0);
+    FreeLibrary(instance);
 }
 
-BOOL APIENTRY DllMain(const HMODULE hModule,
-    const DWORD ul_reason_for_call,
-    LPVOID lpReserved) {
+bool __stdcall DllMain(HINSTANCE instance, DWORD reason, LPVOID reserved)
+{
+    static std::thread main_thread;
 
-    DisableThreadLibraryCalls(hModule);
-
-    switch (ul_reason_for_call)
-	{
-    case DLL_PROCESS_ATTACH:
-        CloseHandle(CreateThread(nullptr, 0, reinterpret_cast<LPTHREAD_START_ROUTINE>(init), hModule, 0, nullptr));
-        break;
-    case DLL_PROCESS_DETACH:
-        break;
-    default:
-        break;
+    if (reason == DLL_PROCESS_ATTACH)
+    {
+        main_thread = std::thread([instance] { init(instance); });
+        if (main_thread.joinable())
+            main_thread.detach();
     }
-    return TRUE;
+    return true;
 }

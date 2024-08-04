@@ -4,13 +4,12 @@
 #include <mutex>
 #include <unordered_map>
 #include <string>
-#include <iostream>
 
 class Lunar
 {
 public:
-	JNIEnv* env;
-	JavaVM* vm;
+	JNIEnv* env {nullptr};
+	JavaVM* vm {nullptr};
 public:
 	void GetLoadedClasses();
 	jclass GetClass(std::string classname);
