@@ -1,7 +1,7 @@
 # flexclicker 1.21
 
 ## Description
-This is a simple DLL injection autoclicker that uses JNI to communicate with Java. It is designed to be used with Lunar Client 1.21. It is written in C++.
+This project involves a DLL injection-based autoclicker specifically designed to interact with Lunar Client 1.21. Written in C++, it leverages Java Native Interface (JNI) to communicate seamlessly with the Java-based Lunar Client.
 
 ## Prerequisites
 
