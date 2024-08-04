@@ -31,7 +31,7 @@ Before building the project, ensure you have the following installed:
 
 5. **Set Startup Project**
 
-    - In the Solution Explorer, right-click on `autoclicker` and select "Set as StartUp Project".
+    - In the Solution Explorer, right-click on `autoclicker` and select "Set as Startup Project".
 
 6. **Build the Project**
 
