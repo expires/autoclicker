@@ -1,15 +1,29 @@
 #include "Clicker.h"
 
+int Clicker::randomDelay(int baseDelay)
+{
+    const int interval = baseDelay / cps;
+    const int minDelay = interval - 10;
+    const int maxDelay = interval + 30;
+
+    std::uniform_int_distribution<> dis(minDelay, maxDelay);
+    return dis(gen);
+}
+
 void Clicker::click(HWND hwnd)
 {
     if (getClicksPerSecond() == 0) DELAY(100);
     if ((GetAsyncKeyState(VK_LBUTTON) >= 0)) return;
-    DELAY(randomDelay(600))
+
+    DELAY(randomDelay(500))
+
     POINT pt;
     GetCursorPos(&pt);
     SendMessage(hwnd, WM_LBUTTONDOWN, MK_LBUTTON, MAKELPARAM(pt.x, pt.y));
-    DELAY(randomDelay(300))
+
+    DELAY(randomDelay(300));
     SendMessage(hwnd, WM_LBUTTONUP, 0, MAKELPARAM(pt.x, pt.y));
+
     trackClick();
 }
 
@@ -18,13 +32,6 @@ void Clicker::mouseDown(HWND hwnd)
     POINT pt;
     GetCursorPos(&pt);
     SendMessage(hwnd, WM_LBUTTONDOWN, MK_LBUTTON, MAKELPARAM(pt.x, pt.y));
-}
-
-int Clicker::randomDelay(int freq)
-{
-    int interval = freq / cps;
-    std::uniform_int_distribution<> dis(interval - 10, interval + 10);
-    return dis(gen);
 }
 
 int Clicker::getClicksPerSecond()
@@ -42,6 +49,6 @@ void Clicker::setCps(int cps_)
     cps = cps_;
 }
 
-void Clicker::trackClick(){
+void Clicker::trackClick() {
     clicks.push_back(std::chrono::steady_clock::now());
 }

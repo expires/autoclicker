@@ -35,11 +35,11 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 
 void static init(HMODULE instance)
 {
-    jsize count;
     jint result = JNI_GetCreatedJavaVMs(&lc->vm, 1, nullptr);
+    if (result != JNI_OK || lc->vm == nullptr) return;
 
-    lc->vm->AttachCurrentThread((void**)&lc->env, nullptr);
-
+    result = lc->vm->AttachCurrentThread((void**)&lc->env, nullptr);
+    if (result != JNI_OK || lc->env == nullptr) return;
     if (lc->env != nullptr)
     {
         lc->GetLoadedClasses();
@@ -90,7 +90,7 @@ void static init(HMODULE instance)
                         }
 
                         if (!mc->GetMultiPlayerGameMode().isDestroying() && !isFirst) break;
-                        if (mc->GetMultiPlayerGameMode().getDestroyStage() > 8 && mc->GetMultiPlayerGameMode().getDestroyStage() < 255) DELAY(750);
+                        if (mc->GetMultiPlayerGameMode().getDestroyStage() > 8 && mc->GetMultiPlayerGameMode().getDestroyStage() < 255) DELAY(500);
                     }
                 }
 
@@ -109,7 +109,7 @@ void static init(HMODULE instance)
             DestroyWindow(hwndReceiver);
             hwndReceiver = nullptr;
         }
-        UnregisterClass("SettingsReceiverClass", GetModuleHandle(NULL));
+        UnregisterClass("SettingsReceiverClass", GetModuleHandle(nullptr));
     }
     FreeLibrary(instance);
 }
