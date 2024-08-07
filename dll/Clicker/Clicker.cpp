@@ -4,11 +4,11 @@ void Clicker::click(HWND hwnd)
 {
     if (getClicksPerSecond() == 0) DELAY(100);
     if ((GetAsyncKeyState(VK_LBUTTON) >= 0)) return;
-    DELAY(randomDelay())
+    DELAY(randomDelay(600))
     POINT pt;
     GetCursorPos(&pt);
     SendMessage(hwnd, WM_LBUTTONDOWN, MK_LBUTTON, MAKELPARAM(pt.x, pt.y));
-    DELAY(randomDelay())
+    DELAY(randomDelay(300))
     SendMessage(hwnd, WM_LBUTTONUP, 0, MAKELPARAM(pt.x, pt.y));
     trackClick();
 }
@@ -20,9 +20,9 @@ void Clicker::mouseDown(HWND hwnd)
     SendMessage(hwnd, WM_LBUTTONDOWN, MK_LBUTTON, MAKELPARAM(pt.x, pt.y));
 }
 
-int Clicker::randomDelay()
+int Clicker::randomDelay(int freq)
 {
-    int interval = 500 / cps;
+    int interval = freq / cps;
     std::uniform_int_distribution<> dis(interval - 10, interval + 10);
     return dis(gen);
 }
