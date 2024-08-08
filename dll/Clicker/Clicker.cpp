@@ -4,7 +4,7 @@ int Clicker::randomDelay(int baseDelay)
 {
     const int interval = baseDelay / cps;
     const int minDelay = interval - 10;
-    const int maxDelay = interval + 30;
+    const int maxDelay = interval + 10;
 
     std::uniform_int_distribution<> dis(minDelay, maxDelay);
     return dis(gen);
