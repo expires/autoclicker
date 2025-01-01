@@ -3,3 +3,4 @@ project(autoclicker)
 
 add_subdirectory(DLL)
 add_subdirectory(GUI)
+add_subdirectory(INJECTOR)

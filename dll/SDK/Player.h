@@ -13,5 +13,3 @@ public:
 private:
 	jobject playerInstance;
 };
-
-

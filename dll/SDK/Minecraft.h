@@ -3,7 +3,7 @@
 #include "Player.h"
 #include "MultiPlayerGameMode.h"
 #include "Screen.h"
-
+#include "HitResult.h"
 
 class Minecraft
 {
@@ -21,5 +21,8 @@ public:
 	bool isPaused();
 
 	bool isWindowActive();
-};
 
+	HitResult getHitResult();
+
+	bool isLookingAtBlock();
+};

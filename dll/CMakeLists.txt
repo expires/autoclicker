@@ -27,7 +27,7 @@ file(GLOB CLICKER_SOURCES "Clicker/*.cpp")
 
 # Add the shared library target (DLL)
 add_library(${PROJECT_NAME} SHARED 
-    autoclicker.cpp 
+    main.cpp 
     ${CLICKER_HEADERS}
     ${CLICKER_SOURCES}
     ${SDK_SOURCES} 

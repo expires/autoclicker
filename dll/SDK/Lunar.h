@@ -8,11 +8,13 @@
 class Lunar
 {
 public:
-	JNIEnv* env {nullptr};
-	JavaVM* vm {nullptr};
+	JNIEnv *env{nullptr};
+	JavaVM *vm{nullptr};
+
 public:
 	void GetLoadedClasses();
 	jclass GetClass(std::string classname);
+
 private:
 	std::unordered_map<std::string, jclass> classes;
 };

@@ -10,6 +10,8 @@ public:
 
 	void Cleanup();
 
+	jobject GetInstance();
+
 	bool isPauseScreen();
 
 	bool shouldCloseOnEsc();
@@ -17,4 +19,3 @@ public:
 private:
 	jobject screenInstance;
 };
-

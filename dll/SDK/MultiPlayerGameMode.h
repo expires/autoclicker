@@ -10,11 +10,14 @@ public:
 
 	void Cleanup();
 
+	jobject GetInstance();
+
 	bool isDestroying();
 
 	int getDestroyStage();
 
+	int getPlayerMode();
+
 private:
 	jobject mpgmInstance;
 };
-

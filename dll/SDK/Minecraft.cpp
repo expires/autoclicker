@@ -8,12 +8,11 @@ jclass Minecraft::GetClass()
 jobject Minecraft::GetInstance()
 {
 
-	jclass minecraftClass = this->GetClass();
+	jfieldID getMinecraft = lc->env->GetStaticFieldID(this->GetClass(), "instance", "Lnet/minecraft/client/Minecraft;");
+	jobject rtn = lc->env->GetStaticObjectField(this->GetClass(), getMinecraft);
 
-	jfieldID getMinecraft = lc->env->GetStaticFieldID(minecraftClass, "instance", "Lnet/minecraft/client/Minecraft;");
-	jobject rtn = lc->env->GetStaticObjectField(minecraftClass, getMinecraft);
-
-	if (rtn == nullptr) return nullptr;
+	if (rtn == nullptr)
+		return nullptr;
 
 	return rtn;
 }
@@ -21,50 +20,52 @@ jobject Minecraft::GetInstance()
 Player Minecraft::GetLocalPlayer()
 {
 
-	jclass minecraftClass = this->GetClass();
-	jobject minecraftObject = this->GetInstance();
+	jfieldID getPlayer = lc->env->GetFieldID(this->GetClass(), "player", "Lnet/minecraft/client/player/LocalPlayer;");
+	jobject rtn = lc->env->GetObjectField(this->GetInstance(), getPlayer);
 
-	jfieldID getPlayer = lc->env->GetFieldID(minecraftClass, "player", "Lnet/minecraft/client/player/LocalPlayer;");
-	jobject rtn = lc->env->GetObjectField(minecraftObject, getPlayer);
-
-	if (rtn == nullptr) return nullptr;
+	if (rtn == nullptr)
+		return nullptr;
 
 	return Player(rtn);
 }
 
 MultiPlayerGameMode Minecraft::GetMultiPlayerGameMode()
 {
-	jclass minecraftClass = this->GetClass();
-	jobject minecraftObject = this->GetInstance();
+	jfieldID getMPGM = lc->env->GetFieldID(this->GetClass(), "gameMode", "Lnet/minecraft/client/multiplayer/MultiPlayerGameMode;");
+	jobject rtn = lc->env->GetObjectField(this->GetInstance(), getMPGM);
 
-	jfieldID getMPGM = lc->env->GetFieldID(minecraftClass, "gameMode", "Lnet/minecraft/client/multiplayer/MultiPlayerGameMode;");
-	jobject rtn = lc->env->GetObjectField(minecraftObject, getMPGM);
-
-	if (rtn == nullptr) return nullptr;
+	if (rtn == nullptr)
+		return nullptr;
 
 	return MultiPlayerGameMode(rtn);
 }
 
 Screen Minecraft::GetScreen()
 {
-	jclass minecraftClass = this->GetClass();
-	jobject minecraftObject = this->GetInstance();
+	jfieldID getScreen = lc->env->GetFieldID(this->GetClass(), "screen", "Lnet/minecraft/client/gui/screens/Screen;");
+	jobject rtn = lc->env->GetObjectField(this->GetInstance(), getScreen);
 
-	jfieldID getScreen = lc->env->GetFieldID(minecraftClass, "screen", "Lnet/minecraft/client/gui/screens/Screen;");
-	jobject rtn = lc->env->GetObjectField(minecraftObject, getScreen);
-
-	if (rtn == nullptr) return nullptr;
+	if (rtn == nullptr)
+		return nullptr;
 
 	return Screen(rtn);
 }
 
 bool Minecraft::isPaused()
 {
-	jclass minecraftClass = this->GetClass();
-	jobject minecraftObject = this->GetInstance();
-
-	jmethodID isPaused = lc->env->GetMethodID(minecraftClass, "isPaused", "()Z");
-	bool rtn = lc->env->CallBooleanMethod(minecraftObject, isPaused);
+	jmethodID isPaused = lc->env->GetMethodID(this->GetClass(), "isPaused", "()Z");
+	bool rtn = lc->env->CallBooleanMethod(this->GetInstance(), isPaused);
 
 	return rtn;
+}
+
+HitResult Minecraft::getHitResult()
+{
+	jfieldID getHitResult = lc->env->GetFieldID(this->GetClass(), "hitResult", "Lnet/minecraft/world/phys/HitResult;");
+	jobject rtn = lc->env->GetObjectField(this->GetInstance(), getHitResult);
+
+	if (rtn == nullptr)
+		return nullptr;
+
+	return HitResult(rtn);
 }
