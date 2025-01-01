@@ -13,5 +13,5 @@ public:
     jobject GetInstance();
 
 private:
-    jobject blockPosBlockPosInstance;
+    jobject blockPosInstance;
 };

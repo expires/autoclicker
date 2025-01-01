@@ -10,8 +10,7 @@ using namespace std::chrono;
 
 Clicker clicker;
 
-constexpr double CLICKS_PER_SECOND = 11.4;
-constexpr double CLICK_PER_SECOND_BUFFER = 1.5;
+constexpr double CLICKS_PER_SECOND = 12.1;
 constexpr int TICK_SPEED = 50;
 
 namespace
@@ -37,15 +36,13 @@ namespace
             const auto mc = std::make_unique<Minecraft>();
             const HWND mcWindow = FindWindowW(L"GLFW30", nullptr);
 
-            clicker.setCps(CLICKS_PER_SECOND);
-
             while (!destruct)
             {
                 const HWND activeWindow = GetForegroundWindow();
                 DELAY(TICK_SPEED);
 
                 auto lastCheckTime = std::chrono::steady_clock::now();
-                const auto throttleInterval = std::chrono::milliseconds(static_cast<int>(std::ceil(1000.0 / (CLICKS_PER_SECOND + CLICK_PER_SECOND_BUFFER))));
+                const auto throttleInterval = std::chrono::milliseconds(static_cast<int>(std::ceil((1000.0 / CLICKS_PER_SECOND) - 45)));
 
                 while (activeWindow == mcWindow && GetAsyncKeyState(VK_LBUTTON))
                 {
@@ -54,8 +51,10 @@ namespace
                         destruct = true;
                         break;
                     }
-                    if (mc->GetScreen().isPauseScreen()) break;
-                    if (!GetAsyncKeyState(VK_LSHIFT) && mc->GetScreen().shouldCloseOnEsc()) break;
+                    if (mc->GetScreen().isPauseScreen())
+                        break;
+                    if (!GetAsyncKeyState(VK_LSHIFT) && mc->GetScreen().shouldCloseOnEsc())
+                        break;
 
                     bool hasClickedBlock = false;
 
@@ -63,7 +62,8 @@ namespace
                     {
                         while (GetAsyncKeyState(VK_LBUTTON))
                         {
-                            if (mc->GetMultiPlayerGameMode().getPlayerMode() == 2) break;
+                            if (mc->GetMultiPlayerGameMode().getPlayerMode() == 2)
+                                break;
 
                             if (mc->getHitResult().getType() == 1)
                             {
