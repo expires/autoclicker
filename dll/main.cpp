@@ -8,10 +8,11 @@
 
 using namespace std::chrono;
 
-Clicker clicker;
 
-constexpr double CLICKS_PER_SECOND = 12.1;
+
+constexpr double CLICKS_PER_SECOND = 17.1;
 constexpr int TICK_SPEED = 50;
+Clicker clicker(CLICKS_PER_SECOND);
 
 namespace
 {
@@ -42,7 +43,7 @@ namespace
                 DELAY(TICK_SPEED);
 
                 auto lastCheckTime = std::chrono::steady_clock::now();
-                const auto throttleInterval = std::chrono::milliseconds(static_cast<int>(std::ceil((1000.0 / CLICKS_PER_SECOND) - 45)));
+                const auto throttleInterval = std::chrono::milliseconds(static_cast<int>(std::ceil(1000.0 / ( CLICKS_PER_SECOND * 2))));
 
                 while (activeWindow == mcWindow && GetAsyncKeyState(VK_LBUTTON))
                 {
@@ -73,12 +74,8 @@ namespace
                                     clicker.mouseDown(mcWindow);
                                 }
                             }
-                            else
-                            {
-                                DELAY(TICK_SPEED);
-                                hasClickedBlock = false;
-                                break;
-                            }
+                            else break;
+
                             DELAY(throttleInterval);
                         }
                     }

@@ -2,8 +2,9 @@
 
 int Clicker::randomDelay(int baseDelay)
 {
-    const int minDelay = baseDelay - 10;
-    const int maxDelay = baseDelay + 10;
+    const int interval = baseDelay / cps;
+    const int minDelay = interval - 10;
+    const int maxDelay = interval + 10;
 
     std::uniform_int_distribution<> dis(minDelay, maxDelay);
     return dis(gen);
@@ -20,7 +21,7 @@ void Clicker::click(HWND hwnd)
     GetCursorPos(&pt);
 
     SendMessage(hwnd, WM_LBUTTONDOWN, MK_LBUTTON, MAKELPARAM(pt.x, pt.y));
-    DELAY(randomDelay(40));
+    DELAY(randomDelay(500));
     SendMessage(hwnd, WM_LBUTTONUP, 0, MAKELPARAM(pt.x, pt.y));
 
     trackClick();
