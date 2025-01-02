@@ -29,8 +29,7 @@ namespace AutoclickerModule
                 DELAY(TICK);
 
                 auto lastCheckTime = std::chrono::steady_clock::now();
-                int delay = static_cast<int>(std::ceil(((1000.0 / (CPS + (CPS / 2))))));
-                const auto throttleInterval = std::chrono::milliseconds(delay);
+                int delay = static_cast<int>(std::ceil(((( 500.0 / CPS ) + (CPS / 2)))));
 
                 while (activeWindow == mcWindow && GetAsyncKeyState(VK_LBUTTON))
                 {
@@ -59,7 +58,7 @@ namespace AutoclickerModule
                                 }
                             }
                             else break;
-                            DELAY(throttleInterval);
+                            DELAY(delay);
                         }
                         break;
                     }
@@ -67,9 +66,8 @@ namespace AutoclickerModule
                     {
                         if ((GetAsyncKeyState(VK_LBUTTON) < 0) && GetAsyncKeyState(VK_RBUTTON) >= 0)
                         {
-                            int fDelay = static_cast<int>(std::ceil(((delay / 2))));
-                            clicker.click(mcWindow, fDelay);
-                            DELAY(clicker.randomDelay(delay))
+                            clicker.click(mcWindow, delay);
+                            DELAY(delay)
                         }
                     }
 
