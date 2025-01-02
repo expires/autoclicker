@@ -10,7 +10,7 @@ using namespace std::chrono;
 
 
 
-constexpr double CLICKS_PER_SECOND = 17.1;
+constexpr double CLICKS_PER_SECOND = 12.1;
 constexpr int TICK_SPEED = 50;
 Clicker clicker(CLICKS_PER_SECOND);
 
@@ -43,7 +43,8 @@ namespace
                 DELAY(TICK_SPEED);
 
                 auto lastCheckTime = std::chrono::steady_clock::now();
-                const auto throttleInterval = std::chrono::milliseconds(static_cast<int>(std::ceil(1000.0 / ( CLICKS_PER_SECOND * 2))));
+                int delay = static_cast<int>(std::ceil(((1000.0 / (CLICKS_PER_SECOND + (CLICKS_PER_SECOND / 2) )))));
+                const auto throttleInterval = std::chrono::milliseconds(delay);
 
                 while (activeWindow == mcWindow && GetAsyncKeyState(VK_LBUTTON))
                 {
@@ -78,16 +79,18 @@ namespace
 
                             DELAY(throttleInterval);
                         }
+                        break;
                     }
                     else
                     {
                         if ((GetAsyncKeyState(VK_LBUTTON) < 0) && GetAsyncKeyState(VK_RBUTTON) >= 0)
                         {
-                            clicker.click(mcWindow);
+                            int fDelay = static_cast<int>(std::ceil(((delay / 2))));
+                            clicker.click(mcWindow, fDelay);
+                            DELAY(clicker.randomDelay(delay))
                         }
                     }
-
-                    DELAY(throttleInterval);
+                   
                 }
             }
         }
