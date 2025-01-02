@@ -22,14 +22,14 @@ set(JVM_LIB "${JAVA_HOME}/lib/jvm.lib")
 # Automatically find all .cpp and .h files in the SDK & Clicker directories
 file(GLOB SDK_HEADERS "SDK/*.h")
 file(GLOB SDK_SOURCES "SDK/*.cpp")
-file(GLOB CLICKER_HEADERS "Clicker/*.h")
-file(GLOB CLICKER_SOURCES "Clicker/*.cpp")
+file(GLOB AUTOCLICKER_HEADERS "modules/autoclicker/*.h")
+file(GLOB AUTOCLICKER_SOURCES "modules/autoclicker/*.cpp")
 
 # Add the shared library target (DLL)
 add_library(${PROJECT_NAME} SHARED 
     main.cpp 
-    ${CLICKER_HEADERS}
-    ${CLICKER_SOURCES}
+    ${AUTOCLICKER_HEADERS}
+    ${AUTOCLICKER_SOURCES}
     ${SDK_SOURCES} 
     ${SDK_HEADERS}
 )
@@ -38,5 +38,5 @@ target_link_libraries(${PROJECT_NAME} PRIVATE ${JVM_LIB})
 
 source_group("Header Files\\SDK" FILES ${SDK_HEADERS})
 source_group("Source Files\\SDK" FILES ${SDK_SOURCES})
-source_group("Header Files\\Clicker" FILES ${CLICKER_HEADERS})
-source_group("Source Files\\Clicker" FILES ${CLICKER_SOURCES})
+source_group("Header Files\\Autoclicker" FILES ${AUTOCLICKER_HEADERS})
+source_group("Source Files\\Autoclicker" FILES ${AUTOCLICKER_SOURCES})

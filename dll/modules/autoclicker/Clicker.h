@@ -8,7 +8,7 @@
 class Clicker
 {
 public:
-    Clicker(int cps) : gen(rd()), dis(50, 70), cps(cps) {};
+    Clicker(int cps) : gen(rd()), cps(cps) {};
     void click(HWND hwnd, int delay);
     void mouseDown(HWND hwnd);
     int randomDelay(int freq);
