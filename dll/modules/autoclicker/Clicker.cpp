@@ -1,30 +1,30 @@
 #include "Clicker.h"
+#include <iostream>
 
 int Clicker::randomDelay(int baseDelay)
 {
-    const int minDelay = baseDelay - 5;
-    const int maxDelay = baseDelay + 5;
+    const int interval = baseDelay / cps;
+    const int minDelay = interval - 10;
+    const int maxDelay = interval + 10;
 
     std::uniform_int_distribution<> dis(minDelay, maxDelay);
     return dis(gen);
 }
 
-void Clicker::click(HWND hwnd, int delay)
-{
-    int cps = getClicksPerSecond();
-    if (cps == 0)
-        DELAY(100);
+void Clicker::click(HWND hwnd, int interval) {
+    if (getClicksPerSecond() == 0) DELAY(100);
     if ((GetAsyncKeyState(VK_LBUTTON) >= 0)) return;
 
     POINT pt;
     GetCursorPos(&pt);
-
     SendMessage(hwnd, WM_LBUTTONDOWN, MK_LBUTTON, MAKELPARAM(pt.x, pt.y));
-    DELAY(randomDelay(delay))
-    SendMessage(hwnd, WM_LBUTTONUP, 0, MAKELPARAM(pt.x, pt.y));
+    DELAY(randomDelay(350));
+    SendMessage(hwnd, WM_LBUTTONUP, MK_LBUTTON, MAKELPARAM(pt.x, pt.y));
+    DELAY(randomDelay(600));
 
     trackClick();
 }
+
 
 void Clicker::mouseDown(HWND hwnd)
 {

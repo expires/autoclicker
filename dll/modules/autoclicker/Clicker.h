@@ -8,14 +8,15 @@
 class Clicker
 {
 public:
-    Clicker(int cps) : gen(rd()), dis(25, 55), cps(cps) {};
-    void click(HWND hwnd, int delay);
+    Clicker(int cps) : gen(rd()), dis(25, 55), cps(cps), isMouseDown(false) {};
+    void click(HWND hwnd, int interval);
     void mouseDown(HWND hwnd);
     int randomDelay(int freq);
     int getClicksPerSecond();
 
 private:
     int cps;
+    bool isMouseDown;
     std::vector<std::chrono::steady_clock::time_point> clicks;
     std::random_device rd;
     std::mt19937 gen;
