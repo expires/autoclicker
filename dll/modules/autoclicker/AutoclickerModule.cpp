@@ -48,15 +48,16 @@ namespace AutoclickerModule
                                 clicker.mouseDown(mcWindow);
                             }
 
-                            DELAY(clicker.randomDelay(500));
+                            DELAY(clicker.randomDelay(1000));
                         }
                     }
                     else if (GetAsyncKeyState(VK_LBUTTON) < 0 && GetAsyncKeyState(VK_RBUTTON) >= 0) {
-                        clicker.click(mcWindow, 500);
+                        clicker.click(mcWindow);
                     }
                 }
 
             }
+            lc->vm->DetachCurrentThread();
             FreeLibraryAndExitThread(instance, 0);
             return 0;
         }

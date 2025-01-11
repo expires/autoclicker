@@ -11,7 +11,7 @@ int Clicker::randomDelay(int baseDelay)
     return dis(gen);
 }
 
-void Clicker::click(HWND hwnd, int interval) {
+void Clicker::click(HWND hwnd) {
     if (getClicksPerSecond() == 0) DELAY(100);
     if ((GetAsyncKeyState(VK_LBUTTON) >= 0)) return;
 
