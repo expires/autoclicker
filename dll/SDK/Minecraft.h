@@ -4,6 +4,7 @@
 #include "MultiPlayerGameMode.h"
 #include "Screen.h"
 #include "HitResult.h"
+#include "Gui.h"
 
 class Minecraft
 {
@@ -17,6 +18,8 @@ public:
 	MultiPlayerGameMode GetMultiPlayerGameMode();
 
 	Screen GetScreen();
+
+	Gui GetGui();
 
 	bool isPaused();
 

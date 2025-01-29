@@ -14,3 +14,25 @@ void Player::Cleanup()
 {
 	lc->env->DeleteLocalRef(this->playerInstance);
 }
+
+jobject Player::GetInstance()
+{
+	return this->playerInstance;
+}
+
+ItemStack Player::getItemInHand()
+{
+
+	jmethodID getItemInHandMethod = lc->env->GetMethodID(this->GetClass(), "getItemInHand", "(Lnet/minecraft/world/InteractionHand;)Lnet/minecraft/world/item/ItemStack;");
+
+	jclass interactionHandClass = lc->GetClass("net.minecraft.world.InteractionHand");
+	jfieldID mainHandField = lc->env->GetStaticFieldID(interactionHandClass, "MAIN_HAND", "Lnet/minecraft/world/InteractionHand;");
+	jobject mainHand = lc->env->GetStaticObjectField(interactionHandClass, mainHandField);
+
+	jobject rtn = lc->env->CallObjectMethod(this->GetInstance(), getItemInHandMethod, mainHand);
+
+	if (rtn == nullptr)
+		return nullptr;
+
+	return ItemStack(rtn);
+}
