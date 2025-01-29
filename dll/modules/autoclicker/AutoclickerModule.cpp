@@ -61,22 +61,23 @@ namespace AutoclickerModule
                     else if (GetAsyncKeyState(VK_LBUTTON) < 0 && GetAsyncKeyState(VK_RBUTTON) >= 0)
                     {
 
+                        clicker.click(mcWindow);
+
                         ItemStack itemStack = mc->GetLocalPlayer().getItemInHand();
 
                         auto now = std::chrono::steady_clock::now();
-                        if (itemStack.getItem().getName(itemStack.GetInstance()).getString() == "Shield" && std::chrono::duration_cast<std::chrono::seconds>(now - lastExecutionTime).count() >= 18 && mc->getHitResult().getType() == 2)
+                        if (std::chrono::duration_cast<std::chrono::seconds>(now - lastExecutionTime).count() >= 18 &&
+                            itemStack.getItem().getName(itemStack.GetInstance()).getString() == "Shield" &&
+                            mc->getHitResult().getType() == 2)
                         {
                             POINT pt;
                             GetCursorPos(&pt);
                             SendMessage(mcWindow, WM_RBUTTONDOWN, MK_RBUTTON, MAKELPARAM(pt.x, pt.y));
-                            clicker.randomDelay(40);
+                            DELAY(clicker.randomDelay(50));
                             SendMessage(mcWindow, WM_RBUTTONUP, MK_RBUTTON, MAKELPARAM(pt.x, pt.y));
 
                             lastExecutionTime = now;
                         }
-
-                        clicker.click(mcWindow);
-                        
                     }
                 }
             }
