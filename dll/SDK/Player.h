@@ -1,5 +1,6 @@
 #pragma once
 #include "Lunar.h"
+#include "ItemStack.h"
 
 class Player
 {
@@ -9,6 +10,10 @@ public:
 	jclass GetClass();
 
 	void Cleanup();
+
+	jobject GetInstance();
+
+	ItemStack getItemInHand();
 
 private:
 	jobject playerInstance;

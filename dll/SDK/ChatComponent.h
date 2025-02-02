@@ -1,10 +1,10 @@
 #pragma once
 #include "Lunar.h"
 
-class BlockPos
+class ChatComponent
 {
 public:
-    BlockPos(jobject instance);
+    ChatComponent(jobject instance);
 
     jclass GetClass();
 
@@ -13,5 +13,5 @@ public:
     jobject GetInstance();
 
 private:
-    jobject blockPosInstance;
+    jobject ccInstance;
 };

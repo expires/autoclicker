@@ -29,6 +29,17 @@ Player Minecraft::GetLocalPlayer()
 	return Player(rtn);
 }
 
+Gui Minecraft::GetGui()
+{
+	jfieldID getGui = lc->env->GetFieldID(this->GetClass(), "gui", "Lnet/minecraft/client/gui/Gui;");
+	jobject rtn = lc->env->GetObjectField(this->GetInstance(), getGui);
+
+	if (rtn == nullptr)
+		return nullptr;
+
+	return Gui(rtn);
+}
+
 MultiPlayerGameMode Minecraft::GetMultiPlayerGameMode()
 {
 	jfieldID getMPGM = lc->env->GetFieldID(this->GetClass(), "gameMode", "Lnet/minecraft/client/multiplayer/MultiPlayerGameMode;");
