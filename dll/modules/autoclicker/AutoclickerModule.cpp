@@ -5,6 +5,7 @@ namespace AutoclickerModule
 {
     Clicker clicker(CPS);
     std::atomic<bool> destruct(false);
+    std::list<std::string> friends = { "Unterschaetzt", "Coucal", "Anubis", "Friandise", "Manu", "Sheesh", "ImOnlyABubble" };
 
     DWORD WINAPI init(const LPVOID lpParam)
     {
@@ -61,25 +62,35 @@ namespace AutoclickerModule
                     else if (GetAsyncKeyState(VK_LBUTTON) < 0 && GetAsyncKeyState(VK_RBUTTON) >= 0)
                     {
 
-                        clicker.click(mcWindow);
-
-                        ItemStack itemStack = mc->GetLocalPlayer().getItemInHand();
+                        clicker.lclick(mcWindow);
 
                         auto now = std::chrono::steady_clock::now();
-                        if (std::chrono::duration_cast<std::chrono::seconds>(now - lastExecutionTime).count() >= 18 &&
-                            itemStack.getItem().getName(itemStack.GetInstance()).getString() == "Shield" &&
-                            mc->getHitResult().getType() == 2)
-                        {
-                            POINT pt;
-                            GetCursorPos(&pt);
-                            SendMessage(mcWindow, WM_RBUTTONDOWN, MK_RBUTTON, MAKELPARAM(pt.x, pt.y));
-                            DELAY(clicker.randomDelay(50));
-                            SendMessage(mcWindow, WM_RBUTTONUP, MK_RBUTTON, MAKELPARAM(pt.x, pt.y));
 
-                            lastExecutionTime = now;
+                        if (std::chrono::duration_cast<std::chrono::seconds>(now - lastExecutionTime).count() >= 18)
+                        {
+                            ItemStack itemStack = mc->GetLocalPlayer().getItemInHand();
+
+                            HitResult hr = mc->getHitResult();
+                            if (itemStack.getItem().getName(itemStack.GetInstance()).getString() == "Shield" && hr.getType() == 2)
+                            {
+                                Entity entity = hr.getEntityHitResult().getEntity();
+                                if (entity.getTypeName().getString() != "Player") break;
+
+                                bool isFriended = false;
+                                for (const std::string& friendName : friends) {
+                                    if (friendName == entity.getName().getString()) {
+                                        isFriended = true;
+                                    }
+                                }
+    #
+                                if (isFriended) break;
+
+                                clicker.rclick(mcWindow);
+                                lastExecutionTime = now;
+                            }
                         }
                     }
-                }
+                } 
             }
             lc->vm->DetachCurrentThread();
             FreeLibraryAndExitThread(instance, 0);

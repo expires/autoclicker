@@ -1,6 +1,6 @@
 #pragma once
 #include "Lunar.h"
-#include "BlockHitResult.h"
+#include "EntityHitResult.h"
 
 class HitResult
 {
@@ -15,7 +15,7 @@ public:
 
     int getType();
 
-    BlockHitResult getBlockHitResult();
+    EntityHitResult getEntityHitResult();
 
 private:
     jobject hitResultInstance;

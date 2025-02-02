@@ -11,9 +11,12 @@ int Clicker::randomDelay(int baseDelay)
     return dis(gen);
 }
 
-void Clicker::click(HWND hwnd) {
-    if (getClicksPerSecond() == 0) DELAY(100);
-    if ((GetAsyncKeyState(VK_LBUTTON) >= 0)) return;
+void Clicker::lclick(HWND hwnd)
+{
+    if (getClicksPerSecond() == 0)
+        DELAY(100);
+    if ((GetAsyncKeyState(VK_LBUTTON) >= 0))
+        return;
 
     POINT pt;
     GetCursorPos(&pt);
@@ -25,6 +28,16 @@ void Clicker::click(HWND hwnd) {
     trackClick();
 }
 
+void Clicker::rclick(HWND hwnd)
+{
+    POINT pt;
+    GetCursorPos(&pt);
+    SendMessage(hwnd, WM_RBUTTONDOWN, MK_RBUTTON, MAKELPARAM(pt.x, pt.y));
+    DELAY(randomDelay(500));
+    SendMessage(hwnd, WM_RBUTTONUP, MK_RBUTTON, MAKELPARAM(pt.x, pt.y));
+
+    trackClick();
+}
 
 void Clicker::mouseDown(HWND hwnd)
 {
@@ -37,11 +50,11 @@ int Clicker::getClicksPerSecond()
 {
     auto now = std::chrono::steady_clock::now();
     clicks.erase(std::remove_if(clicks.begin(), clicks.end(),
-        [now](const auto& time)
-        {
-            return std::chrono::duration_cast<std::chrono::milliseconds>(now - time).count() > 1000;
-        }),
-        clicks.end());
+                                [now](const auto &time)
+                                {
+                                    return std::chrono::duration_cast<std::chrono::milliseconds>(now - time).count() > 1000;
+                                }),
+                 clicks.end());
     return static_cast<int>(clicks.size());
 }
 

@@ -1,4 +1,5 @@
 #include "HitResult.h"
+#include <iostream>
 
 HitResult::HitResult(jobject instance)
 {
@@ -32,14 +33,11 @@ int HitResult::getType()
     return rtn;
 }
 
-BlockHitResult HitResult::getBlockHitResult()
+EntityHitResult HitResult::getEntityHitResult()
 {
-    if (this->getType() != 1)
+    if (this->getType() != 2)
         return nullptr;
 
-    jclass blockHitResultClass = lc->env->FindClass("net/minecraft/world/phys/BlockHitResult");
-    if (lc->env->IsInstanceOf(this->hitResultInstance, blockHitResultClass))
-    {
-        return BlockHitResult(this->hitResultInstance);
-    }
+    jclass entityHitResultClass = lc->env->FindClass("net/minecraft/world/phys/EntityHitResult");
+    return EntityHitResult(this->GetInstance());
 }
