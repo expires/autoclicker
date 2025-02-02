@@ -52,7 +52,7 @@ namespace AutoclickerModule
                             DELAY(clicker.randomDelay(1000));
                         }
                     }
-                    else if (GetAsyncKeyState(VK_LBUTTON) < 0 && GetAsyncKeyState(VK_RBUTTON) >= 0)
+                    else if (GetAsyncKeyState(VK_LBUTTON) < 0 && !mc->GetLocalPlayer().isUsingItem())
                     {
                         clicker.lclick(mcWindow);
                     }

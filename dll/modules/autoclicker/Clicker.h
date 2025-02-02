@@ -2,6 +2,7 @@
 #include <chrono>
 #include <thread>
 #include <random>
+#include <algorithm>
 
 #define DELAY(x) std::this_thread::sleep_for(std::chrono::milliseconds(x));
 
@@ -18,9 +19,11 @@ public:
 private:
     int cps;
     bool isMouseDown;
+    bool directionFlag = true;
     std::vector<std::chrono::steady_clock::time_point> clicks;
     std::random_device rd;
     std::mt19937 gen;
     std::uniform_int_distribution<> dis;
     void trackClick();
+    int jitter(HWND hwnd);
 };

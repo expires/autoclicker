@@ -15,6 +15,8 @@ public:
 
 	ItemStack getItemInHand();
 
+	bool isUsingItem();
+
 private:
 	jobject playerInstance;
 };

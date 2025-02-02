@@ -1,5 +1,4 @@
 #include "Clicker.h"
-#include <iostream>
 
 int Clicker::randomDelay(int baseDelay)
 {
@@ -25,6 +24,7 @@ void Clicker::lclick(HWND hwnd)
     SendMessage(hwnd, WM_LBUTTONUP, MK_LBUTTON, MAKELPARAM(pt.x, pt.y));
     DELAY(randomDelay(600));
 
+    
     trackClick();
 }
 
@@ -62,3 +62,56 @@ void Clicker::trackClick()
 {
     clicks.push_back(std::chrono::steady_clock::now());
 }
+
+int Clicker::jitter(HWND hwnd) {
+    const int minThreshold = 5;
+    const int maxThreshold = 10;
+
+    int totalDeltaX = (rand() % (maxThreshold - minThreshold + 1)) + minThreshold;
+    int totalDeltaY = (rand() % (maxThreshold - minThreshold + 1)) + minThreshold;
+
+    if (directionFlag) {
+        totalDeltaX = abs(totalDeltaX);
+        totalDeltaY = abs(totalDeltaY);
+    }
+    else {
+        totalDeltaX = -abs(totalDeltaX);
+        totalDeltaY = -abs(totalDeltaY);
+    }
+
+    int steps = max(abs(totalDeltaX), abs(totalDeltaY));
+
+    float stepX = static_cast<float>(totalDeltaX) / steps;
+    float stepY = static_cast<float>(totalDeltaY) / steps;
+
+    float currentX = 0;
+    float currentY = 0;
+
+    auto start_time = std::chrono::high_resolution_clock::now();
+
+    for (int i = 0; i < steps; ++i) {
+        currentX += stepX;
+        currentY += stepY;
+
+        INPUT input = { 0 };
+        input.type = INPUT_MOUSE;
+        input.mi.dx = static_cast<int>(currentX);
+        input.mi.dy = static_cast<int>(currentY);
+        input.mi.dwFlags = MOUSEEVENTF_MOVE;
+
+        SendInput(1, &input, sizeof(INPUT));
+
+        std::this_thread::sleep_for(std::chrono::milliseconds(5));
+
+        currentX -= static_cast<int>(currentX);
+        currentY -= static_cast<int>(currentY);
+    }
+
+    auto end_time = std::chrono::high_resolution_clock::now();
+    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time).count();
+
+    directionFlag = !directionFlag;
+
+    return duration; 
+}
+

@@ -36,3 +36,11 @@ ItemStack Player::getItemInHand()
 
 	return ItemStack(rtn);
 }
+
+bool Player::isUsingItem()
+{
+	jmethodID isUsingItem = lc->env->GetMethodID(this->GetClass(), "isUsingItem", "()Z");
+	bool rtn = lc->env->CallBooleanMethod(this->GetInstance(), isUsingItem);
+
+	return rtn;
+}
