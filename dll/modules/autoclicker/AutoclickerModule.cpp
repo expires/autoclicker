@@ -1,11 +1,12 @@
 #include "AutoclickerModule.h"
 #include <iostream>
+#include "../../SDK/LivingEntity.h"
 
 namespace AutoclickerModule
 {
     Clicker clicker(CPS);
     std::atomic<bool> destruct(false);
-    std::list<std::string> friends = { "Unterschaetzt", "Coucal", "Anubis", "Friandise", "Manu", "Sheesh", "ImOnlyABubble" };
+    std::list<std::string> friends = {"Unterschaetzt", "Coucal", "Anubis", "Friandise", "Manu", "Sheesh", "ImOnlyABubble"};
 
     DWORD WINAPI init(const LPVOID lpParam)
     {
@@ -62,35 +63,31 @@ namespace AutoclickerModule
                     else if (GetAsyncKeyState(VK_LBUTTON) < 0 && GetAsyncKeyState(VK_RBUTTON) >= 0)
                     {
 
-                        clicker.lclick(mcWindow);
+                        ItemStack itemStack = mc->GetLocalPlayer().getItemInHand();
+                        HitResult hr = mc->getHitResult();
 
-                        auto now = std::chrono::steady_clock::now();
-
-                        if (std::chrono::duration_cast<std::chrono::seconds>(now - lastExecutionTime).count() >= 18)
+                        if (hr.getType() == 2)
                         {
-                            ItemStack itemStack = mc->GetLocalPlayer().getItemInHand();
-
-                            HitResult hr = mc->getHitResult();
-                            if (itemStack.getItem().getName(itemStack.GetInstance()).getString() == "Shield" && hr.getType() == 2)
+                            Entity entity = hr.getEntityHitResult().getEntity();
+                            if (entity.getTypeName().getString() == "Player")
                             {
-                                Entity entity = hr.getEntityHitResult().getEntity();
-                                if (entity.getTypeName().getString() != "Player") break;
-
-                                bool isFriended = false;
-                                for (const std::string& friendName : friends) {
-                                    if (friendName == entity.getName().getString()) {
-                                        isFriended = true;
-                                    }
+                                LivingEntity le = LivingEntity(entity.GetInstance());
+                                if (!le.isUsingItem())
+                                {
+                                    clicker.lclick(mcWindow);
                                 }
-    #
-                                if (isFriended) break;
-
-                                clicker.rclick(mcWindow);
-                                lastExecutionTime = now;
+                            }
+                            else
+                            {
+                                clicker.lclick(mcWindow);
                             }
                         }
+                        else
+                        {
+                            clicker.lclick(mcWindow);
+                        }
                     }
-                } 
+                }
             }
             lc->vm->DetachCurrentThread();
             FreeLibraryAndExitThread(instance, 0);
