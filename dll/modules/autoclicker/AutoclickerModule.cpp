@@ -41,11 +41,8 @@ namespace AutoclickerModule
                     {
                         bool hasClickedBlock = false;
 
-                        while (GetAsyncKeyState(VK_LBUTTON))
+                        while (GetAsyncKeyState(VK_LBUTTON) && mc->GetMultiPlayerGameMode().getPlayerMode() != 2 && mc->getHitResult().getType() == 1)
                         {
-                            if (mc->GetMultiPlayerGameMode().getPlayerMode() == 2 || mc->getHitResult().getType() != 1)
-                                break;
-
                             if (!hasClickedBlock && clicker.getClicksPerSecond() > 0)
                             {
                                 hasClickedBlock = true;
