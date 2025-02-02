@@ -1,6 +1,5 @@
 #include "AutoclickerModule.h"
 
-
 namespace AutoclickerModule
 {
     Clicker clicker(CPS);
@@ -14,7 +13,7 @@ namespace AutoclickerModule
         if (result != JNI_OK || lc->vm == nullptr)
             return 0;
 
-        result = lc->vm->AttachCurrentThread(reinterpret_cast<void**>(&lc->env), nullptr);
+        result = lc->vm->AttachCurrentThread(reinterpret_cast<void **>(&lc->env), nullptr);
         if (result != JNI_OK || lc->env == nullptr)
             return 0;
 
@@ -28,22 +27,27 @@ namespace AutoclickerModule
                 const HWND activeWindow = GetForegroundWindow();
                 DELAY(TICK);
 
-                while (activeWindow == mcWindow && GetAsyncKeyState(VK_LBUTTON)) {
-                    if (GetAsyncKeyState(VK_END)) {
+                while (activeWindow == mcWindow && GetAsyncKeyState(VK_LBUTTON))
+                {
+                    if (GetAsyncKeyState(VK_END))
+                    {
                         destruct = true;
                         break;
                     }
-                    if (mc->GetScreen().isPauseScreen() || mc->GetScreen().shouldCloseOnEsc())
-                        break;
 
-                    if (mc->GetMultiPlayerGameMode().getPlayerMode() != 2 && mc->getHitResult().getType() == 1) {
+                    if (mc->GetScreen().isPauseScreen() || mc->GetScreen().shouldCloseOnEsc()) break;
+
+                    if (mc->GetMultiPlayerGameMode().getPlayerMode() != 2 && mc->getHitResult().getType() == 1)
+                    {
                         bool hasClickedBlock = false;
 
-                        while (GetAsyncKeyState(VK_LBUTTON)) {
+                        while (GetAsyncKeyState(VK_LBUTTON))
+                        {
                             if (mc->GetMultiPlayerGameMode().getPlayerMode() == 2 || mc->getHitResult().getType() != 1)
                                 break;
 
-                            if (!hasClickedBlock && clicker.getClicksPerSecond() > 0) {
+                            if (!hasClickedBlock && clicker.getClicksPerSecond() > 0)
+                            {
                                 hasClickedBlock = true;
                                 clicker.mouseDown(mcWindow);
                             }
@@ -51,11 +55,11 @@ namespace AutoclickerModule
                             DELAY(clicker.randomDelay(1000));
                         }
                     }
-                    else if (GetAsyncKeyState(VK_LBUTTON) < 0 && GetAsyncKeyState(VK_RBUTTON) >= 0) {
-                        clicker.click(mcWindow);
+                    else if (GetAsyncKeyState(VK_LBUTTON) < 0 && GetAsyncKeyState(VK_RBUTTON) >= 0)
+                    {
+                        clicker.lclick(mcWindow);
                     }
                 }
-
             }
             lc->vm->DetachCurrentThread();
             FreeLibraryAndExitThread(instance, 0);
