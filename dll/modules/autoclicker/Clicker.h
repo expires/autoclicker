@@ -9,7 +9,7 @@
 class Clicker
 {
 public:
-    Clicker(int cps) : gen(rd()), dis(25, 55), cps(cps), isMouseDown(false) {};
+    Clicker(int cps) : gen(rd()), dis(25, 55), cps(cps), isMouseDown(false), highDelayChance(0.25), jitterFactor(0.9, 1.1), extremeDelayChance(1, 100) {};
     void lclick(HWND hwnd);
     void rclick(HWND hwnd);
     void mouseDown(HWND hwnd);
@@ -24,6 +24,9 @@ private:
     std::random_device rd;
     std::mt19937 gen;
     std::uniform_int_distribution<> dis;
+    std::bernoulli_distribution highDelayChance;
+    std::uniform_real_distribution<> jitterFactor;
+    std::uniform_int_distribution<> extremeDelayChance;
     void trackClick();
     int64_t jitter(HWND hwnd);
 };

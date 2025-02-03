@@ -2,12 +2,20 @@
 
 int Clicker::randomDelay(int baseDelay)
 {
-    const int interval = baseDelay / cps;
-    const int minDelay = interval - 10;
-    const int maxDelay = interval + 10;
+    const double mean = baseDelay / cps;
+    const double stddev = mean * 0.25;
 
-    std::uniform_int_distribution<> dis(minDelay, maxDelay);
-    return dis(gen);
+    std::normal_distribution<> dis(mean, stddev);
+
+    int delay;
+    do {
+        delay = static_cast<int>(dis(gen) * jitterFactor(gen));
+    } while (delay < 1 || delay > mean * 2);
+
+    if (highDelayChance(gen)) delay *= 1.5; 
+    if (extremeDelayChance(gen) == 1) delay *= 2; 
+   
+    return delay;
 }
 
 void Clicker::lclick(HWND hwnd)
@@ -20,9 +28,9 @@ void Clicker::lclick(HWND hwnd)
     POINT pt;
     GetCursorPos(&pt);
     SendMessage(hwnd, WM_LBUTTONDOWN, MK_LBUTTON, MAKELPARAM(pt.x, pt.y));
-    DELAY(randomDelay(350));
+    DELAY(randomDelay(400));
     SendMessage(hwnd, WM_LBUTTONUP, MK_LBUTTON, MAKELPARAM(pt.x, pt.y));
-    DELAY(randomDelay(600));
+    DELAY(randomDelay(550));
 
     trackClick();
 }
