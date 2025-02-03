@@ -1,16 +1,16 @@
 #pragma once
 #include "Lunar.h"
+#include "Entity.h"
+#include "ItemStack.h"
 
-class LivingEntity
+class LivingEntity : public Entity
 {
 public:
-    LivingEntity(jobject instance);
+    LivingEntity(jobject instance) : Entity(instance), instance(instance) {};
 
-    jclass GetClass();
+    virtual jclass GetClass() override;
 
-    void Cleanup();
-
-    jobject GetInstance();
+    ItemStack getItemInHand();
 
     bool isUsingItem();
 

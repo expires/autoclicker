@@ -7,7 +7,7 @@ class Entity
 public:
     Entity(jobject instance);
 
-    jclass GetClass();
+    virtual jclass GetClass();
 
     void Cleanup();
 
