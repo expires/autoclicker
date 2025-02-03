@@ -18,5 +18,5 @@ public:
     EntityHitResult getEntityHitResult();
 
 private:
-    jobject hitResultInstance;
+    jobject instance;
 };

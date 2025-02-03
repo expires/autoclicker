@@ -2,7 +2,7 @@
 
 Item::Item(jobject instance)
 {
-    this->itemInstance = instance;
+    this->instance = instance;
 }
 
 jclass Item::GetClass()
@@ -12,12 +12,12 @@ jclass Item::GetClass()
 
 void Item::Cleanup()
 {
-    lc->env->DeleteLocalRef(this->itemInstance);
+    lc->env->DeleteLocalRef(this->instance);
 }
 
 jobject Item::GetInstance()
 {
-    return this->itemInstance;
+    return this->instance;
 }
 
 Component Item::getName(jobject itemStack)

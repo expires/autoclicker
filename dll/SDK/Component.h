@@ -15,5 +15,5 @@ public:
     std::string getString();
 
 private:
-    jobject componentInstance;
+    jobject instance;
 };

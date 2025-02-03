@@ -16,5 +16,5 @@ public:
     Component getName(jobject itemStack);
 
 private:
-    jobject itemInstance;
+    jobject instance;
 };

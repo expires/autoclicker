@@ -18,5 +18,5 @@ public:
     Component getTypeName();
 
 private:
-    jobject entityInstance;
+    jobject instance;
 };

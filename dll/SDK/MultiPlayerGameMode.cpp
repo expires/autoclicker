@@ -2,7 +2,7 @@
 
 MultiPlayerGameMode::MultiPlayerGameMode(jobject instance)
 {
-	this->mpgmInstance = instance;
+	this->instance = instance;
 }
 
 jclass MultiPlayerGameMode::GetClass()
@@ -12,12 +12,12 @@ jclass MultiPlayerGameMode::GetClass()
 
 void MultiPlayerGameMode::Cleanup()
 {
-	lc->env->DeleteLocalRef(this->mpgmInstance);
+	lc->env->DeleteLocalRef(this->instance);
 }
 
 jobject MultiPlayerGameMode::GetInstance()
 {
-	return this->mpgmInstance;
+	return this->instance;
 }
 
 bool MultiPlayerGameMode::isDestroying()

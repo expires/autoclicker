@@ -13,5 +13,5 @@ public:
     jobject GetInstance();
 
 private:
-    jobject ccInstance;
+    jobject instance;
 };

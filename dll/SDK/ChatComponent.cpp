@@ -2,7 +2,7 @@
 
 ChatComponent::ChatComponent(jobject instance)
 {
-    this->ccInstance = instance;
+    this->instance = instance;
 }
 
 jclass ChatComponent::GetClass()
@@ -12,10 +12,10 @@ jclass ChatComponent::GetClass()
 
 void ChatComponent::Cleanup()
 {
-    lc->env->DeleteLocalRef(this->ccInstance);
+    lc->env->DeleteLocalRef(this->instance);
 }
 
 jobject ChatComponent::GetInstance()
 {
-    return this->ccInstance;
+    return this->instance;
 }

@@ -2,7 +2,7 @@
 
 Component::Component(jobject instance)
 {
-    this->componentInstance = instance;
+    this->instance = instance;
 }
 
 jclass Component::GetClass()
@@ -12,12 +12,12 @@ jclass Component::GetClass()
 
 void Component::Cleanup()
 {
-    lc->env->DeleteLocalRef(this->componentInstance);
+    lc->env->DeleteLocalRef(this->instance);
 }
 
 jobject Component::GetInstance()
 {
-    return this->componentInstance;
+    return this->instance;
 }
 
 std::string Component::getString()

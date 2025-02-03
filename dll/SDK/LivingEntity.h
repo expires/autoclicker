@@ -15,5 +15,5 @@ public:
     bool isUsingItem();
 
 private:
-    jobject leInstance;
+    jobject instance;
 };

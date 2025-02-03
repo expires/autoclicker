@@ -2,7 +2,7 @@
 
 EntityHitResult::EntityHitResult(jobject instance)
 {
-    this->ehrInstance = instance;
+    this->instance = instance;
 }
 
 jclass EntityHitResult::GetClass()
@@ -12,12 +12,12 @@ jclass EntityHitResult::GetClass()
 
 void EntityHitResult::Cleanup()
 {
-    lc->env->DeleteLocalRef(this->ehrInstance);
+    lc->env->DeleteLocalRef(this->instance);
 }
 
 jobject EntityHitResult::GetInstance()
 {
-    return this->ehrInstance;
+    return this->instance;
 }
 
 Entity EntityHitResult::getEntity()

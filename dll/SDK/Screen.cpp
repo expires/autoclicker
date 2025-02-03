@@ -2,7 +2,7 @@
 
 Screen::Screen(jobject instance)
 {
-	this->screenInstance = instance;
+	this->instance = instance;
 }
 
 jclass Screen::GetClass()
@@ -12,12 +12,12 @@ jclass Screen::GetClass()
 
 void Screen::Cleanup()
 {
-	lc->env->DeleteLocalRef(this->screenInstance);
+	lc->env->DeleteLocalRef(this->instance);
 }
 
 jobject Screen::GetInstance()
 {
-	return this->screenInstance;
+	return this->instance;
 }
 
 bool Screen::isPauseScreen()

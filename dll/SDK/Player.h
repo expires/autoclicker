@@ -18,5 +18,5 @@ public:
 	bool isUsingItem();
 
 private:
-	jobject playerInstance;
+	jobject instance;
 };

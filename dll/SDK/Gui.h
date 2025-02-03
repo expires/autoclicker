@@ -16,5 +16,5 @@ public:
     ChatComponent getChat();
 
 private:
-    jobject guiInstance;
+    jobject instance;
 };

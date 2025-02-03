@@ -2,7 +2,7 @@
 
 Player::Player(jobject instance)
 {
-	this->playerInstance = instance;
+	this->instance = instance;
 }
 
 jclass Player::GetClass()
@@ -12,12 +12,12 @@ jclass Player::GetClass()
 
 void Player::Cleanup()
 {
-	lc->env->DeleteLocalRef(this->playerInstance);
+	lc->env->DeleteLocalRef(this->instance);
 }
 
 jobject Player::GetInstance()
 {
-	return this->playerInstance;
+	return this->instance;
 }
 
 ItemStack Player::getItemInHand()

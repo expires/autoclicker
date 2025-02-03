@@ -17,5 +17,5 @@ public:
 	bool shouldCloseOnEsc();
 
 private:
-	jobject screenInstance;
+	jobject instance;
 };

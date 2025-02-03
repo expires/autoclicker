@@ -2,7 +2,7 @@
 
 Gui::Gui(jobject instance)
 {
-    this->guiInstance = instance;
+    this->instance = instance;
 }
 
 jclass Gui::GetClass()
@@ -12,12 +12,12 @@ jclass Gui::GetClass()
 
 void Gui::Cleanup()
 {
-    lc->env->DeleteLocalRef(this->guiInstance);
+    lc->env->DeleteLocalRef(this->instance);
 }
 
 jobject Gui::GetInstance()
 {
-    return this->guiInstance;
+    return this->instance;
 }
 
 ChatComponent Gui::getChat()

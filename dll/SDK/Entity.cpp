@@ -2,7 +2,7 @@
 
 Entity::Entity(jobject instance)
 {
-    this->entityInstance = instance;
+    this->instance = instance;
 }
 
 jclass Entity::GetClass()
@@ -12,12 +12,12 @@ jclass Entity::GetClass()
 
 void Entity::Cleanup()
 {
-    lc->env->DeleteLocalRef(this->entityInstance);
+    lc->env->DeleteLocalRef(this->instance);
 }
 
 jobject Entity::GetInstance()
 {
-    return this->entityInstance;
+    return this->instance;
 }
 
 Component Entity::getName()

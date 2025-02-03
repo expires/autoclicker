@@ -19,5 +19,5 @@ public:
 	int getPlayerMode();
 
 private:
-	jobject mpgmInstance;
+	jobject instance;
 };

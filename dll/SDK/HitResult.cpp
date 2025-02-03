@@ -3,7 +3,7 @@
 
 HitResult::HitResult(jobject instance)
 {
-    this->hitResultInstance = instance;
+    this->instance = instance;
 }
 
 jclass HitResult::GetClass()
@@ -13,12 +13,12 @@ jclass HitResult::GetClass()
 
 void HitResult::Cleanup()
 {
-    lc->env->DeleteLocalRef(this->hitResultInstance);
+    lc->env->DeleteLocalRef(this->instance);
 }
 
 jobject HitResult::GetInstance()
 {
-    return this->hitResultInstance;
+    return this->instance;
 }
 
 int HitResult::getType()

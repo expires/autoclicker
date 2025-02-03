@@ -2,7 +2,7 @@
 
 LivingEntity::LivingEntity(jobject instance)
 {
-    this->leInstance = instance;
+    this->instance = instance;
 }
 
 jclass LivingEntity::GetClass()
@@ -12,12 +12,12 @@ jclass LivingEntity::GetClass()
 
 void LivingEntity::Cleanup()
 {
-    lc->env->DeleteLocalRef(this->leInstance);
+    lc->env->DeleteLocalRef(this->instance);
 }
 
 jobject LivingEntity::GetInstance()
 {
-    return this->leInstance;
+    return this->instance;
 }
 
 bool LivingEntity::isUsingItem()

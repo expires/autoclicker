@@ -16,5 +16,5 @@ public:
     Entity getEntity();
 
 private:
-    jobject ehrInstance;
+    jobject instance;
 };

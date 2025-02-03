@@ -16,5 +16,5 @@ public:
     Item getItem();
 
 private:
-    jobject isInstance;
+    jobject instance;
 };
