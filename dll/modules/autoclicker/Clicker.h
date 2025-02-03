@@ -25,5 +25,5 @@ private:
     std::mt19937 gen;
     std::uniform_int_distribution<> dis;
     void trackClick();
-    int jitter(HWND hwnd);
+    int64_t jitter(HWND hwnd);
 };

@@ -24,7 +24,6 @@ void Clicker::lclick(HWND hwnd)
     SendMessage(hwnd, WM_LBUTTONUP, MK_LBUTTON, MAKELPARAM(pt.x, pt.y));
     DELAY(randomDelay(600));
 
-    
     trackClick();
 }
 
@@ -63,18 +62,21 @@ void Clicker::trackClick()
     clicks.push_back(std::chrono::steady_clock::now());
 }
 
-int Clicker::jitter(HWND hwnd) {
+int64_t Clicker::jitter(HWND hwnd)
+{
     const int minThreshold = 5;
     const int maxThreshold = 10;
 
     int totalDeltaX = (rand() % (maxThreshold - minThreshold + 1)) + minThreshold;
     int totalDeltaY = (rand() % (maxThreshold - minThreshold + 1)) + minThreshold;
 
-    if (directionFlag) {
+    if (directionFlag)
+    {
         totalDeltaX = abs(totalDeltaX);
         totalDeltaY = abs(totalDeltaY);
     }
-    else {
+    else
+    {
         totalDeltaX = -abs(totalDeltaX);
         totalDeltaY = -abs(totalDeltaY);
     }
@@ -89,11 +91,12 @@ int Clicker::jitter(HWND hwnd) {
 
     auto start_time = std::chrono::high_resolution_clock::now();
 
-    for (int i = 0; i < steps; ++i) {
+    for (int i = 0; i < steps; ++i)
+    {
         currentX += stepX;
         currentY += stepY;
 
-        INPUT input = { 0 };
+        INPUT input = {0};
         input.type = INPUT_MOUSE;
         input.mi.dx = static_cast<int>(currentX);
         input.mi.dy = static_cast<int>(currentY);
@@ -112,6 +115,5 @@ int Clicker::jitter(HWND hwnd) {
 
     directionFlag = !directionFlag;
 
-    return duration; 
+    return duration;
 }
-
