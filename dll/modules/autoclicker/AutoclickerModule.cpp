@@ -35,7 +35,8 @@ namespace AutoclickerModule
                         break;
                     }
 
-                    if (mc->GetScreen().isPauseScreen() || mc->GetScreen().shouldCloseOnEsc()) break;
+                    if (mc->GetScreen().isPauseScreen() || mc->GetScreen().shouldCloseOnEsc())
+                        break;
 
                     if (mc->GetMultiPlayerGameMode().getPlayerMode() != 2 && mc->getHitResult().getType() == 1)
                     {
@@ -62,7 +63,8 @@ namespace AutoclickerModule
             FreeLibraryAndExitThread(instance, 0);
             return 0;
         }
-        else {
+        else
+        {
             return 0;
         }
     }
