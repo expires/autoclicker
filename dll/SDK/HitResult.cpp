@@ -38,6 +38,5 @@ EntityHitResult HitResult::getEntityHitResult()
     if (this->getType() != 2)
         return nullptr;
 
-    jclass entityHitResultClass = lc->env->FindClass("net/minecraft/world/phys/EntityHitResult");
     return EntityHitResult(this->GetInstance());
 }

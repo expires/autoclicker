@@ -6,7 +6,7 @@
 class LivingEntity : public Entity
 {
 public:
-    LivingEntity(jobject instance) : Entity(instance), instance(instance) {};
+    LivingEntity(jobject instance) : Entity(instance) {};
 
     virtual jclass GetClass() override;
 
@@ -14,6 +14,4 @@ public:
 
     bool isUsingItem();
 
-private:
-    jobject instance;
 };
