@@ -23,9 +23,6 @@ public:
 
 	bool isPaused();
 
-	bool isWindowActive();
-
 	HitResult getHitResult();
 
-	bool isLookingAtBlock();
 };
