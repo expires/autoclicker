@@ -1,88 +1,86 @@
-🖱️ Lunar AutoClicker – 1.8 PvP Style (1.16.5+)
-Simple, clean autoclicker for 1.8-style PvP, made to work with Lunar Client (tested on version 1.21.4).
+# 🖱️ Lunar AutoClicker – 1.8 PvP Style (1.16.5+)
+
+Simple, clean autoclicker for 1.8-style PvP, made to work with **Lunar Client** (tested on version 1.21.4).  
 Designed with a lightweight GUI – just build, inject, and click away.
 
-✅ Features
-Works with Minecraft 1.16.5+
+---
 
-Designed for 1.8 combat mechanics
+## ✅ Features
 
-Compatible with Lunar Client
+- Works with **Minecraft 1.16.5+**
+- Designed for **1.8 combat mechanics**
+- Compatible with **Lunar Client**
 
-🛠️ What You Need
+---
+
+## 🛠️ What You Need
+
 Before building, make sure you have:
 
-Windows PC
+- Windows PC  
+- Visual Studio (2022 or newer)  
+- CMake (to generate the project)  
+- Java installed  
 
-Visual Studio (2022 or newer)
+> 🔧 Make sure `JAVA_HOME` is set (see below)
 
-CMake (to generate the project)
+---
 
-Java installed
+## 💡 Setup Guide (No Terminal Needed)
 
-Make sure JAVA_HOME is set (see below)
+### 1. Install Java
 
-💡 Setup Guide (No Terminal Needed)
-Install Java
+- Download the latest Java JDK from [Oracle](https://www.oracle.com/java/technologies/javase-downloads.html) or [Adoptium](https://adoptium.net/)
+- After installing, set the environment variable:
 
-Download the latest Java JDK from Oracle or Adoptium
+  1. Press `Win + S` → search **"Edit the system environment variables"**
+  2. Click **Environment Variables**
+  3. Under “System variables,” click **New**:
+     - Name: `JAVA_HOME`
+     - Value: `C:\Path\To\Your\Java\jdk`
 
-After installing, set the environment variable:
+---
 
-Press Win + S → search "Edit the system environment variables"
+### 2. Download and Open the Project
 
-Click Environment Variables
+- Clone or download the repo as a ZIP  
+- Open the folder in **Visual Studio**
 
-Under “System variables,” click New:
+---
 
-Name: JAVA_HOME
+### 3. Generate with CMake GUI
 
-Value: C:\Path\To\Your\Java\jdk
+- Open the **CMake GUI** (comes with CMake)
+- Set:
+  - **Source code:** path to your project folder
+  - **Build folder:** `build/` inside that folder
+- Click **Configure** → choose **Visual Studio 2022 (x64)**
+- Click **Generate**
+- Then click **Open Project**
 
-Download and Open the Project
+---
 
-Clone or download the repo as a ZIP
+### 4. Build the Project
 
-Open the folder in Visual Studio
+In **Visual Studio**:
 
-Generate with CMake GUI
+- Set build mode to **Release**
+- Right-click the **Solution** → **Build All**
+- You’ll find the `.exe` and `.dll` in `build/Release/`
 
-Open the CMake GUI (comes with CMake)
+---
 
-Set:
+## 🚀 How to Use
 
-Source code: path to your project folder
+1. Copy the built `.exe` and `.dll` to the **same folder**
+2. Start **Lunar Client** and load into a world or server
+3. Use the `.exe` you built to **inject the DLL into Lunar Client**
+4. To set your CPS, change the value in `AutoclickerModule.h` and rebuild
 
-Build folder: build/ inside that folder
+---
 
-Click Configure → choose Visual Studio 2022 (x64)
+## ❗ Important Notes
 
-Click Generate
-
-Then click Open Project
-
-Build the Project
-
-In Visual Studio:
-
-Set build mode to Release
-
-Right-click the Solution → Build All
-
-You’ll find the .exe and .dll in build/Release/
-
-🚀 How to Use
-Copy the built .exe and .dll to the same folder
-
-Start Lunar Client and load into a world or server
-
-use the exe built to inject the DLL into Lunar Client
-
-To set your CPS change this in the AutoclickerModule.h file
-
-❗ Important Notes
-Use this in offline or private environments only
-
-May trigger anti-cheat on public servers
-
-Built for educational and testing purposes
+- Use this in **offline or private environments only**
+- May trigger **anti-cheat** on public servers
+- Built for **educational and testing purposes only**
