@@ -8,7 +8,7 @@ HitResult::HitResult(jobject instance)
 
 jclass HitResult::GetClass()
 {
-    return lc->GetClass("net.minecraft.world.phys.HitResult");
+    return lc->GetClass("net.minecraft.class_239");
 }
 
 void HitResult::Cleanup()
@@ -23,7 +23,7 @@ jobject HitResult::GetInstance()
 
 int HitResult::getType()
 {
-    jmethodID hitType = lc->env->GetMethodID(this->GetClass(), "getType", "()Lnet/minecraft/world/phys/HitResult$Type;");
+    jmethodID hitType = lc->env->GetMethodID(this->GetClass(), "method_17783", "()Lnet/minecraft/class_239$class_240;");
     jobject typeObj = lc->env->CallObjectMethod(this->GetInstance(), hitType);
 
     jclass typeClass = lc->env->GetObjectClass(typeObj);

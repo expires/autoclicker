@@ -7,7 +7,7 @@ EntityHitResult::EntityHitResult(jobject instance)
 
 jclass EntityHitResult::GetClass()
 {
-    return lc->GetClass("net.minecraft.world.phys.EntityHitResult");
+    return lc->GetClass("net.minecraft.class_3966");
 }
 
 void EntityHitResult::Cleanup()
@@ -22,7 +22,7 @@ jobject EntityHitResult::GetInstance()
 
 Entity EntityHitResult::getEntity()
 {
-    jmethodID getEntity = lc->env->GetMethodID(this->GetClass(), "getEntity", "()Lnet/minecraft/world/entity/Entity;");
+    jmethodID getEntity = lc->env->GetMethodID(this->GetClass(), "method_17782", "()Lnet/minecraft/class_1297;");
     jobject rtn = lc->env->CallObjectMethod(this->GetInstance(), getEntity);
 
     return Entity(rtn);

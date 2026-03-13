@@ -7,7 +7,7 @@ MultiPlayerGameMode::MultiPlayerGameMode(jobject instance)
 
 jclass MultiPlayerGameMode::GetClass()
 {
-	return lc->GetClass("net.minecraft.client.multiplayer.MultiPlayerGameMode");
+	return lc->GetClass("net.minecraft.class_636");
 }
 
 void MultiPlayerGameMode::Cleanup()
@@ -22,7 +22,7 @@ jobject MultiPlayerGameMode::GetInstance()
 
 bool MultiPlayerGameMode::isDestroying()
 {
-	jmethodID isDestroying = lc->env->GetMethodID(this->GetClass(), "isDestroying", "()Z");
+	jmethodID isDestroying = lc->env->GetMethodID(this->GetClass(), "method_2923", "()Z");
 
 	bool rtn = lc->env->CallBooleanMethod(this->GetInstance(), isDestroying);
 
@@ -31,7 +31,7 @@ bool MultiPlayerGameMode::isDestroying()
 
 int MultiPlayerGameMode::getDestroyStage()
 {
-	jmethodID destroyStage = lc->env->GetMethodID(this->GetClass(), "getDestroyStage", "()I");
+	jmethodID destroyStage = lc->env->GetMethodID(this->GetClass(), "method_51888", "()I");
 
 	int rtn = lc->env->CallBooleanMethod(this->GetInstance(), destroyStage);
 
@@ -40,7 +40,7 @@ int MultiPlayerGameMode::getDestroyStage()
 
 int MultiPlayerGameMode::getPlayerMode()
 {
-	jmethodID getPlayerMode = lc->env->GetMethodID(this->GetClass(), "getPlayerMode", "()Lnet/minecraft/world/level/GameType;");
+	jmethodID getPlayerMode = lc->env->GetMethodID(this->GetClass(), "method_2920", "()Lnet/minecraft/class_1934;");
 	jobject typeObj = lc->env->CallObjectMethod(this->GetInstance(), getPlayerMode);
 
 	jclass typeClass = lc->env->GetObjectClass(typeObj);

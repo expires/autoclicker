@@ -7,7 +7,7 @@ Component::Component(jobject instance)
 
 jclass Component::GetClass()
 {
-    return lc->GetClass("net.minecraft.network.chat.Component");
+    return lc->GetClass("net.minecraft.class_2561");
 }
 
 void Component::Cleanup()
@@ -22,7 +22,7 @@ jobject Component::GetInstance()
 
 std::string Component::getString()
 {
-    jmethodID getStringMethod = lc->env->GetMethodID(this->GetClass(), "getString", "()Ljava/lang/String;");
+    jmethodID getStringMethod = lc->env->GetMethodID(this->GetClass(), "method_74062", "()Ljava/lang/String;");
     jstring javaString = (jstring)lc->env->CallObjectMethod(this->GetInstance(), getStringMethod);
 
     const char *strChars = lc->env->GetStringUTFChars(javaString, nullptr);

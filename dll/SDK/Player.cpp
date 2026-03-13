@@ -2,5 +2,5 @@
 
 jclass Player::GetClass()
 {
-	return lc->GetClass("net.minecraft.client.player.LocalPlayer");
+	return lc->GetClass("net.minecraft.class_746");
 }

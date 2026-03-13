@@ -7,7 +7,7 @@ Gui::Gui(jobject instance)
 
 jclass Gui::GetClass()
 {
-    return lc->GetClass("net.minecraft.client.gui.Gui");
+    return lc->GetClass("net.minecraft.class_329");
 }
 
 void Gui::Cleanup()
@@ -22,7 +22,7 @@ jobject Gui::GetInstance()
 
 ChatComponent Gui::getChat()
 {
-    jmethodID getChat = lc->env->GetMethodID(this->GetClass(), "getChat", "()Lnet/minecraft/client/gui/components/ChatComponent;");
+    jmethodID getChat = lc->env->GetMethodID(this->GetClass(), "method_55799", "()Lnet/minecraft/class_338;");
     jobject rtn = lc->env->CallObjectMethod(this->GetInstance(), getChat);
 
     if (rtn == nullptr)

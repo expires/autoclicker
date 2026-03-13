@@ -7,7 +7,7 @@ ChatComponent::ChatComponent(jobject instance)
 
 jclass ChatComponent::GetClass()
 {
-    return lc->GetClass("net.minecraft.client.gui.components.ChatComponent");
+    return lc->GetClass("net.minecraft.class_338");
 }
 
 void ChatComponent::Cleanup()

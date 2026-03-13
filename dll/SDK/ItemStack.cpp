@@ -7,7 +7,7 @@ ItemStack::ItemStack(jobject instance)
 
 jclass ItemStack::GetClass()
 {
-    return lc->GetClass("net.minecraft.world.item.ItemStack");
+    return lc->GetClass("net.minecraft.class_1799");
 }
 
 void ItemStack::Cleanup()
@@ -22,7 +22,7 @@ jobject ItemStack::GetInstance()
 
 Item ItemStack::getItem()
 {
-    jmethodID getItem = lc->env->GetMethodID(this->GetClass(), "getItem", "()Lnet/minecraft/world/item/Item;");
+    jmethodID getItem = lc->env->GetMethodID(this->GetClass(), "method_57385", "()Lnet/minecraft/class_1792;");
 
     jobject rtn = lc->env->CallObjectMethod(this->GetInstance(), getItem);
 
