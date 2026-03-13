@@ -35,7 +35,7 @@ jobs:
       - name: Stage artifacts
         run: |
           mkdir release
-          copy build\DLL\Release\DLL.dll release\ac.dll
+          copy build\DLL\Release\DLL.dll release\ac_${{ matrix.mapping }}.dll
           copy build\INJECTOR\Release\INJECTOR.exe release\injector.exe
           copy ac_config.json release\ac_config.json
 
@@ -49,15 +49,16 @@ jobs:
     if: startsWith(github.ref, 'refs/tags/')
     needs: build
     runs-on: windows-latest
+    permissions:
+      contents: write
 
     steps:
       - name: Download all artifacts
         uses: actions/download-artifact@v4
         with:
           path: release
-          merge-multiple: true
 
       - name: Create release
         uses: softprops/action-gh-release@v2
         with:
-          files: release/**
+          files: release/**/*
