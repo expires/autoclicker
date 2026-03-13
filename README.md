@@ -11,7 +11,6 @@ A DLL-based autoclicker for Lunar Client, designed for private server anticheat 
 - [Building](#building)
 - [Usage](#usage)
 - [Overlay](#overlay)
-- [Configuration](#configuration)
 
 ---
 
@@ -19,51 +18,49 @@ A DLL-based autoclicker for Lunar Client, designed for private server anticheat 
 
 The project is split into two binaries: an injector executable and the payload DLL.
 
-```
-┌─────────────────────────────────────────────────────────┐
-│  injector.exe                                           │
-│                                                         │
-│  1. Finds javaw.exe via CreateToolhelp32Snapshot        │
-│  2. Allocates memory in the target process              │
-│  3. Writes ac.dll path into that memory                 │
-│  4. Spawns remote thread → LoadLibraryA(ac.dll)         │
-└───────────────────────┬─────────────────────────────────┘
-                        │ injects into
-                        ▼
-┌─────────────────────────────────────────────────────────┐
-│  javaw.exe (Lunar Client)                               │
-│                                                         │
-│  ┌──────────────────────────────────────────────────┐   │
-│  │  ac.dll                                          │   │
-│  │                                                  │   │
-│  │  DllMain                                         │   │
-│  │    ├─ Overlay::Init() — hooks wglSwapBuffers     │   │
-│  │    └─ spawns AutoclickerModule::init thread      │   │
-│  │                                                  │   │
-│  │  Overlay (ImGui)                                 │   │
-│  │    ├─ MinHook detour on opengl32!wglSwapBuffers  │   │
-│  │    ├─ renders ImGui panel each frame             │   │
-│  │    └─ writes to g_settings (shared state)        │   │
-│  │                                                  │   │
-│  │  AutoclickerModule                               │   │
-│  │    ├─ attaches to JVM via JNI_GetCreatedJavaVMs  │   │
-│  │    ├─ enumerates loaded classes via JVMTI        │   │
-│  │    ├─ reads ac_config.json for initial CPS       │   │
-│  │    └─ runs click loop, reads g_settings          │   │
-│  │                                                  │   │
-│  │  SDK (JNI wrappers)                              │   │
-│  │    ├─ Minecraft  ──▶ player, gui, screen,        │   │
-│  │    │                 gameMode, hitResult          │   │
-│  │    ├─ LivingEntity ▶ isUsingItem, getItemInHand  │   │
-│  │    ├─ HitResult   ──▶ getType, getEntityHitResult│   │
-│  │    └─ ...                                        │   │
-│  │                                                  │   │
-│  │  Clicker                                         │   │
-│  │    ├─ randomDelay() — Gaussian timing per CPS    │   │
-│  │    ├─ lclick() — down(30%) + up(70%) of cycle    │   │
-│  │    └─ getClicksPerSecond() — sliding window      │   │
-│  └──────────────────────────────────────────────────┘   │
-└─────────────────────────────────────────────────────────┘
+```mermaid
+flowchart TD
+    subgraph INJ["injector.exe"]
+        direction TB
+        i1["1. Find javaw.exe via CreateToolhelp32Snapshot"] --> i2["2. Allocate memory in target process"] --> i3["3. Write ac.dll path into memory"] --> i4["4. Spawn remote thread → LoadLibraryA(ac.dll)"]
+    end
+
+    INJ -->|"injects into"| JVM
+
+    subgraph JVM["javaw.exe · Lunar Client"]
+        subgraph DLL["ac.dll"]
+            DllMain(["DllMain"])
+
+            subgraph OVL["Overlay · ImGui"]
+                o1["Hook opengl32!wglSwapBuffers via MinHook"]
+                o2["Render ImGui panel each frame"]
+                o3["Write g_settings"]
+            end
+
+            subgraph ACM["AutoclickerModule"]
+                a1["Attach to JVM via JNI_GetCreatedJavaVMs"]
+                a2["Enumerate loaded classes via JVMTI"]
+                a3["Run click loop · read g_settings"]
+            end
+
+            subgraph SDK["SDK · JNI wrappers"]
+                s1["Minecraft · player, gui, screen, gameMode, hitResult"]
+                s2["LivingEntity · isUsingItem, getItemInHand"]
+                s3["HitResult · getType, getEntityHitResult"]
+            end
+
+            subgraph CLK["Clicker"]
+                c1["randomDelay() · Gaussian timing per CPS"]
+                c2["lclick() · down 30% + up 70% of cycle"]
+                c3["getClicksPerSecond() · sliding window"]
+            end
+
+            DllMain --> OVL
+            DllMain --> ACM
+            ACM --> SDK
+            ACM --> CLK
+        end
+    end
 ```
 
 ### Shared state
@@ -78,24 +75,28 @@ The project is split into two binaries: an injector executable and the payload D
 
 ### Click loop logic
 
-```
-Every 50ms tick:
-  Is Minecraft the active window AND left mouse held AND acEnabled?
-  ├─ END key pressed           → unload DLL
-  ├─ Pause/ESC screen open     → skip
-  ├─ breakBlocks AND block hit AND not creative
-  │     └─ hold mouse down, delay randomDelay(1.0) per iteration
-  └─ entity hit AND not using item
-        └─ lclick()
+```mermaid
+flowchart TD
+    T["Every 50ms tick"] --> A{"Active window AND\nLMB held AND acEnabled?"}
+    A -->|"END key pressed"| U["Unload DLL"]
+    A -->|"Pause / ESC screen open"| S["Skip tick"]
+    A -->|"breakBlocks AND block hit\nAND not creative"| H["Hold mouse down\nrandomDelay per iteration"]
+    A -->|"Entity hit AND\nnot using item"| C["lclick()"]
+    H --> T
+    C --> T
+    S --> T
 ```
 
 ### Timing model
 
 Each click cycle targets `1000 / CPS` ms total, split into:
 
-```
-|── hold (30%) ──|──────── gap (70%) ────────|
-     ~25ms @ 12 CPS          ~58ms @ 12 CPS
+```mermaid
+xychart-beta
+    title "Click cycle @ 12 CPS (~83ms total)"
+    x-axis ["hold (30%)", "gap (70%)"]
+    y-axis "Duration (ms)" 0 --> 65
+    bar [25, 58]
 ```
 
 Both segments are sampled from a Gaussian distribution (stddev = 20% of mean) with a 1% chance of an extended pause to simulate natural human variance.
@@ -106,16 +107,16 @@ Both segments are sampled from a Gaussian distribution (stddev = 20% of mean) wi
 
 Lunar Client obfuscates Minecraft class names. The mapping version is selected at compile time via `-DMAPPING_VERSION` and injected into `Mappings.h` from a JSON file.
 
-```
-mappings/
-  mojang_1.21.4.json      ← Mojang mapped names  (net.minecraft.client.Minecraft, ...)
-  fabric_1.21.11.json     ← Fabric intermediary  (net.minecraft.class_310, ...)
+```mermaid
+flowchart LR
+    MJ["mojang_1.21.4.json\nMojang mapped names"]
+    FA["fabric_1.21.11.json\nFabric intermediary"]
+    HIN["dll/SDK/Mappings.h.in\nCMake template"]
+    GEN["build/dll/Mappings.h\ngenerated #defines"]
 
-dll/SDK/Mappings.h.in     ← CMake template
-      │
-      │  configure_file() at build time
-      ▼
-build/dll/Mappings.h      ← generated, #define MC_Minecraft "net.minecraft.class_310"
+    MJ -->|"-DMAPPING_VERSION"| HIN
+    FA -->|"-DMAPPING_VERSION"| HIN
+    HIN -->|"configure_file() at build time"| GEN
 ```
 
 To add a new version, create `mappings/<version>.json` matching the schema of an existing file, then build with `-DMAPPING_VERSION=<version>`.
@@ -151,11 +152,10 @@ Every push to `main` triggers a matrix build for all mapping versions. Artifacts
 ## Usage
 
 1. Download the artifact for your Lunar Client version from the Actions tab or Releases.
-2. Place `ac_<version>.dll` (rename to `ac.dll`), `injector.exe`, and `ac_config.json` in the same folder.
-3. Edit `ac_config.json` to set your desired CPS.
-4. Launch Lunar Client and join a world or server.
-5. Run `injector.exe`. It will locate `javaw.exe` and inject the DLL automatically.
-6. Hold left click in-game to activate. Press `END` to unload.
+2. Place `ac_<version>.dll` (rename to `ac.dll`) and `injector.exe` in the same folder.
+3. Launch Lunar Client and join a world or server.
+4. Run `injector.exe`. It will locate `javaw.exe` and inject the DLL automatically.
+5. Hold left click in-game to activate. Press `END` to unload.
 
 ---
 
@@ -174,23 +174,7 @@ An in-game ImGui panel is rendered directly into the game's OpenGL context via a
 └────────────────────────────────┘
 ```
 
-Changes made in the overlay take effect immediately — no re-injection required. The CPS slider overrides the value from `ac_config.json` for the current session.
-
----
-
-## Configuration
-
-`ac_config.json` sets the initial CPS loaded at injection time. It can be overridden at runtime via the overlay.
-
-```json
-{
-    "CPS": 10
-}
-```
-
-| Key | Type | Range | Description                                   |
-|-----|------|-------|-----------------------------------------------|
-| CPS | int  | 1–50  | Initial clicks per second. Defaults to 12 if file is missing. |
+Changes made in the overlay take effect immediately — no re-injection required.
 
 ---
 
