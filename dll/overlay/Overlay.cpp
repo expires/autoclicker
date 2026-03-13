@@ -154,7 +154,7 @@ static BOOL WINAPI hk_wglSwapBuffers(HDC hdc)
         ImGui::NewFrame();
 
         const ImVec2 display = ImGui::GetIO().DisplaySize;
-        ImGui::SetNextWindowSize({display.x * 0.30f, display.y * 0.20f}, ImGuiCond_Always);
+        ImGui::SetNextWindowSize({display.x * 0.30f, 0}, ImGuiCond_Always);
         ImGui::Begin("AutoClicker", nullptr,
             ImGuiWindowFlags_NoScrollbar |
             ImGuiWindowFlags_NoCollapse  |
