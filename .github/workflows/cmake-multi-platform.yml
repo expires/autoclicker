@@ -35,7 +35,7 @@ jobs:
       - name: Stage artifacts
         run: |
           mkdir release
-          copy build\DLL\Release\DLL.dll release\ac_${{ matrix.mapping }}.dll
+          copy build\DLL\Release\DLL.dll release\ac.dll
           copy build\INJECTOR\Release\INJECTOR.exe release\injector.exe
           copy ac_config.json release\ac_config.json
 
@@ -57,6 +57,11 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           path: release
+
+      - name: Rename DLLs for release
+        run: |
+          rename release\autoclicker-mojang_1.21.4\ac.dll ac_mojang_1.21.4.dll
+          rename release\autoclicker-fabric_1.21.11\ac.dll ac_fabric_1.21.11.dll
 
       - name: Create release
         uses: softprops/action-gh-release@v2

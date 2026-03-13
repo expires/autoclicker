@@ -63,7 +63,7 @@ namespace AutoclickerModule
 
                 while (activeWindow == mcWindow && GetAsyncKeyState(VK_LBUTTON) && g_settings.acEnabled)
                 {
-                    if (GetAsyncKeyState(VK_END))
+                    if (GetAsyncKeyState(VK_END) || g_settings.selfDestruct)
                     {
                         destruct = true;
                         break;
