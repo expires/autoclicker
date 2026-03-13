@@ -25,6 +25,48 @@ include_directories("${JAVA_HOME}/include/win32")
 # Link against the JVM library
 set(JVM_LIB "${JAVA_HOME}/lib/jvm.lib")
 
+# Mapping version — set via -DMAPPING_VERSION=fabric_1.21.11 or mojang_1.21.4
+set(MAPPING_VERSION "fabric_1.21.11" CACHE STRING "Mapping version (filename without .json in mappings/)")
+
+set(MAPPING_FILE "${CMAKE_SOURCE_DIR}/mappings/${MAPPING_VERSION}.json")
+if(NOT EXISTS "${MAPPING_FILE}")
+    message(FATAL_ERROR "Mapping file not found: ${MAPPING_FILE}")
+endif()
+file(READ "${MAPPING_FILE}" MAPPING_JSON)
+
+# Extract every key from the JSON into a CMake variable
+foreach(KEY
+    class_Minecraft class_LocalPlayer class_Screen class_HitResult class_HitResultType
+    class_MultiPlayerGameMode class_Gui class_ChatComponent class_LivingEntity class_Entity
+    class_Component class_InteractionHand class_ItemStack class_GameType class_EntityHitResult class_Item
+    fld_Minecraft_instance desc_Minecraft_instance
+    fld_Minecraft_player   desc_Minecraft_player
+    fld_Minecraft_gui      desc_Minecraft_gui
+    fld_Minecraft_gameMode desc_Minecraft_gameMode
+    fld_Minecraft_screen   desc_Minecraft_screen
+    fld_Minecraft_hitResult desc_Minecraft_hitResult
+    fld_InteractionHand_MAIN desc_InteractionHand_MAIN
+    mtd_Minecraft_isPaused
+    mtd_Gui_getChat                desc_Gui_getChat
+    mtd_Screen_isPauseScreen       mtd_Screen_shouldCloseOnEsc
+    mtd_MPGM_getPlayerMode         desc_MPGM_getPlayerMode
+    mtd_MPGM_isDestroying          mtd_MPGM_getDestroyStage
+    mtd_HitResult_getType          desc_HitResult_getType
+    mtd_LivingEntity_isUsingItem
+    mtd_LivingEntity_getItemInHand desc_LivingEntity_getItemInHand
+    mtd_Entity_getName             desc_Entity_getName
+    mtd_Entity_getTypeName         desc_Entity_getTypeName
+    mtd_Component_getString
+    mtd_EntityHitResult_getEntity  desc_EntityHitResult_getEntity
+    mtd_ItemStack_getItem          desc_ItemStack_getItem
+    mtd_Item_getName               desc_Item_getName
+)
+    string(JSON ${KEY} GET "${MAPPING_JSON}" "${KEY}")
+endforeach()
+
+configure_file(SDK/Mappings.h.in ${CMAKE_CURRENT_BINARY_DIR}/Mappings.h @ONLY)
+include_directories(${CMAKE_CURRENT_BINARY_DIR})
+
 # Automatically find all .cpp and .h files in the SDK & Clicker directories
 file(GLOB SDK_HEADERS "SDK/*.h")
 file(GLOB SDK_SOURCES "SDK/*.cpp")

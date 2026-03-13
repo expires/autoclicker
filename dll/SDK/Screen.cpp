@@ -1,4 +1,5 @@
 #include "Screen.h"
+#include "Mappings.h"
 
 Screen::Screen(jobject instance)
 {
@@ -7,7 +8,7 @@ Screen::Screen(jobject instance)
 
 jclass Screen::GetClass()
 {
-	return lc->GetClass("net.minecraft.class_437");
+	return lc->GetClass(MC_Screen);
 }
 
 void Screen::Cleanup()
@@ -22,16 +23,12 @@ jobject Screen::GetInstance()
 
 bool Screen::isPauseScreen()
 {
-	jmethodID isPauseScreen = lc->env->GetMethodID(this->GetClass(), "method_25421", "()Z");
-	bool rtn = lc->env->CallBooleanMethod(this->GetInstance(), isPauseScreen);
-
-	return rtn;
+	jmethodID isPauseScreen = lc->env->GetMethodID(this->GetClass(), MTD_Screen_isPauseScreen, "()Z");
+	return lc->env->CallBooleanMethod(this->GetInstance(), isPauseScreen);
 }
 
 bool Screen::shouldCloseOnEsc()
 {
-	jmethodID shouldCloseOnEsc = lc->env->GetMethodID(this->GetClass(), "method_25422", "()Z");
-	bool rtn = lc->env->CallBooleanMethod(this->GetInstance(), shouldCloseOnEsc);
-
-	return rtn;
+	jmethodID shouldCloseOnEsc = lc->env->GetMethodID(this->GetClass(), MTD_Screen_shouldCloseOnEsc, "()Z");
+	return lc->env->CallBooleanMethod(this->GetInstance(), shouldCloseOnEsc);
 }

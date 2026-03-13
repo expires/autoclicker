@@ -1,4 +1,5 @@
 #include "Gui.h"
+#include "Mappings.h"
 
 Gui::Gui(jobject instance)
 {
@@ -7,7 +8,7 @@ Gui::Gui(jobject instance)
 
 jclass Gui::GetClass()
 {
-    return lc->GetClass("net.minecraft.class_329");
+    return lc->GetClass(MC_Gui);
 }
 
 void Gui::Cleanup()
@@ -22,7 +23,8 @@ jobject Gui::GetInstance()
 
 ChatComponent Gui::getChat()
 {
-    jmethodID getChat = lc->env->GetMethodID(this->GetClass(), "method_55799", "()Lnet/minecraft/class_338;");
+    jmethodID getChat = lc->env->GetMethodID(this->GetClass(),
+        MTD_Gui_getChat, DESC_Gui_getChat);
     jobject rtn = lc->env->CallObjectMethod(this->GetInstance(), getChat);
 
     if (rtn == nullptr)

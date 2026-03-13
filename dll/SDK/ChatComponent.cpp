@@ -1,4 +1,5 @@
 #include "ChatComponent.h"
+#include "Mappings.h"
 
 ChatComponent::ChatComponent(jobject instance)
 {
@@ -7,7 +8,7 @@ ChatComponent::ChatComponent(jobject instance)
 
 jclass ChatComponent::GetClass()
 {
-    return lc->GetClass("net.minecraft.class_338");
+    return lc->GetClass(MC_ChatComponent);
 }
 
 void ChatComponent::Cleanup()

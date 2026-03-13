@@ -1,4 +1,5 @@
 #include "Component.h"
+#include "Mappings.h"
 
 Component::Component(jobject instance)
 {
@@ -7,7 +8,7 @@ Component::Component(jobject instance)
 
 jclass Component::GetClass()
 {
-    return lc->GetClass("net.minecraft.class_2561");
+    return lc->GetClass(MC_Component);
 }
 
 void Component::Cleanup()
@@ -22,7 +23,8 @@ jobject Component::GetInstance()
 
 std::string Component::getString()
 {
-    jmethodID getStringMethod = lc->env->GetMethodID(this->GetClass(), "method_74062", "()Ljava/lang/String;");
+    jmethodID getStringMethod = lc->env->GetMethodID(this->GetClass(),
+        MTD_Component_getString, "()Ljava/lang/String;");
     jstring javaString = (jstring)lc->env->CallObjectMethod(this->GetInstance(), getStringMethod);
 
     const char *strChars = lc->env->GetStringUTFChars(javaString, nullptr);

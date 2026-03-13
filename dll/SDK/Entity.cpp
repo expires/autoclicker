@@ -1,4 +1,5 @@
 #include "Entity.h"
+#include "Mappings.h"
 
 Entity::Entity(jobject instance)
 {
@@ -7,7 +8,7 @@ Entity::Entity(jobject instance)
 
 jclass Entity::GetClass()
 {
-    return lc->GetClass("net.minecraft.class_1297");
+    return lc->GetClass(MC_Entity);
 }
 
 void Entity::Cleanup()
@@ -22,7 +23,8 @@ jobject Entity::GetInstance()
 
 Component Entity::getName()
 {
-    jmethodID name = lc->env->GetMethodID(this->GetClass(), "method_5477", "()Lnet/minecraft/class_2561;");
+    jmethodID name = lc->env->GetMethodID(this->GetClass(),
+        MTD_Entity_getName, DESC_Entity_getName);
 
     jobject rtn = lc->env->CallObjectMethod(this->GetInstance(), name);
 
@@ -31,7 +33,8 @@ Component Entity::getName()
 
 Component Entity::getTypeName()
 {
-    jmethodID typeName = lc->env->GetMethodID(this->GetClass(), "method_23315", "()Lnet/minecraft/class_2561;");
+    jmethodID typeName = lc->env->GetMethodID(this->GetClass(),
+        MTD_Entity_getTypeName, DESC_Entity_getTypeName);
 
     jobject rtn = lc->env->CallObjectMethod(this->GetInstance(), typeName);
 

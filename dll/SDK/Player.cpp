@@ -1,6 +1,7 @@
 #include "Player.h"
+#include "Mappings.h"
 
 jclass Player::GetClass()
 {
-	return lc->GetClass("net.minecraft.class_746");
+	return lc->GetClass(MC_LocalPlayer);
 }

@@ -1,7 +1,6 @@
 #pragma once
 #include <jni.h>
 #include <jvmti.h>
-#include <mutex>
 #include <unordered_map>
 #include <string>
 
