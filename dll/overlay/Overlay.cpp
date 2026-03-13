@@ -7,6 +7,9 @@
 #include "../Settings.h"
 #include <MinHook.h>
 
+// Declared manually — intentionally commented out in imgui_impl_win32.h to avoid <windows.h> dependency
+extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
+
 typedef BOOL(WINAPI* fn_wglSwapBuffers)(HDC);
 static fn_wglSwapBuffers o_wglSwapBuffers = nullptr;
 

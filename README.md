@@ -10,6 +10,7 @@ A DLL-based autoclicker for Lunar Client, designed for private server anticheat 
 - [Mapping System](#mapping-system)
 - [Building](#building)
 - [Usage](#usage)
+- [Overlay](#overlay)
 - [Configuration](#configuration)
 
 ---
@@ -36,13 +37,19 @@ The project is split into two binaries: an injector executable and the payload D
 │  │  ac.dll                                          │   │
 │  │                                                  │   │
 │  │  DllMain                                         │   │
+│  │    ├─ Overlay::Init() — hooks wglSwapBuffers     │   │
 │  │    └─ spawns AutoclickerModule::init thread      │   │
+│  │                                                  │   │
+│  │  Overlay (ImGui)                                 │   │
+│  │    ├─ MinHook detour on opengl32!wglSwapBuffers  │   │
+│  │    ├─ renders ImGui panel each frame             │   │
+│  │    └─ writes to g_settings (shared state)        │   │
 │  │                                                  │   │
 │  │  AutoclickerModule                               │   │
 │  │    ├─ attaches to JVM via JNI_GetCreatedJavaVMs  │   │
 │  │    ├─ enumerates loaded classes via JVMTI        │   │
-│  │    ├─ reads ac_config.json for CPS               │   │
-│  │    └─ runs click loop using Clicker              │   │
+│  │    ├─ reads ac_config.json for initial CPS       │   │
+│  │    └─ runs click loop, reads g_settings          │   │
 │  │                                                  │   │
 │  │  SDK (JNI wrappers)                              │   │
 │  │    ├─ Minecraft  ──▶ player, gui, screen,        │   │
@@ -59,16 +66,26 @@ The project is split into two binaries: an injector executable and the payload D
 └─────────────────────────────────────────────────────────┘
 ```
 
+### Shared state
+
+`g_settings` is a plain struct read/written by both the overlay (render thread) and the autoclicker (game thread):
+
+| Field         | Default | Description                          |
+|---------------|---------|--------------------------------------|
+| `acEnabled`   | true    | Master on/off for clicking           |
+| `breakBlocks` | true    | Enable block-breaking hold behaviour |
+| `cps`         | 10      | Target clicks per second (1–50)      |
+
 ### Click loop logic
 
 ```
 Every 50ms tick:
-  Is Minecraft the active window AND left mouse held?
-  ├─ END key pressed        → unload DLL
-  ├─ Pause/ESC screen open  → skip
-  ├─ HitResult type == 1 (block) AND not creative
+  Is Minecraft the active window AND left mouse held AND acEnabled?
+  ├─ END key pressed           → unload DLL
+  ├─ Pause/ESC screen open     → skip
+  ├─ breakBlocks AND block hit AND not creative
   │     └─ hold mouse down, delay randomDelay(1.0) per iteration
-  └─ HitResult type == 2 (entity) AND not using item
+  └─ entity hit AND not using item
         └─ lclick()
 ```
 
@@ -112,6 +129,7 @@ To add a new version, create `mappings/<version>.json` matching the schema of an
 - Windows, Visual Studio 2022+
 - CMake 3.30+
 - Java JDK 21 (`JAVA_HOME` must be set)
+- Internet access at configure time (ImGui and MinHook are fetched via FetchContent)
 
 ### Local build
 
@@ -126,23 +144,43 @@ Outputs:
 
 ### GitHub Actions
 
-Every push to `main` triggers a matrix build for all mapping versions. Artifacts are uploaded per version (`autoclicker-mojang_1.21.4`, `autoclicker-fabric_1.21.11`)
+Every push to `main` triggers a matrix build for all mapping versions. Artifacts are uploaded per version (`autoclicker-mojang_1.21.4`, `autoclicker-fabric_1.21.11`). Tag a commit `v*` to create a GitHub Release with all files attached.
 
 ---
 
 ## Usage
 
 1. Download the artifact for your Lunar Client version from the Actions tab or Releases.
-2. Place `ac.dll`, `injector.exe`, and `ac_config.json` in the same folder.
-3. Launch Lunar Client and join a world or server.
-4. Run `injector.exe`. It will locate `javaw.exe` and inject the DLL automatically.
-5. Hold left click in-game to activate. Press `END` to unload.
+2. Place `ac_<version>.dll` (rename to `ac.dll`), `injector.exe`, and `ac_config.json` in the same folder.
+3. Edit `ac_config.json` to set your desired CPS.
+4. Launch Lunar Client and join a world or server.
+5. Run `injector.exe`. It will locate `javaw.exe` and inject the DLL automatically.
+6. Hold left click in-game to activate. Press `END` to unload.
+
+---
+
+## Overlay
+
+An in-game ImGui panel is rendered directly into the game's OpenGL context via a `wglSwapBuffers` hook.
+
+**Toggle:** `INSERT`
+
+```
+┌─ AutoClicker ──────────────────┐
+│ [x] Enabled                    │
+│ [x] Break Blocks               │
+│ ─────────────────────────────  │
+│ CPS [────●─────────────] 10    │
+└────────────────────────────────┘
+```
+
+Changes made in the overlay take effect immediately — no re-injection required. The CPS slider overrides the value from `ac_config.json` for the current session.
 
 ---
 
 ## Configuration
 
-Edit `ac_config.json` before injecting:
+`ac_config.json` sets the initial CPS loaded at injection time. It can be overridden at runtime via the overlay.
 
 ```json
 {
@@ -150,9 +188,9 @@ Edit `ac_config.json` before injecting:
 }
 ```
 
-| Key | Type | Range | Description |
-|-----|------|-------|-------------|
-| CPS | int  | 1–50  | Target clicks per second. Defaults to 12 if file is missing. |
+| Key | Type | Range | Description                                   |
+|-----|------|-------|-----------------------------------------------|
+| CPS | int  | 1–50  | Initial clicks per second. Defaults to 12 if file is missing. |
 
 ---
 
