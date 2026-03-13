@@ -108,8 +108,28 @@ static BOOL WINAPI hk_wglSwapBuffers(HDC hdc)
 
         IMGUI_CHECKVERSION();
         ImGui::CreateContext();
+
+        ImGuiIO& io = ImGui::GetIO();
+        io.IniFilename = nullptr;
+
+        char winDir[MAX_PATH];
+        GetWindowsDirectoryA(winDir, MAX_PATH);
+
+        char fontBold[MAX_PATH];
+        char fontRegular[MAX_PATH];
+        strcat_s(fontBold,    sizeof(fontBold),    winDir); strcat_s(fontBold,    sizeof(fontBold),    "\\Fonts\\segoeuib.ttf");
+        strcat_s(fontRegular, sizeof(fontRegular), winDir); strcat_s(fontRegular, sizeof(fontRegular), "\\Fonts\\segoeui.ttf");
+
+        ImFontConfig cfg;
+        cfg.OversampleH = 3;
+        cfg.OversampleV = 3;
+        cfg.PixelSnapH  = false;
+
+        const char* fontPath = (GetFileAttributesA(fontBold) != INVALID_FILE_ATTRIBUTES)
+            ? fontBold : fontRegular;
+        io.Fonts->AddFontFromFileTTF(fontPath, 16.0f, &cfg);
+
         ApplyStyle();
-        ImGui::GetIO().IniFilename = nullptr;
 
         ImGui_ImplWin32_Init(s_hwnd);
         ImGui_ImplOpenGL3_Init(nullptr);
@@ -133,11 +153,12 @@ static BOOL WINAPI hk_wglSwapBuffers(HDC hdc)
         ImGui_ImplWin32_NewFrame();
         ImGui::NewFrame();
 
-        ImGui::SetNextWindowSize({270, 0}, ImGuiCond_FirstUseEver);
+        const ImVec2 display = ImGui::GetIO().DisplaySize;
+        ImGui::SetNextWindowSize({display.x * 0.30f, display.y * 0.20f}, ImGuiCond_Always);
         ImGui::Begin("AutoClicker", nullptr,
             ImGuiWindowFlags_NoScrollbar |
             ImGuiWindowFlags_NoCollapse  |
-            ImGuiWindowFlags_AlwaysAutoResize);
+            ImGuiWindowFlags_NoResize);
 
         // Toggles
         ImGui::Spacing();
