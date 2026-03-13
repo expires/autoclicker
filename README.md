@@ -126,7 +126,7 @@ Outputs:
 
 ### GitHub Actions
 
-Every push to `main` triggers a matrix build for all mapping versions. Artifacts are uploaded per version (`autoclicker-mojang_1.21.4`, `autoclicker-fabric_1.21.11`). Tag a commit `v*` to create a GitHub Release with all files attached.
+Every push to `main` triggers a matrix build for all mapping versions. Artifacts are uploaded per version (`autoclicker-mojang_1.21.4`, `autoclicker-fabric_1.21.11`)
 
 ---
 
