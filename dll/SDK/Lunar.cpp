@@ -17,8 +17,8 @@ void Lunar::GetLoadedClasses()
     {
         jstring name = (jstring)env->CallObjectMethod(classesPtr[i], getName);
         const char *className = env->GetStringUTFChars(name, 0);
-        env->ReleaseStringUTFChars(name, className);
         classes.emplace(std::make_pair((std::string)className, classesPtr[i]));
+        env->ReleaseStringUTFChars(name, className);
     }
 }
 

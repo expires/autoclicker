@@ -1,6 +1,6 @@
 # 🖱️ Lunar AutoClicker – 1.8 PvP Style (1.16.5+)
 
-Simple, clean autoclicker for 1.8-style PvP, made to work with **Lunar Client** (tested on version 1.21.4).  
+Simple, clean autoclicker for 1.8-style PvP, made to work with **Lunar Client** (tested on versions 1.21.4 and 1.21.11).  
 Designed with a lightweight GUI – just build, inject, and click away.
 
 ---
