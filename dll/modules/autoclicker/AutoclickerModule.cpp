@@ -1,4 +1,5 @@
 #include "AutoclickerModule.h"
+#include "../../Settings.h"
 
 namespace AutoclickerModule
 {
@@ -21,7 +22,6 @@ namespace AutoclickerModule
         fread(buf, 1, sizeof(buf) - 1, f);
         fclose(f);
 
-        // Find "CPS" key and read the integer after the colon
         const char *key = strstr(buf, "\"CPS\"");
         if (!key) return 12;
         const char *colon = strchr(key, ':');
@@ -46,17 +46,22 @@ namespace AutoclickerModule
 
         if (lc->env != nullptr)
         {
-            clicker.setCPS(loadCPS(instance));
+            const int cps = loadCPS(instance);
+            g_settings.cps = cps;
+            clicker.setCPS(cps);
+
             lc->GetLoadedClasses();
 
             const auto mc = std::make_unique<Minecraft>();
             const HWND mcWindow = FindWindowW(L"GLFW30", nullptr);
+
             while (!destruct)
             {
                 const HWND activeWindow = GetForegroundWindow();
+                clicker.setCPS(g_settings.cps);
                 DELAY(TICK);
 
-                while (activeWindow == mcWindow && GetAsyncKeyState(VK_LBUTTON))
+                while (activeWindow == mcWindow && GetAsyncKeyState(VK_LBUTTON) && g_settings.acEnabled)
                 {
                     if (GetAsyncKeyState(VK_END))
                     {
@@ -67,7 +72,7 @@ namespace AutoclickerModule
                     if (mc->GetScreen().isPauseScreen() || mc->GetScreen().shouldCloseOnEsc())
                         break;
 
-                    if (mc->GetMultiPlayerGameMode().getPlayerMode() != 2 && mc->getHitResult().getType() == 1)
+                    if (g_settings.breakBlocks && mc->GetMultiPlayerGameMode().getPlayerMode() != 2 && mc->getHitResult().getType() == 1)
                     {
                         bool hasClickedBlock = false;
 
