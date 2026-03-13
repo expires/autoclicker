@@ -10,7 +10,6 @@
 
 namespace AutoclickerModule
 {
-    inline constexpr extern int CPS = 12;
     inline constexpr extern int TICK = 50;
     extern Clicker clicker;
     extern std::atomic<bool> destruct;

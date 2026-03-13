@@ -1,20 +1,20 @@
 #include "Clicker.h"
 
-int Clicker::randomDelay(int baseDelay)
+int Clicker::randomDelay(double fraction)
 {
-    const double mean = baseDelay / cps;
-    const double stddev = mean * 0.25;
+    const double mean = (1000.0 / cps) * fraction;
+    const double stddev = mean * 0.2;
 
-    std::normal_distribution<> dis(mean, stddev);
-
+    std::normal_distribution<> dist(mean, stddev);
     int delay;
     do {
-        delay = static_cast<int>(dis(gen) * jitterFactor(gen));
-    } while (delay < 1 || delay > mean * 2);
+        delay = static_cast<int>(dist(gen));
+    } while (delay < 1 || delay > static_cast<int>(mean * 2.5));
 
-    if (highDelayChance(gen)) delay *= 1.5; 
-    if (extremeDelayChance(gen) == 1) delay *= 2; 
-   
+    // 1% chance of a human-like extra pause
+    if (extremeDelayChance(gen) == 1)
+        delay += static_cast<int>(mean * 0.5 * jitterFactor(gen));
+
     return delay;
 }
 
@@ -22,15 +22,15 @@ void Clicker::lclick(HWND hwnd)
 {
     if (getClicksPerSecond() == 0)
         DELAY(100);
-    if ((GetAsyncKeyState(VK_LBUTTON) >= 0))
+    if (GetAsyncKeyState(VK_LBUTTON) >= 0)
         return;
 
     POINT pt;
     GetCursorPos(&pt);
     SendMessage(hwnd, WM_LBUTTONDOWN, MK_LBUTTON, MAKELPARAM(pt.x, pt.y));
-    DELAY(randomDelay(400));
+    DELAY(randomDelay(0.3));
     SendMessage(hwnd, WM_LBUTTONUP, MK_LBUTTON, MAKELPARAM(pt.x, pt.y));
-    DELAY(randomDelay(550));
+    DELAY(randomDelay(0.7));
 
     trackClick();
 }
@@ -40,8 +40,9 @@ void Clicker::rclick(HWND hwnd)
     POINT pt;
     GetCursorPos(&pt);
     SendMessage(hwnd, WM_RBUTTONDOWN, MK_RBUTTON, MAKELPARAM(pt.x, pt.y));
-    DELAY(randomDelay(500));
+    DELAY(randomDelay(0.3));
     SendMessage(hwnd, WM_RBUTTONUP, MK_RBUTTON, MAKELPARAM(pt.x, pt.y));
+    DELAY(randomDelay(0.7));
 
     trackClick();
 }
