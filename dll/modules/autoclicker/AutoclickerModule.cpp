@@ -11,17 +11,43 @@ namespace AutoclickerModule
 
         jint result = JNI_GetCreatedJavaVMs(&lc->vm, 1, nullptr);
         if (result != JNI_OK || lc->vm == nullptr)
+        {
+            printf("[AC] Failed to get JVM (result=%d)\n", result);
             return 0;
+        }
+        printf("[AC] Got JVM\n");
 
         result = lc->vm->AttachCurrentThread(reinterpret_cast<void **>(&lc->env), nullptr);
         if (result != JNI_OK || lc->env == nullptr)
+        {
+            printf("[AC] Failed to attach thread (result=%d)\n", result);
             return 0;
+        }
+        printf("[AC] Attached thread\n");
 
         if (lc->env != nullptr)
         {
             lc->GetLoadedClasses();
+            printf("[AC] Loaded classes\n");
+
+            jclass mcClass = lc->GetClass("net.minecraft.client.Minecraft");
+            printf("[AC] Minecraft class: %s\n", mcClass ? "OK" : "NULL");
+
+            jclass playerClass = lc->GetClass("net.minecraft.client.player.LocalPlayer");
+            printf("[AC] LocalPlayer class: %s\n", playerClass ? "OK" : "NULL");
+
+            jclass screenClass = lc->GetClass("net.minecraft.client.gui.screens.Screen");
+            printf("[AC] Screen class: %s\n", screenClass ? "OK" : "NULL");
+
+            jclass hitResultClass = lc->GetClass("net.minecraft.world.phys.HitResult");
+            printf("[AC] HitResult class: %s\n", hitResultClass ? "OK" : "NULL");
+
+            jclass gameModeClass = lc->GetClass("net.minecraft.client.multiplayer.MultiPlayerGameMode");
+            printf("[AC] MultiPlayerGameMode class: %s\n", gameModeClass ? "OK" : "NULL");
+
             const auto mc = std::make_unique<Minecraft>();
             const HWND mcWindow = FindWindowW(L"GLFW30", nullptr);
+            printf("[AC] GLFW30 window: %s\n", mcWindow ? "OK" : "NULL");
             while (!destruct)
             {
                 const HWND activeWindow = GetForegroundWindow();
