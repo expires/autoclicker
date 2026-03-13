@@ -37,7 +37,6 @@ jobs:
           mkdir release
           copy build\DLL\Release\DLL.dll release\ac.dll
           copy build\INJECTOR\Release\INJECTOR.exe release\injector.exe
-          copy ac_config.json release\ac_config.json
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
