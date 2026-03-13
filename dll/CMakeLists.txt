@@ -10,8 +10,14 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_CONFIGURATION_TYPES "Release" CACHE STRING "Limited configuration types" FORCE)
 set(CMAKE_BUILD_TYPE "Release" CACHE STRING "Choose the build type" FORCE)
 
-# Set the path to JDK installation
-set(JAVA_HOME "C:/Program Files/Java/jdk-21")
+# Set the path to JDK installation (can be overridden via -DJAVA_HOME=... or env var)
+if(NOT DEFINED JAVA_HOME)
+    if(DEFINED ENV{JAVA_HOME})
+        set(JAVA_HOME "$ENV{JAVA_HOME}")
+    else()
+        set(JAVA_HOME "C:/Program Files/Java/jdk-21")
+    endif()
+endif()
 # Add include directories for JNI
 include_directories("${JAVA_HOME}/include")
 include_directories("${JAVA_HOME}/include/win32")
