@@ -77,3 +77,14 @@ HitResult Minecraft::getHitResult()
 
 	return HitResult(rtn);
 }
+
+Level Minecraft::GetLevel()
+{
+	jfieldID f = lc->env->GetFieldID(this->GetClass(), FLD_Minecraft_level, DESC_Minecraft_level);
+	jobject rtn = lc->env->GetObjectField(this->GetInstance(), f);
+
+	if (rtn == nullptr)
+		return nullptr;
+
+	return Level(rtn);
+}

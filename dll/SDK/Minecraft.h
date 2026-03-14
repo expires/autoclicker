@@ -5,6 +5,7 @@
 #include "Screen.h"
 #include "HitResult.h"
 #include "Gui.h"
+#include "Level.h"
 
 class Minecraft
 {
@@ -24,5 +25,7 @@ public:
 	bool isPaused();
 
 	HitResult getHitResult();
+
+	Level GetLevel();
 
 };

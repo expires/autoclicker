@@ -40,3 +40,21 @@ Component Entity::getTypeName()
 
     return Component(rtn);
 }
+
+double Entity::getX()
+{
+    jmethodID m = lc->env->GetMethodID(this->GetClass(), MTD_Entity_getX, "()D");
+    return lc->env->CallDoubleMethod(this->GetInstance(), m);
+}
+
+double Entity::getY()
+{
+    jmethodID m = lc->env->GetMethodID(this->GetClass(), MTD_Entity_getY, "()D");
+    return lc->env->CallDoubleMethod(this->GetInstance(), m);
+}
+
+double Entity::getZ()
+{
+    jmethodID m = lc->env->GetMethodID(this->GetClass(), MTD_Entity_getZ, "()D");
+    return lc->env->CallDoubleMethod(this->GetInstance(), m);
+}

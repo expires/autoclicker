@@ -174,6 +174,27 @@ static BOOL WINAPI hk_wglSwapBuffers(HDC hdc)
         ImGui::SameLine(0, 0);
         ImGui::TextDisabled(" CPS: %d", g_settings.cps);
 
+        // LLM Bot
+        ImGui::Spacing();
+        ImGui::Separator();
+        ImGui::Spacing();
+        ImGui::Checkbox("LLM Bot", &g_settings.llmEnabled);
+        if (g_settings.llmEnabled)
+        {
+            ImGui::Spacing();
+            ImGui::SetNextItemWidth(-1);
+            ImGui::InputText("##model", g_settings.llmModel, sizeof(g_settings.llmModel));
+            ImGui::SameLine(0, 0); ImGui::TextDisabled(" Model");
+
+            ImGui::SetNextItemWidth(-1);
+            ImGui::SliderInt("##interval", &g_settings.llmIntervalMs, 500, 5000);
+            ImGui::SameLine(0, 0); ImGui::TextDisabled(" ms");
+
+            ImGui::Spacing();
+            ImGui::TextDisabled("Status: %s", g_settings.llmStatus);
+            ImGui::TextWrapped("%s", g_settings.llmLastReason);
+        }
+
         // Unload
         ImGui::Spacing();
         ImGui::Separator();

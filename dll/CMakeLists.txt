@@ -32,12 +32,14 @@ foreach(KEY
     class_Minecraft class_LocalPlayer class_Screen class_HitResult class_HitResultType
     class_MultiPlayerGameMode class_Gui class_ChatComponent class_LivingEntity class_Entity
     class_Component class_InteractionHand class_ItemStack class_GameType class_EntityHitResult class_Item
+    class_Level class_ClientLevel
     fld_Minecraft_instance desc_Minecraft_instance
     fld_Minecraft_player   desc_Minecraft_player
     fld_Minecraft_gui      desc_Minecraft_gui
     fld_Minecraft_gameMode desc_Minecraft_gameMode
     fld_Minecraft_screen   desc_Minecraft_screen
     fld_Minecraft_hitResult desc_Minecraft_hitResult
+    fld_Minecraft_level     desc_Minecraft_level
     fld_InteractionHand_MAIN desc_InteractionHand_MAIN
     mtd_Minecraft_isPaused
     mtd_Gui_getChat                desc_Gui_getChat
@@ -47,12 +49,16 @@ foreach(KEY
     mtd_HitResult_getType          desc_HitResult_getType
     mtd_LivingEntity_isUsingItem
     mtd_LivingEntity_getItemInHand desc_LivingEntity_getItemInHand
+    mtd_LivingEntity_getHealth     desc_LivingEntity_getHealth
+    mtd_LivingEntity_getMaxHealth  desc_LivingEntity_getMaxHealth
     mtd_Entity_getName             desc_Entity_getName
     mtd_Entity_getTypeName         desc_Entity_getTypeName
+    mtd_Entity_getX mtd_Entity_getY mtd_Entity_getZ
     mtd_Component_getString
     mtd_EntityHitResult_getEntity  desc_EntityHitResult_getEntity
     mtd_ItemStack_getItem          desc_ItemStack_getItem
     mtd_Item_getName               desc_Item_getName
+    mtd_Level_players              desc_Level_players
 )
     string(JSON ${KEY} GET "${MAPPING_JSON}" "${KEY}")
 endforeach()
@@ -114,6 +120,8 @@ file(GLOB SDK_HEADERS          "SDK/*.h")
 file(GLOB SDK_SOURCES          "SDK/*.cpp")
 file(GLOB AUTOCLICKER_HEADERS  "modules/autoclicker/*.h")
 file(GLOB AUTOCLICKER_SOURCES  "modules/autoclicker/*.cpp")
+file(GLOB LLM_HEADERS          "modules/llm/*.h")
+file(GLOB LLM_SOURCES          "modules/llm/*.cpp")
 file(GLOB OVERLAY_HEADERS      "overlay/*.h")
 file(GLOB OVERLAY_SOURCES      "overlay/*.cpp")
 
@@ -121,17 +129,21 @@ add_library(${PROJECT_NAME} SHARED
     main.cpp
     ${AUTOCLICKER_HEADERS}
     ${AUTOCLICKER_SOURCES}
+    ${LLM_HEADERS}
+    ${LLM_SOURCES}
     ${SDK_SOURCES}
     ${SDK_HEADERS}
     ${OVERLAY_HEADERS}
     ${OVERLAY_SOURCES}
 )
 
-target_link_libraries(${PROJECT_NAME} PRIVATE ${JVM_LIB} imgui minhook)
+target_link_libraries(${PROJECT_NAME} PRIVATE ${JVM_LIB} imgui minhook winhttp)
 
 source_group("Header Files\\SDK"         FILES ${SDK_HEADERS})
 source_group("Source Files\\SDK"         FILES ${SDK_SOURCES})
 source_group("Header Files\\Autoclicker" FILES ${AUTOCLICKER_HEADERS})
 source_group("Source Files\\Autoclicker" FILES ${AUTOCLICKER_SOURCES})
+source_group("Header Files\\LLM"         FILES ${LLM_HEADERS})
+source_group("Source Files\\LLM"         FILES ${LLM_SOURCES})
 source_group("Header Files\\Overlay"     FILES ${OVERLAY_HEADERS})
 source_group("Source Files\\Overlay"     FILES ${OVERLAY_SOURCES})

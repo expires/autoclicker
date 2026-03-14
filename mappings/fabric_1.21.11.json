@@ -15,6 +15,8 @@
   "class_GameType":           "net.minecraft.class_1934",
   "class_EntityHitResult":    "net.minecraft.class_3966",
   "class_Item":               "net.minecraft.class_1792",
+  "class_Level":              "net.minecraft.class_1937",
+  "class_ClientLevel":        "net.minecraft.class_638",
 
   "fld_Minecraft_instance":   "field_1700",
   "desc_Minecraft_instance":  "Lnet/minecraft/class_310;",
@@ -28,6 +30,8 @@
   "desc_Minecraft_screen":    "Lnet/minecraft/class_437;",
   "fld_Minecraft_hitResult":  "field_1765",
   "desc_Minecraft_hitResult": "Lnet/minecraft/class_239;",
+  "fld_Minecraft_level":      "field_1687",
+  "desc_Minecraft_level":     "Lnet/minecraft/class_638;",
   "fld_InteractionHand_MAIN": "field_5808",
   "desc_InteractionHand_MAIN":"Lnet/minecraft/class_1268;",
 
@@ -45,15 +49,24 @@
   "mtd_LivingEntity_isUsingItem":   "method_6115",
   "mtd_LivingEntity_getItemInHand": "method_24520",
   "desc_LivingEntity_getItemInHand":"(Lnet/minecraft/class_1268;)Lnet/minecraft/class_1799;",
+  "mtd_LivingEntity_getHealth":     "method_6094",
+  "desc_LivingEntity_getHealth":    "()F",
+  "mtd_LivingEntity_getMaxHealth":  "method_6129",
+  "desc_LivingEntity_getMaxHealth": "()F",
   "mtd_Entity_getName":             "method_5477",
   "desc_Entity_getName":            "()Lnet/minecraft/class_2561;",
   "mtd_Entity_getTypeName":         "method_23315",
   "desc_Entity_getTypeName":        "()Lnet/minecraft/class_2561;",
+  "mtd_Entity_getX":                "method_23317",
+  "mtd_Entity_getY":                "method_23318",
+  "mtd_Entity_getZ":                "method_23319",
   "mtd_Component_getString":        "method_74062",
   "mtd_EntityHitResult_getEntity":  "method_17782",
   "desc_EntityHitResult_getEntity": "()Lnet/minecraft/class_1297;",
   "mtd_ItemStack_getItem":          "method_57385",
   "desc_ItemStack_getItem":         "()Lnet/minecraft/class_1792;",
   "mtd_Item_getName":               "method_65043",
-  "desc_Item_getName":              "(Lnet/minecraft/class_1799;)Lnet/minecraft/class_2561;"
+  "desc_Item_getName":              "(Lnet/minecraft/class_1799;)Lnet/minecraft/class_2561;",
+  "mtd_Level_players":              "method_2985",
+  "desc_Level_players":             "()Ljava/util/List;"
 }

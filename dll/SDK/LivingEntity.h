@@ -14,4 +14,8 @@ public:
 
     bool isUsingItem();
 
+    float getHealth();
+
+    float getMaxHealth();
+
 };

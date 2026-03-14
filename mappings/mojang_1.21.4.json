@@ -15,6 +15,8 @@
   "class_GameType":           "net.minecraft.world.level.GameType",
   "class_EntityHitResult":    "net.minecraft.world.phys.EntityHitResult",
   "class_Item":               "net.minecraft.world.item.Item",
+  "class_Level":              "net.minecraft.world.level.Level",
+  "class_ClientLevel":        "net.minecraft.client.multiplayer.ClientLevel",
 
   "fld_Minecraft_instance":   "instance",
   "desc_Minecraft_instance":  "Lnet/minecraft/client/Minecraft;",
@@ -28,6 +30,8 @@
   "desc_Minecraft_screen":    "Lnet/minecraft/client/gui/screens/Screen;",
   "fld_Minecraft_hitResult":  "hitResult",
   "desc_Minecraft_hitResult": "Lnet/minecraft/world/phys/HitResult;",
+  "fld_Minecraft_level":      "level",
+  "desc_Minecraft_level":     "Lnet/minecraft/client/multiplayer/ClientLevel;",
   "fld_InteractionHand_MAIN": "MAIN_HAND",
   "desc_InteractionHand_MAIN":"Lnet/minecraft/world/InteractionHand;",
 
@@ -45,15 +49,24 @@
   "mtd_LivingEntity_isUsingItem":   "isUsingItem",
   "mtd_LivingEntity_getItemInHand": "getItemInHand",
   "desc_LivingEntity_getItemInHand":"(Lnet/minecraft/world/InteractionHand;)Lnet/minecraft/world/item/ItemStack;",
+  "mtd_LivingEntity_getHealth":     "getHealth",
+  "desc_LivingEntity_getHealth":    "()F",
+  "mtd_LivingEntity_getMaxHealth":  "getMaxHealth",
+  "desc_LivingEntity_getMaxHealth": "()F",
   "mtd_Entity_getName":             "getName",
   "desc_Entity_getName":            "()Lnet/minecraft/network/chat/Component;",
   "mtd_Entity_getTypeName":         "getTypeName",
   "desc_Entity_getTypeName":        "()Lnet/minecraft/network/chat/Component;",
+  "mtd_Entity_getX":                "getX",
+  "mtd_Entity_getY":                "getY",
+  "mtd_Entity_getZ":                "getZ",
   "mtd_Component_getString":        "getString",
   "mtd_EntityHitResult_getEntity":  "getEntity",
   "desc_EntityHitResult_getEntity": "()Lnet/minecraft/world/entity/Entity;",
   "mtd_ItemStack_getItem":          "getItem",
   "desc_ItemStack_getItem":         "()Lnet/minecraft/world/item/Item;",
   "mtd_Item_getName":               "getName",
-  "desc_Item_getName":              "(Lnet/minecraft/world/item/ItemStack;)Lnet/minecraft/network/chat/Component;"
+  "desc_Item_getName":              "(Lnet/minecraft/world/item/ItemStack;)Lnet/minecraft/network/chat/Component;",
+  "mtd_Level_players":              "players",
+  "desc_Level_players":             "()Ljava/util/List;"
 }

@@ -17,6 +17,12 @@ public:
 
     Component getTypeName();
 
+    double getX();
+
+    double getY();
+
+    double getZ();
+
 private:
     jobject instance;
 };
