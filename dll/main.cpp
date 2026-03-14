@@ -4,6 +4,7 @@
 #include "modules/autoclicker/AutoclickerModule.h"
 #include "modules/llm/LLMModule.h"
 #include "overlay/Overlay.h"
+#include "Log.h"
 
 using namespace std::chrono;
 
@@ -12,7 +13,7 @@ BOOL APIENTRY DllMain(const HINSTANCE instance, const DWORD reason, LPVOID reser
     if (reason == DLL_PROCESS_ATTACH)
     {
         DisableThreadLibraryCalls(instance);
-        OutputDebugStringA("[MCBot] DLL loaded\n");
+        McBotLog("DLL loaded");
         Overlay::Init();
         CreateThread(nullptr, 0, AutoclickerModule::init, instance, 0, nullptr);
         CreateThread(nullptr, 0, LLMModule::init, nullptr, 0, nullptr);

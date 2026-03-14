@@ -1,6 +1,6 @@
 #include "Minecraft.h"
 #include "Mappings.h"
-#include <Windows.h>
+#include "../Log.h"
 
 jclass Minecraft::GetClass()
 {
@@ -85,7 +85,7 @@ Level Minecraft::GetLevel()
 	if (f == nullptr)
 	{
 		lc->env->ExceptionClear();
-		OutputDebugStringA("[MCBot] GetLevel: GetFieldID failed — check fld_Minecraft_level mapping\n");
+		McBotLog("GetLevel: GetFieldID failed - check fld_Minecraft_level mapping");
 		return nullptr;
 	}
 	jobject rtn = lc->env->GetObjectField(this->GetInstance(), f);

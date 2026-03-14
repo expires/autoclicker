@@ -1,5 +1,6 @@
 #include "AutoclickerModule.h"
 #include "../../Settings.h"
+#include "../../Log.h"
 #include <cmath>
 
 namespace AutoclickerModule
@@ -44,7 +45,7 @@ namespace AutoclickerModule
         if (listClass == nullptr || lc->env->ExceptionCheck())
         {
             lc->env->ExceptionClear();
-            OutputDebugStringA("[MCBot] initListMethods: FindClass java/util/List failed\n");
+            McBotLog("initListMethods: FindClass java/util/List failed");
             return;
         }
         s_listSize = lc->env->GetMethodID(listClass, "size", "()I");
@@ -53,7 +54,7 @@ namespace AutoclickerModule
         if (s_listSize == nullptr || s_listGet == nullptr)
         {
             lc->env->ExceptionClear();
-            OutputDebugStringA("[MCBot] initListMethods: GetMethodID failed\n");
+            McBotLog("initListMethods: GetMethodID failed");
         }
     }
 

@@ -1,6 +1,6 @@
 #include "Level.h"
 #include "Mappings.h"
-#include <Windows.h>
+#include "../Log.h"
 
 Level::Level(jobject instance)
 {
@@ -29,14 +29,14 @@ jobject Level::players()
     if (m == nullptr)
     {
         lc->env->ExceptionClear();
-        OutputDebugStringA("[MCBot] Level::players: GetMethodID failed — check mtd_Level_players mapping\n");
+        McBotLog("Level::players: GetMethodID failed - check mtd_Level_players mapping");
         return nullptr;
     }
     jobject result = lc->env->CallObjectMethod(this->GetInstance(), m);
     if (lc->env->ExceptionCheck())
     {
         lc->env->ExceptionClear();
-        OutputDebugStringA("[MCBot] Level::players: CallObjectMethod threw exception\n");
+        McBotLog("Level::players: CallObjectMethod threw exception");
         return nullptr;
     }
     return result;
