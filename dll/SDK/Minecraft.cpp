@@ -81,10 +81,13 @@ HitResult Minecraft::getHitResult()
 Level Minecraft::GetLevel()
 {
 	jfieldID f = lc->env->GetFieldID(this->GetClass(), FLD_Minecraft_level, DESC_Minecraft_level);
-	jobject rtn = lc->env->GetObjectField(this->GetInstance(), f);
-
-	if (rtn == nullptr)
+	if (f == nullptr)
+	{
+		lc->env->ExceptionClear();
+		OutputDebugStringA("[MCBot] GetLevel: GetFieldID failed — check fld_Minecraft_level mapping\n");
 		return nullptr;
-
+	}
+	jobject rtn = lc->env->GetObjectField(this->GetInstance(), f);
+	if (rtn == nullptr) return nullptr;
 	return Level(rtn);
 }

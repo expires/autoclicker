@@ -33,10 +33,37 @@ namespace AutoclickerModule
         return max(1, min(cps, 50));
     }
 
+    // java/util/List interface methods — looked up once and cached as globals.
+    static jmethodID s_listSize = nullptr;
+    static jmethodID s_listGet  = nullptr;
+
+    static void initListMethods()
+    {
+        if (s_listSize != nullptr) return;
+        jclass listClass = lc->env->FindClass("java/util/List");
+        if (listClass == nullptr || lc->env->ExceptionCheck())
+        {
+            lc->env->ExceptionClear();
+            OutputDebugStringA("[MCBot] initListMethods: FindClass java/util/List failed\n");
+            return;
+        }
+        s_listSize = lc->env->GetMethodID(listClass, "size", "()I");
+        s_listGet  = lc->env->GetMethodID(listClass, "get",  "(I)Ljava/lang/Object;");
+        lc->env->DeleteLocalRef(listClass);
+        if (s_listSize == nullptr || s_listGet == nullptr)
+        {
+            lc->env->ExceptionClear();
+            OutputDebugStringA("[MCBot] initListMethods: GetMethodID failed\n");
+        }
+    }
+
     // Collect current game state into g_gameState for the LLM thread to read.
     // Must be called from the autoclicker thread (the only thread with a valid lc->env).
     static void collectGameState(Minecraft* mc)
     {
+        // Clear any stale exception before touching JNI
+        if (lc->env->ExceptionCheck()) lc->env->ExceptionClear();
+
         GameState gs = {};
 
         HitResult hit = mc->getHitResult();
@@ -57,15 +84,14 @@ namespace AutoclickerModule
             }
         }
 
+        double px = 0.0, pz = 0.0;
         Player player = mc->GetLocalPlayer();
-        double px = 0.0, py = 0.0, pz = 0.0;
         if (player.GetInstance() != nullptr)
         {
-            gs.usingItem  = player.isUsingItem();
-            gs.health     = player.getHealth();
-            gs.maxHealth  = player.getMaxHealth();
+            gs.usingItem = player.isUsingItem();
+            gs.health    = player.getHealth();
+            gs.maxHealth = player.getMaxHealth();
             px = player.getX();
-            py = player.getY();
             pz = player.getZ();
 
             ItemStack is = player.getItemInHand();
@@ -83,41 +109,46 @@ namespace AutoclickerModule
         }
 
         // Scan nearby players via Level.players()
-        Level level = mc->GetLevel();
-        if (level.GetInstance() != nullptr)
+        initListMethods();
+        if (s_listSize != nullptr && s_listGet != nullptr)
         {
-            jobject playerList = level.players();
-            if (playerList != nullptr)
+            Level level = mc->GetLevel();
+            if (level.GetInstance() != nullptr)
             {
-                jclass listClass    = lc->env->FindClass("java/util/List");
-                jmethodID sizeM     = lc->env->GetMethodID(listClass, "size", "()I");
-                jmethodID getM      = lc->env->GetMethodID(listClass, "get",  "(I)Ljava/lang/Object;");
-                jint count          = lc->env->CallIntMethod(playerList, sizeM);
-
-                for (jint i = 0; i < count && gs.nearbyCount < GameState::MAX_NEARBY; ++i)
+                jobject playerList = level.players();
+                if (playerList != nullptr)
                 {
-                    jobject entObj = lc->env->CallObjectMethod(playerList, getM, i);
-                    if (entObj == nullptr) continue;
+                    jint count = lc->env->CallIntMethod(playerList, s_listSize);
+                    if (lc->env->ExceptionCheck()) { lc->env->ExceptionClear(); count = 0; }
 
-                    Entity ent(entObj);
-                    double ex = ent.getX(), ez = ent.getZ();
-                    double dx = ex - px, dz = ez - pz;
-                    float  dist = static_cast<float>(sqrt(dx * dx + dz * dz));
+                    for (jint i = 0; i < count && gs.nearbyCount < GameState::MAX_NEARBY; ++i)
+                    {
+                        jobject entObj = lc->env->CallObjectMethod(playerList, s_listGet, i);
+                        if (entObj == nullptr || lc->env->ExceptionCheck())
+                        {
+                            lc->env->ExceptionClear();
+                            continue;
+                        }
 
-                    // Skip the local player (distance ~0)
-                    if (dist < 0.5f) { lc->env->DeleteLocalRef(entObj); continue; }
+                        Entity ent(entObj);
+                        double ex = ent.getX(), ez = ent.getZ();
+                        float dist = static_cast<float>(sqrt((ex - px) * (ex - px) + (ez - pz) * (ez - pz)));
 
-                    Component nameComp = ent.getName();
-                    std::string nameStr = nameComp.getString();
-                    nameComp.Cleanup();
+                        if (dist >= 0.5f) // skip local player
+                        {
+                            Component nameComp = ent.getName();
+                            std::string nameStr = nameComp.getString();
+                            nameComp.Cleanup();
 
-                    auto& slot = gs.nearby[gs.nearbyCount++];
-                    strncpy_s(slot.name, nameStr.c_str(), sizeof(slot.name) - 1);
-                    slot.distanceXZ = dist;
+                            auto& slot = gs.nearby[gs.nearbyCount++];
+                            strncpy_s(slot.name, nameStr.c_str(), sizeof(slot.name) - 1);
+                            slot.distanceXZ = dist;
+                        }
 
-                    lc->env->DeleteLocalRef(entObj);
+                        lc->env->DeleteLocalRef(entObj);
+                    }
+                    lc->env->DeleteLocalRef(playerList);
                 }
-                lc->env->DeleteLocalRef(playerList);
             }
         }
 

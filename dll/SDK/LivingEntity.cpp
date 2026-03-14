@@ -35,6 +35,7 @@ float LivingEntity::getHealth()
 {
 	jmethodID m = lc->env->GetMethodID(this->GetClass(),
 		MTD_LivingEntity_getHealth, DESC_LivingEntity_getHealth);
+	if (m == nullptr) { lc->env->ExceptionClear(); return 20.0f; }
 	return lc->env->CallFloatMethod(this->GetInstance(), m);
 }
 
@@ -42,5 +43,6 @@ float LivingEntity::getMaxHealth()
 {
 	jmethodID m = lc->env->GetMethodID(this->GetClass(),
 		MTD_LivingEntity_getMaxHealth, DESC_LivingEntity_getMaxHealth);
+	if (m == nullptr) { lc->env->ExceptionClear(); return 20.0f; }
 	return lc->env->CallFloatMethod(this->GetInstance(), m);
 }
