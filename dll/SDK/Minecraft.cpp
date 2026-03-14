@@ -1,5 +1,6 @@
 #include "Minecraft.h"
 #include "Mappings.h"
+#include <Windows.h>
 
 jclass Minecraft::GetClass()
 {
