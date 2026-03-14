@@ -36,7 +36,7 @@ int main()
     char dllPath[MAX_PATH];
     GetModuleFileNameA(nullptr, dllPath, MAX_PATH);
     *strrchr(dllPath, '\\') = '\0';
-    strcat(dllPath, "\\ac.dll");
+    strcat_s(dllPath, "\\ac.dll");
     DWORD pid = GetProcessId(L"javaw.exe");
     if (pid)
         InjectDLL(pid, dllPath);
