@@ -43,21 +43,27 @@ Component Entity::getTypeName()
 
 double Entity::getX()
 {
-    jmethodID m = lc->env->GetMethodID(this->GetClass(), MTD_Entity_getX, "()D");
+    jclass cls = this->GetClass();
+    if (cls == nullptr) return 0.0;
+    jmethodID m = lc->env->GetMethodID(cls, MTD_Entity_getX, "()D");
     if (m == nullptr) { lc->env->ExceptionClear(); return 0.0; }
     return lc->env->CallDoubleMethod(this->GetInstance(), m);
 }
 
 double Entity::getY()
 {
-    jmethodID m = lc->env->GetMethodID(this->GetClass(), MTD_Entity_getY, "()D");
+    jclass cls = this->GetClass();
+    if (cls == nullptr) return 0.0;
+    jmethodID m = lc->env->GetMethodID(cls, MTD_Entity_getY, "()D");
     if (m == nullptr) { lc->env->ExceptionClear(); return 0.0; }
     return lc->env->CallDoubleMethod(this->GetInstance(), m);
 }
 
 double Entity::getZ()
 {
-    jmethodID m = lc->env->GetMethodID(this->GetClass(), MTD_Entity_getZ, "()D");
+    jclass cls = this->GetClass();
+    if (cls == nullptr) return 0.0;
+    jmethodID m = lc->env->GetMethodID(cls, MTD_Entity_getZ, "()D");
     if (m == nullptr) { lc->env->ExceptionClear(); return 0.0; }
     return lc->env->CallDoubleMethod(this->GetInstance(), m);
 }

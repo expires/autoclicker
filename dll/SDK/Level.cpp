@@ -24,8 +24,13 @@ jobject Level::GetInstance()
 
 jobject Level::players()
 {
-    jmethodID m = lc->env->GetMethodID(this->GetClass(),
-        MTD_Level_players, DESC_Level_players);
+    jclass cls = this->GetClass();
+    if (cls == nullptr)
+    {
+        McBotLog("Level::players: GetClass null - MC_Level not in JVMTI snapshot");
+        return nullptr;
+    }
+    jmethodID m = lc->env->GetMethodID(cls, MTD_Level_players, DESC_Level_players);
     if (m == nullptr)
     {
         lc->env->ExceptionClear();
@@ -33,6 +38,7 @@ jobject Level::players()
         return nullptr;
     }
     jobject result = lc->env->CallObjectMethod(this->GetInstance(), m);
+
     if (lc->env->ExceptionCheck())
     {
         lc->env->ExceptionClear();
