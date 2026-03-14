@@ -6,11 +6,17 @@ inline void McBotLogInit()
 {
     AllocConsole();
     SetConsoleTitleA("MCBot Debug");
-    FILE* dummy;
-    freopen_s(&dummy, "CONOUT$", "w", stdout);
 }
 
 inline void McBotLog(const char* msg)
 {
-    printf("[MCBot] %s\n", msg);
+    HANDLE h = CreateFileA("CONOUT$", GENERIC_WRITE, FILE_SHARE_WRITE,
+                           nullptr, OPEN_EXISTING, 0, nullptr);
+    if (h == INVALID_HANDLE_VALUE) return;
+
+    char buf[512];
+    int  len = sprintf_s(buf, sizeof(buf), "[MCBot] %s\n", msg);
+    DWORD written;
+    WriteFile(h, buf, static_cast<DWORD>(len), &written, nullptr);
+    CloseHandle(h);
 }

@@ -62,21 +62,25 @@ namespace AutoclickerModule
     // Must be called from the autoclicker thread (the only thread with a valid lc->env).
     static void collectGameState(Minecraft* mc)
     {
-        // Clear any stale exception before touching JNI
         if (lc->env->ExceptionCheck()) lc->env->ExceptionClear();
+        McBotLog("collectGameState: start");
 
         GameState gs = {};
 
+        // --- HitResult ---
+        McBotLog("collectGameState: getHitResult");
         HitResult hit = mc->getHitResult();
         if (hit.GetInstance() != nullptr && hit.getType() == 2)
         {
             gs.entityInCrosshair = true;
+            McBotLog("collectGameState: entity in crosshair");
             EntityHitResult ehr = hit.getEntityHitResult();
             if (ehr.GetInstance() != nullptr)
             {
                 Entity ent = ehr.getEntity();
                 if (ent.GetInstance() != nullptr)
                 {
+                    McBotLog("collectGameState: getTypeName");
                     Component typeName = ent.getTypeName();
                     std::string name = typeName.getString();
                     strncpy_s(gs.entityType, name.c_str(), sizeof(gs.entityType) - 1);
@@ -85,22 +89,30 @@ namespace AutoclickerModule
             }
         }
 
+        // --- Player ---
+        McBotLog("collectGameState: GetLocalPlayer");
         double px = 0.0, pz = 0.0;
         Player player = mc->GetLocalPlayer();
         if (player.GetInstance() != nullptr)
         {
+            McBotLog("collectGameState: isUsingItem");
             gs.usingItem = player.isUsingItem();
+            McBotLog("collectGameState: getHealth");
             gs.health    = player.getHealth();
+            McBotLog("collectGameState: getMaxHealth");
             gs.maxHealth = player.getMaxHealth();
+            McBotLog("collectGameState: getX/Z");
             px = player.getX();
             pz = player.getZ();
 
+            McBotLog("collectGameState: getItemInHand");
             ItemStack is = player.getItemInHand();
             if (is.GetInstance() != nullptr)
             {
                 Item item = is.getItem();
                 if (item.GetInstance() != nullptr)
                 {
+                    McBotLog("collectGameState: item getName");
                     Component itemName = item.getName(is.GetInstance());
                     std::string name = itemName.getString();
                     strncpy_s(gs.heldItem, name.c_str(), sizeof(gs.heldItem) - 1);
@@ -109,18 +121,26 @@ namespace AutoclickerModule
             }
         }
 
-        // Scan nearby players via Level.players()
+        // --- Level / nearby players ---
+        McBotLog("collectGameState: initListMethods");
         initListMethods();
         if (s_listSize != nullptr && s_listGet != nullptr)
         {
+            McBotLog("collectGameState: GetLevel");
             Level level = mc->GetLevel();
             if (level.GetInstance() != nullptr)
             {
+                McBotLog("collectGameState: level.players()");
                 jobject playerList = level.players();
                 if (playerList != nullptr)
                 {
+                    McBotLog("collectGameState: list size");
                     jint count = lc->env->CallIntMethod(playerList, s_listSize);
                     if (lc->env->ExceptionCheck()) { lc->env->ExceptionClear(); count = 0; }
+
+                    char countBuf[64];
+                    sprintf_s(countBuf, "collectGameState: player count = %d", count);
+                    McBotLog(countBuf);
 
                     for (jint i = 0; i < count && gs.nearbyCount < GameState::MAX_NEARBY; ++i)
                     {
@@ -131,12 +151,14 @@ namespace AutoclickerModule
                             continue;
                         }
 
+                        McBotLog("collectGameState: entity getX/Z");
                         Entity ent(entObj);
                         double ex = ent.getX(), ez = ent.getZ();
                         float dist = static_cast<float>(sqrt((ex - px) * (ex - px) + (ez - pz) * (ez - pz)));
 
-                        if (dist >= 0.5f) // skip local player
+                        if (dist >= 0.5f)
                         {
+                            McBotLog("collectGameState: entity getName");
                             Component nameComp = ent.getName();
                             std::string nameStr = nameComp.getString();
                             nameComp.Cleanup();
@@ -151,8 +173,11 @@ namespace AutoclickerModule
                     lc->env->DeleteLocalRef(playerList);
                 }
             }
+            else McBotLog("collectGameState: GetLevel returned null");
         }
+        else McBotLog("collectGameState: list methods unavailable");
 
+        McBotLog("collectGameState: done");
         {
             std::lock_guard<std::mutex> lock(g_gameStateMutex);
             g_gameState = gs;
