@@ -1,4 +1,4 @@
-# Lunar AutoClicker
+# Lunar Autoclicker
 
 A DLL-based autoclicker for Lunar Client, designed for private server anticheat testing. Supports Lunar Client 1.21.4 (Mojang mappings) and 1.21.11 (Fabric intermediary mappings).
 
