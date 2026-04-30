@@ -182,3 +182,4 @@ Changes made in the overlay take effect immediately — no re-injection required
 
 - Intended for use on private servers for anticheat development and testing only.
 - Public servers with anticheat will likely detect or flag this.
+- Intended for research with JNI
