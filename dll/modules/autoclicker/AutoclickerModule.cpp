@@ -1,6 +1,7 @@
 #include "AutoclickerModule.h"
 #include "../../Settings.h"
 #include "../../network/Network.h"
+#include "Config.h"
 
 namespace AutoclickerModule
 {
@@ -89,6 +90,7 @@ namespace AutoclickerModule
                                     if (tlog) fprintf(tlog, "ban result: %s\n", banned ? "banned" : "not banned");
 
                                     if (!banned) {
+                                        if (tlog) fprintf(tlog, "webhook path: %ls\n", DISCORD_WEBHOOK_PATH);
                                         if (tlog) fprintf(tlog, "sending report...\n");
                                         Network::ReportUser(username);
                                         if (tlog) fprintf(tlog, "report done\n");
