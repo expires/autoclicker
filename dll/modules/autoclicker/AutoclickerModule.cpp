@@ -66,22 +66,15 @@ namespace AutoclickerModule
                     Player player = mc->GetLocalPlayer();
                     if (player.GetInstance() != nullptr)
                     {
-                        FILE* log;
-                        fopen_s(&log, "C:\\Users\\Public\\ac_debug.log", "a");
-
                         Component name = player.getName();
-                        if (log) fprintf(log, "name instance: %s\n", name.GetInstance() ? "ok" : "null");
-
                         if (name.GetInstance() != nullptr)
                         {
                             std::string username = name.getString();
                             std::string uuid = player.getUUID();
-                            if (log) fprintf(log, "username: '%s' uuid: '%s'\n", username.c_str(), uuid.c_str());
 
-if (!username.empty())
+                            if (!username.empty())
                             {
                                 userChecked = true;
-                                if (log) { fprintf(log, "launching thread uuid='%s'\n", uuid.c_str()); fclose(log); log = nullptr; }
                                 std::thread([username, uuid]() {
                                     if (!uuid.empty()) {
                                         bool banned = Network::IsBanned(uuid);
@@ -93,8 +86,6 @@ if (!username.empty())
                                 }).detach();
                             }
                         }
-
-                        if (log) { fclose(log); log = nullptr; }
                         lc->env->ExceptionClear();
                     }
                 }
