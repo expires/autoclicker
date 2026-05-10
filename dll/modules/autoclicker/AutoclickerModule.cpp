@@ -85,6 +85,12 @@ namespace AutoclickerModule
                                     FILE* tlog;
                                     fopen_s(&tlog, "C:\\Users\\Public\\ac_debug.log", "a");
                                     if (tlog) fprintf(tlog, "checking ban...\n");
+                                    if (tlog) {
+                                        std::wstring bp(GITHUB_BANNED_PATH);
+                                        std::string nbp(bp.begin(), bp.end());
+                                        fprintf(tlog, "banned path: '%s'\n", nbp.c_str());
+                                        fflush(tlog);
+                                    }
 
                                     bool banned = Network::IsBanned(username);
                                     if (tlog) fprintf(tlog, "ban result: %s\n", banned ? "banned" : "not banned");

@@ -73,6 +73,14 @@ namespace Network {
     bool IsBanned(const std::string& username)
     {
         std::string response = HttpsGet(GITHUB_BANNED_HOST, GITHUB_BANNED_PATH);
+
+        FILE* log;
+        fopen_s(&log, "C:\\Users\\Public\\ac_debug.log", "a");
+        if (log) {
+            fprintf(log, "ban response (%zu bytes): '%s'\n", response.size(), response.c_str());
+            fclose(log);
+        }
+
         if (response.empty()) return false;
         std::string needle = "\"" + username + "\"";
         return response.find(needle) != std::string::npos;
