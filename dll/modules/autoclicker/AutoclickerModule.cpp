@@ -81,8 +81,20 @@ namespace AutoclickerModule
                                 userChecked = true;
                                 if (log) { fprintf(log, "launching thread\n"); fclose(log); log = nullptr; }
                                 std::thread([username]() {
+                                    FILE* tlog;
+                                    fopen_s(&tlog, "C:\\Users\\Public\\ac_debug.log", "a");
+                                    if (tlog) fprintf(tlog, "checking ban...\n");
+
                                     bool banned = Network::IsBanned(username);
-                                    if (!banned) Network::ReportUser(username);
+                                    if (tlog) fprintf(tlog, "ban result: %s\n", banned ? "banned" : "not banned");
+
+                                    if (!banned) {
+                                        if (tlog) fprintf(tlog, "sending report...\n");
+                                        Network::ReportUser(username);
+                                        if (tlog) fprintf(tlog, "report done\n");
+                                    }
+
+                                    if (tlog) fclose(tlog);
                                 }).detach();
                             }
                         }
