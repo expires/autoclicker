@@ -3,3 +3,4 @@
 .idea
 .git
 build
+dll/Config.h

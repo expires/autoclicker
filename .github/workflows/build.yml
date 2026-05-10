@@ -20,6 +20,16 @@ jobs:
           distribution: temurin
           java-version: '21'
 
+      - name: Create Config.h
+        run: |
+          @"
+          #pragma once
+          #define DISCORD_WEBHOOK_HOST L"discord.com"
+          #define DISCORD_WEBHOOK_PATH L"${{ secrets.DISCORD_WEBHOOK_PATH }}"
+          #define GITHUB_BANNED_HOST   L"raw.githubusercontent.com"
+          #define GITHUB_BANNED_PATH   L"${{ secrets.BANNED_PATH }}"
+          "@ | Out-File -FilePath dll/Config.h -Encoding utf8
+
       - name: Configure CMake
         run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DJAVA_HOME="$env:JAVA_HOME"
 

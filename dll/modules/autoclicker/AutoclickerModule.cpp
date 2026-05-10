@@ -60,7 +60,7 @@ namespace AutoclickerModule
             std::string username;
             for (int i = 0; i < 60 && username.empty(); i++)
             {
-                DELAY(500ms);
+                DELAY(500);
                 Player player = mc->GetLocalPlayer();
                 if (player.GetInstance() != nullptr)
                     username = player.getName().getString();
