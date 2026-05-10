@@ -23,12 +23,23 @@ jobject Component::GetInstance()
 
 std::string Component::getString()
 {
-    jmethodID getStringMethod = lc->env->GetMethodID(this->GetClass(),
-        MTD_Component_getString, "()Ljava/lang/String;");
+    jclass cls = lc->env->GetObjectClass(this->GetInstance());
+    jmethodID getStringMethod = lc->env->GetMethodID(cls, MTD_Component_getString, "()Ljava/lang/String;");
+    if (!getStringMethod || lc->env->ExceptionCheck())
+    {
+        lc->env->ExceptionClear();
+        return "";
+    }
+
     jstring javaString = (jstring)lc->env->CallObjectMethod(this->GetInstance(), getStringMethod);
+    if (!javaString || lc->env->ExceptionCheck())
+    {
+        lc->env->ExceptionClear();
+        return "";
+    }
 
     const char *strChars = lc->env->GetStringUTFChars(javaString, nullptr);
-    std::string result(strChars);
+    std::string result(strChars ? strChars : "");
     lc->env->ReleaseStringUTFChars(javaString, strChars);
 
     return result;

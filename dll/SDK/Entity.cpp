@@ -26,7 +26,19 @@ Component Entity::getName()
     jmethodID name = lc->env->GetMethodID(this->GetClass(),
         MTD_Entity_getName, DESC_Entity_getName);
 
+    if (!name || lc->env->ExceptionCheck())
+    {
+        lc->env->ExceptionClear();
+        return Component(nullptr);
+    }
+
     jobject rtn = lc->env->CallObjectMethod(this->GetInstance(), name);
+
+    if (lc->env->ExceptionCheck())
+    {
+        lc->env->ExceptionClear();
+        return Component(nullptr);
+    }
 
     return Component(rtn);
 }

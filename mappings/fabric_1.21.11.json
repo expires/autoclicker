@@ -49,7 +49,7 @@
   "desc_Entity_getName":            "()Lnet/minecraft/class_2561;",
   "mtd_Entity_getTypeName":         "method_23315",
   "desc_Entity_getTypeName":        "()Lnet/minecraft/class_2561;",
-  "mtd_Component_getString":        "method_74062",
+  "mtd_Component_getString":        "getString",
   "mtd_EntityHitResult_getEntity":  "method_17782",
   "desc_EntityHitResult_getEntity": "()Lnet/minecraft/class_1297;",
   "mtd_ItemStack_getItem":          "method_57385",
