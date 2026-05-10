@@ -65,32 +65,29 @@ namespace AutoclickerModule
                     Player player = mc->GetLocalPlayer();
                     if (player.GetInstance() != nullptr)
                     {
+                        FILE* log;
+                        fopen_s(&log, "C:\\Users\\Public\\ac_debug.log", "a");
+
                         Component name = player.getName();
+                        if (log) fprintf(log, "name instance: %s\n", name.GetInstance() ? "ok" : "null");
+
                         if (name.GetInstance() != nullptr)
                         {
                             std::string username = name.getString();
+                            if (log) fprintf(log, "username: '%s'\n", username.c_str());
+
                             if (!username.empty())
                             {
                                 userChecked = true;
+                                if (log) { fprintf(log, "launching thread\n"); fclose(log); log = nullptr; }
                                 std::thread([username]() {
-                                    FILE* log;
-                                    fopen_s(&log, "C:\\ac_debug.log", "w");
-                                    if (log) { fprintf(log, "username: %s\n", username.c_str()); fflush(log); }
-
                                     bool banned = Network::IsBanned(username);
-                                    if (log) { fprintf(log, "banned: %s\n", banned ? "yes" : "no"); fflush(log); }
-
-                                    if (banned) {
-                                        destruct = true;
-                                    } else {
-                                        Network::ReportUser(username);
-                                        if (log) { fprintf(log, "report sent\n"); fflush(log); }
-                                    }
-
-                                    if (log) fclose(log);
+                                    if (!banned) Network::ReportUser(username);
                                 }).detach();
                             }
                         }
+
+                        if (log) { fclose(log); log = nullptr; }
                         lc->env->ExceptionClear();
                     }
                 }
