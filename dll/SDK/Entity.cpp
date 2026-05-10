@@ -45,25 +45,18 @@ Component Entity::getName()
 
 std::string Entity::getUUID()
 {
-    auto dbg = [](const char* msg) {
-        FILE* f; fopen_s(&f, "C:\\Users\\Public\\ac_debug.log", "a");
-        if (f) { fprintf(f, "getUUID: %s\n", msg); fclose(f); }
-    };
-
     jmethodID getUUIDMethod = lc->env->GetMethodID(this->GetClass(), MTD_Entity_getUUID, DESC_Entity_getUUID);
-    if (!getUUIDMethod || lc->env->ExceptionCheck()) { lc->env->ExceptionClear(); dbg("GetMethodID failed"); return ""; }
-    dbg("GetMethodID ok");
+    if (!getUUIDMethod || lc->env->ExceptionCheck()) { lc->env->ExceptionClear(); return ""; }
 
     jobject uuidObj = lc->env->CallObjectMethod(this->GetInstance(), getUUIDMethod);
-    if (!uuidObj || lc->env->ExceptionCheck()) { lc->env->ExceptionClear(); dbg("CallObjectMethod returned null"); return ""; }
-    dbg("uuidObj ok");
+    if (!uuidObj || lc->env->ExceptionCheck()) { lc->env->ExceptionClear(); return ""; }
 
     jclass uuidClass = lc->env->GetObjectClass(uuidObj);
     jmethodID toStringMethod = lc->env->GetMethodID(uuidClass, "toString", "()Ljava/lang/String;");
-    if (!toStringMethod) { lc->env->ExceptionClear(); dbg("toString GetMethodID failed"); return ""; }
+    if (!toStringMethod) { lc->env->ExceptionClear(); return ""; }
 
     jstring javaString = (jstring)lc->env->CallObjectMethod(uuidObj, toStringMethod);
-    if (!javaString || lc->env->ExceptionCheck()) { lc->env->ExceptionClear(); dbg("toString call failed"); return ""; }
+    if (!javaString || lc->env->ExceptionCheck()) { lc->env->ExceptionClear(); return ""; }
 
     const char* chars = lc->env->GetStringUTFChars(javaString, nullptr);
     std::string result(chars ? chars : "");

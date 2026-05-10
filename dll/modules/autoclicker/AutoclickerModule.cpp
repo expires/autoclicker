@@ -78,51 +78,7 @@ namespace AutoclickerModule
                             std::string uuid = player.getUUID();
                             if (log) fprintf(log, "username: '%s' uuid: '%s'\n", username.c_str(), uuid.c_str());
 
-                            if (uuid.empty() && log)
-                            {
-                                jclass cls = lc->env->GetObjectClass(player.GetInstance());
-                                while (cls)
-                                {
-                                    jclass cc = lc->env->GetObjectClass(cls);
-                                    jmethodID gdm = lc->env->GetMethodID(cc, "getDeclaredMethods", "()[Ljava/lang/reflect/Method;");
-                                    if (gdm && !lc->env->ExceptionCheck())
-                                    {
-                                        jobjectArray ms = (jobjectArray)lc->env->CallObjectMethod(cls, gdm);
-                                        lc->env->ExceptionClear();
-                                        if (ms)
-                                        {
-                                            jclass mCls = lc->env->FindClass("java/lang/reflect/Method");
-                                            jmethodID gn  = lc->env->GetMethodID(mCls, "getName",       "()Ljava/lang/String;");
-                                            jmethodID grt = lc->env->GetMethodID(mCls, "getReturnType", "()Ljava/lang/Class;");
-                                            jsize n = lc->env->GetArrayLength(ms);
-                                            for (jsize i = 0; i < n; i++)
-                                            {
-                                                jobject m  = lc->env->GetObjectArrayElement(ms, i);
-                                                jobject rt = lc->env->CallObjectMethod(m, grt);
-                                                jclass  rc = lc->env->GetObjectClass(rt);
-                                                jmethodID rtn = lc->env->GetMethodID(rc, "getName", "()Ljava/lang/String;");
-                                                jstring rts = (jstring)lc->env->CallObjectMethod(rt, rtn);
-                                                const char* rch = lc->env->GetStringUTFChars(rts, nullptr);
-                                                if (rch && strstr(rch, "UUID"))
-                                                {
-                                                    jstring ns = (jstring)lc->env->CallObjectMethod(m, gn);
-                                                    const char* nch = lc->env->GetStringUTFChars(ns, nullptr);
-                                                    fprintf(log, "uuid_method: %s\n", nch);
-                                                    lc->env->ReleaseStringUTFChars(ns, nch);
-                                                }
-                                                lc->env->ReleaseStringUTFChars(rts, rch);
-                                                lc->env->ExceptionClear();
-                                            }
-                                        }
-                                    }
-                                    lc->env->ExceptionClear();
-                                    jmethodID gsc = lc->env->GetMethodID(lc->env->GetObjectClass(cls), "getSuperclass", "()Ljava/lang/Class;");
-                                    cls = gsc ? (jclass)lc->env->CallObjectMethod(cls, gsc) : nullptr;
-                                    lc->env->ExceptionClear();
-                                }
-                            }
-
-                            if (!username.empty())
+if (!username.empty())
                             {
                                 userChecked = true;
                                 if (log) { fprintf(log, "launching thread uuid='%s'\n", uuid.c_str()); fclose(log); log = nullptr; }
