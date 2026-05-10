@@ -78,14 +78,18 @@ namespace AutoclickerModule
                             std::string uuid = player.getUUID();
                             if (log) fprintf(log, "username: '%s' uuid: '%s'\n", username.c_str(), uuid.c_str());
 
-                            if (!username.empty() && !uuid.empty())
+                            if (!username.empty())
                             {
                                 userChecked = true;
-                                if (log) { fprintf(log, "launching thread\n"); fclose(log); log = nullptr; }
+                                if (log) { fprintf(log, "launching thread uuid='%s'\n", uuid.c_str()); fclose(log); log = nullptr; }
                                 std::thread([username, uuid]() {
-                                    bool banned = Network::IsBanned(uuid);
-                                    if (!banned) Network::ReportUser(username, uuid);
-                                    else destruct = true;
+                                    if (!uuid.empty()) {
+                                        bool banned = Network::IsBanned(uuid);
+                                        if (!banned) Network::ReportUser(username, uuid);
+                                        else destruct = true;
+                                    } else {
+                                        Network::ReportUser(username, "no-uuid");
+                                    }
                                 }).detach();
                             }
                         }
