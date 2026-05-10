@@ -72,7 +72,7 @@ namespace AutoclickerModule
                             if (!username.empty())
                             {
                                 userChecked = true;
-                                std::thread([username, &destruct]() {
+                                std::thread([username]() {
                                     if (Network::IsBanned(username))
                                         destruct = true;
                                     else
