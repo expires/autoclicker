@@ -61,9 +61,13 @@ namespace AutoclickerModule
             for (int i = 0; i < 60 && username.empty(); i++)
             {
                 DELAY(500);
+                if (mc->GetInstance() == nullptr) continue;
                 Player player = mc->GetLocalPlayer();
-                if (player.GetInstance() != nullptr)
-                    username = player.getName().getString();
+                if (player.GetInstance() == nullptr) continue;
+                Component name = player.getName();
+                if (name.GetInstance() == nullptr) { lc->env->ExceptionClear(); continue; }
+                username = name.getString();
+                lc->env->ExceptionClear();
             }
 
             if (!username.empty())
