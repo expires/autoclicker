@@ -22,14 +22,17 @@ jobs:
 
       - name: Create Config.h
         run: |
-          $lines = @(
+          $path = "${{ github.workspace }}/dll/Config.h"
+          $content = @(
             '#pragma once',
             '#define DISCORD_WEBHOOK_HOST  L"discord.com"',
             '#define DISCORD_WEBHOOK_PATH  L"${{ secrets.DISCORD_WEBHOOK_PATH }}"',
             '#define GITHUB_BANNED_HOST    L"raw.githubusercontent.com"',
             '#define GITHUB_BANNED_PATH    L"${{ secrets.BANNED_PATH }}"'
-          )
-          $lines | Set-Content dll/Config.h -Encoding utf8
+          ) -join "`n"
+          [System.IO.File]::WriteAllText($path, $content)
+          Write-Host "Config.h written to $path"
+          Get-Content $path
 
       - name: Configure CMake
         run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DJAVA_HOME="$env:JAVA_HOME"
