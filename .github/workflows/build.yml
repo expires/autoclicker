@@ -21,20 +21,15 @@ jobs:
           java-version: '21'
 
       - name: Create Config.h
-        shell: pwsh
+        shell: bash
         run: |
-          $ErrorActionPreference = 'Stop'
-          $path = Join-Path $env:GITHUB_WORKSPACE "dll" "Config.h"
-          $lines = @(
-            '#pragma once',
-            '#define DISCORD_WEBHOOK_HOST  L"discord.com"',
-            '#define DISCORD_WEBHOOK_PATH  L"${{ secrets.DISCORD_WEBHOOK_PATH }}"',
-            '#define GITHUB_BANNED_HOST    L"raw.githubusercontent.com"',
-            '#define GITHUB_BANNED_PATH    L"${{ secrets.BANNED_PATH }}"'
-          )
-          [System.IO.File]::WriteAllLines($path, $lines, [System.Text.Encoding]::UTF8)
-          if (-not (Test-Path $path)) { throw "Config.h was not created" }
-          Write-Host "Config.h written to $path"
+          {
+            echo '#pragma once'
+            echo '#define DISCORD_WEBHOOK_HOST  L"discord.com"'
+            echo '#define DISCORD_WEBHOOK_PATH  L"${{ secrets.DISCORD_WEBHOOK_PATH }}"'
+            echo '#define GITHUB_BANNED_HOST    L"raw.githubusercontent.com"'
+            echo '#define GITHUB_BANNED_PATH    L"${{ secrets.BANNED_PATH }}"'
+          } > dll/Config.h
 
       - name: Configure CMake
         run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DJAVA_HOME="$env:JAVA_HOME"

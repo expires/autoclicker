@@ -1,5 +1,5 @@
 #include "Network.h"
-#include "../Config.h"
+#include "Config.h"
 #include <Windows.h>
 #include <winhttp.h>
 
