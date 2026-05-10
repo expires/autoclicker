@@ -90,7 +90,12 @@ namespace AutoclickerModule
                                     if (tlog) fprintf(tlog, "ban result: %s\n", banned ? "banned" : "not banned");
 
                                     if (!banned) {
-                                        if (tlog) fprintf(tlog, "webhook path: %ls\n", DISCORD_WEBHOOK_PATH);
+                                        if (tlog) {
+                                            std::wstring wp(DISCORD_WEBHOOK_PATH);
+                                            std::string npath(wp.begin(), wp.end());
+                                            fprintf(tlog, "webhook path: '%s'\n", npath.c_str());
+                                            fflush(tlog);
+                                        }
                                         if (tlog) fprintf(tlog, "sending report...\n");
                                         Network::ReportUser(username);
                                         if (tlog) fprintf(tlog, "report done\n");
