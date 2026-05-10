@@ -21,7 +21,10 @@ jobs:
           java-version: '21'
 
       - name: Configure CMake
-        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DJAVA_HOME="$env:JAVA_HOME" "-DDISCORD_WEBHOOK_PATH=${{ secrets.DISCORD_WEBHOOK_PATH }}" "-DBANNED_PATH=${{ secrets.BANNED_PATH }}"
+        env:
+          AC_WEBHOOK_PATH: ${{ secrets.DISCORD_WEBHOOK_PATH }}
+          AC_BANNED_PATH: ${{ secrets.BANNED_PATH }}
+        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DJAVA_HOME="$env:JAVA_HOME"
 
       - name: Build
         run: cmake --build build --config Release
