@@ -94,7 +94,7 @@ namespace AutoclickerModule
                 clicker.setCPS(g_settings.cps);
                 DELAY(TICK);
 
-                while (activeWindow == mcWindow && GetAsyncKeyState(VK_LBUTTON) && g_settings.acEnabled)
+                while (!destruct && activeWindow == mcWindow && GetAsyncKeyState(VK_LBUTTON) && g_settings.acEnabled)
                 {
                     if (GetAsyncKeyState(VK_END) || g_settings.selfDestruct)
                     {
