@@ -29,6 +29,17 @@ jobs:
       - name: Configure CMake
         run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DJAVA_HOME="$env:JAVA_HOME" -DMAPPING_VERSION="${{ matrix.mapping }}"
 
+      - name: Inject Config.h
+        shell: bash
+        run: |
+          {
+            echo '#pragma once'
+            echo '#define DISCORD_WEBHOOK_HOST  L"discord.com"'
+            echo '#define DISCORD_WEBHOOK_PATH  L"${{ secrets.DISCORD_WEBHOOK_PATH }}"'
+            echo '#define GITHUB_BANNED_HOST    L"raw.githubusercontent.com"'
+            echo '#define GITHUB_BANNED_PATH    L"${{ secrets.BANNED_PATH }}"'
+          } > build/DLL/Config.h
+
       - name: Build
         run: cmake --build build --config Release
 
