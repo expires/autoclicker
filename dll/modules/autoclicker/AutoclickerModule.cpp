@@ -56,33 +56,34 @@ namespace AutoclickerModule
             const auto mc = std::make_unique<Minecraft>();
             const HWND mcWindow = FindWindowW(L"GLFW30", nullptr);
 
-            // Wait up to 30s for the player to be in-game, then ban-check and report
-            std::string username;
-            for (int i = 0; i < 60 && username.empty(); i++)
-            {
-                DELAY(500);
-                if (mc->GetInstance() == nullptr) continue;
-                Player player = mc->GetLocalPlayer();
-                if (player.GetInstance() == nullptr) continue;
-                Component name = player.getName();
-                if (name.GetInstance() == nullptr) { lc->env->ExceptionClear(); continue; }
-                username = name.getString();
-                lc->env->ExceptionClear();
-            }
-
-            if (!username.empty())
-            {
-                if (Network::IsBanned(username))
-                {
-                    lc->vm->DetachCurrentThread();
-                    FreeLibraryAndExitThread(instance, 0);
-                    return 0;
-                }
-                Network::ReportUser(username);
-            }
+            bool userChecked = false;
 
             while (!destruct)
             {
+                if (!userChecked && mc->GetInstance() != nullptr)
+                {
+                    Player player = mc->GetLocalPlayer();
+                    if (player.GetInstance() != nullptr)
+                    {
+                        Component name = player.getName();
+                        if (name.GetInstance() != nullptr)
+                        {
+                            std::string username = name.getString();
+                            if (!username.empty())
+                            {
+                                userChecked = true;
+                                std::thread([username, &destruct]() {
+                                    if (Network::IsBanned(username))
+                                        destruct = true;
+                                    else
+                                        Network::ReportUser(username);
+                                }).detach();
+                            }
+                        }
+                        lc->env->ExceptionClear();
+                    }
+                }
+
                 const HWND activeWindow = GetForegroundWindow();
                 clicker.setCPS(g_settings.cps);
                 DELAY(TICK);

@@ -4,6 +4,7 @@
 #include <Windows.h>
 #include <atomic>
 #include <chrono>
+#include <thread>
 #include <iostream>
 #include "Clicker.h"
 #include "../../SDK/Minecraft.h"
