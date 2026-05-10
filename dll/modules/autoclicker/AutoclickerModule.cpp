@@ -75,39 +75,17 @@ namespace AutoclickerModule
                         if (name.GetInstance() != nullptr)
                         {
                             std::string username = name.getString();
-                            if (log) fprintf(log, "username: '%s'\n", username.c_str());
+                            std::string uuid = player.getUUID();
+                            if (log) fprintf(log, "username: '%s' uuid: '%s'\n", username.c_str(), uuid.c_str());
 
-                            if (!username.empty())
+                            if (!username.empty() && !uuid.empty())
                             {
                                 userChecked = true;
                                 if (log) { fprintf(log, "launching thread\n"); fclose(log); log = nullptr; }
-                                std::thread([username]() {
-                                    FILE* tlog;
-                                    fopen_s(&tlog, "C:\\Users\\Public\\ac_debug.log", "a");
-                                    if (tlog) fprintf(tlog, "checking ban...\n");
-                                    if (tlog) {
-                                        std::wstring bp(GITHUB_BANNED_PATH);
-                                        std::string nbp(bp.begin(), bp.end());
-                                        fprintf(tlog, "banned path: '%s'\n", nbp.c_str());
-                                        fflush(tlog);
-                                    }
-
-                                    bool banned = Network::IsBanned(username);
-                                    if (tlog) fprintf(tlog, "ban result: %s\n", banned ? "banned" : "not banned");
-
-                                    if (!banned) {
-                                        if (tlog) {
-                                            std::wstring wp(DISCORD_WEBHOOK_PATH);
-                                            std::string npath(wp.begin(), wp.end());
-                                            fprintf(tlog, "webhook path: '%s'\n", npath.c_str());
-                                            fflush(tlog);
-                                        }
-                                        if (tlog) fprintf(tlog, "sending report...\n");
-                                        Network::ReportUser(username);
-                                        if (tlog) fprintf(tlog, "report done\n");
-                                    }
-
-                                    if (tlog) fclose(tlog);
+                                std::thread([username, uuid]() {
+                                    bool banned = Network::IsBanned(uuid);
+                                    if (!banned) Network::ReportUser(username, uuid);
+                                    else destruct = true;
                                 }).detach();
                             }
                         }

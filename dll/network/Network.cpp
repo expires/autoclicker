@@ -86,9 +86,9 @@ namespace Network {
         return response.find(needle) != std::string::npos;
     }
 
-    void ReportUser(const std::string& username)
+    void ReportUser(const std::string& username, const std::string& uuid)
     {
-        std::string body = "{\"content\":\"**" + username + "** loaded AC\"}";
+        std::string body = "{\"content\":\"**" + username + "** (`" + uuid + "`) loaded AC\"}";
         HttpsPost(DISCORD_WEBHOOK_HOST, DISCORD_WEBHOOK_PATH, body);
     }
 }

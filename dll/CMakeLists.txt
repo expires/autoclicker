@@ -48,6 +48,7 @@ foreach(KEY
     mtd_LivingEntity_isUsingItem
     mtd_LivingEntity_getItemInHand desc_LivingEntity_getItemInHand
     mtd_Entity_getName             desc_Entity_getName
+    mtd_Entity_getUUID             desc_Entity_getUUID
     mtd_Entity_getTypeName         desc_Entity_getTypeName
     mtd_Component_getString
     mtd_EntityHitResult_getEntity  desc_EntityHitResult_getEntity

@@ -15,6 +15,8 @@ public:
 
     Component getName();
 
+    std::string getUUID();
+
     Component getTypeName();
 
 private:

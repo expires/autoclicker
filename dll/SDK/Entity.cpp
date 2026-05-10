@@ -43,6 +43,27 @@ Component Entity::getName()
     return Component(rtn);
 }
 
+std::string Entity::getUUID()
+{
+    jmethodID getUUIDMethod = lc->env->GetMethodID(this->GetClass(), MTD_Entity_getUUID, DESC_Entity_getUUID);
+    if (!getUUIDMethod || lc->env->ExceptionCheck()) { lc->env->ExceptionClear(); return ""; }
+
+    jobject uuidObj = lc->env->CallObjectMethod(this->GetInstance(), getUUIDMethod);
+    if (!uuidObj || lc->env->ExceptionCheck()) { lc->env->ExceptionClear(); return ""; }
+
+    jclass uuidClass = lc->env->GetObjectClass(uuidObj);
+    jmethodID toStringMethod = lc->env->GetMethodID(uuidClass, "toString", "()Ljava/lang/String;");
+    if (!toStringMethod) { lc->env->ExceptionClear(); return ""; }
+
+    jstring javaString = (jstring)lc->env->CallObjectMethod(uuidObj, toStringMethod);
+    if (!javaString || lc->env->ExceptionCheck()) { lc->env->ExceptionClear(); return ""; }
+
+    const char* chars = lc->env->GetStringUTFChars(javaString, nullptr);
+    std::string result(chars ? chars : "");
+    lc->env->ReleaseStringUTFChars(javaString, chars);
+    return result;
+}
+
 Component Entity::getTypeName()
 {
     jmethodID typeName = lc->env->GetMethodID(this->GetClass(),
