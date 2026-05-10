@@ -58,6 +58,10 @@ foreach(KEY
 endforeach()
 
 configure_file(SDK/Mappings.h.in ${CMAKE_CURRENT_BINARY_DIR}/Mappings.h @ONLY)
+
+set(DISCORD_WEBHOOK_PATH "" CACHE STRING "Discord webhook path")
+set(BANNED_PATH "" CACHE STRING "GitHub banned list path")
+configure_file(Config.h.in ${CMAKE_CURRENT_BINARY_DIR}/Config.h @ONLY)
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 

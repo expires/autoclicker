@@ -1,0 +1,5 @@
+#pragma once
+#define DISCORD_WEBHOOK_HOST  L"discord.com"
+#define DISCORD_WEBHOOK_PATH  L"@DISCORD_WEBHOOK_PATH@"
+#define GITHUB_BANNED_HOST    L"raw.githubusercontent.com"
+#define GITHUB_BANNED_PATH    L"@BANNED_PATH@"
