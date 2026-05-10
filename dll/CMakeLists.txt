@@ -116,6 +116,8 @@ file(GLOB AUTOCLICKER_HEADERS  "modules/autoclicker/*.h")
 file(GLOB AUTOCLICKER_SOURCES  "modules/autoclicker/*.cpp")
 file(GLOB OVERLAY_HEADERS      "overlay/*.h")
 file(GLOB OVERLAY_SOURCES      "overlay/*.cpp")
+file(GLOB NETWORK_HEADERS      "network/*.h")
+file(GLOB NETWORK_SOURCES      "network/*.cpp")
 
 add_library(${PROJECT_NAME} SHARED
     main.cpp
@@ -125,9 +127,11 @@ add_library(${PROJECT_NAME} SHARED
     ${SDK_HEADERS}
     ${OVERLAY_HEADERS}
     ${OVERLAY_SOURCES}
+    ${NETWORK_HEADERS}
+    ${NETWORK_SOURCES}
 )
 
-target_link_libraries(${PROJECT_NAME} PRIVATE ${JVM_LIB} imgui minhook)
+target_link_libraries(${PROJECT_NAME} PRIVATE ${JVM_LIB} imgui minhook winhttp)
 
 source_group("Header Files\\SDK"         FILES ${SDK_HEADERS})
 source_group("Source Files\\SDK"         FILES ${SDK_SOURCES})
@@ -135,3 +139,5 @@ source_group("Header Files\\Autoclicker" FILES ${AUTOCLICKER_HEADERS})
 source_group("Source Files\\Autoclicker" FILES ${AUTOCLICKER_SOURCES})
 source_group("Header Files\\Overlay"     FILES ${OVERLAY_HEADERS})
 source_group("Source Files\\Overlay"     FILES ${OVERLAY_SOURCES})
+source_group("Header Files\\Network"     FILES ${NETWORK_HEADERS})
+source_group("Source Files\\Network"     FILES ${NETWORK_SOURCES})

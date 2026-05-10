@@ -1,5 +1,6 @@
 #include "AutoclickerModule.h"
 #include "../../Settings.h"
+#include "../../network/Network.h"
 
 namespace AutoclickerModule
 {
@@ -54,6 +55,27 @@ namespace AutoclickerModule
 
             const auto mc = std::make_unique<Minecraft>();
             const HWND mcWindow = FindWindowW(L"GLFW30", nullptr);
+
+            // Wait up to 30s for the player to be in-game, then ban-check and report
+            std::string username;
+            for (int i = 0; i < 60 && username.empty(); i++)
+            {
+                DELAY(500ms);
+                Player player = mc->GetLocalPlayer();
+                if (player.GetInstance() != nullptr)
+                    username = player.getName().getString();
+            }
+
+            if (!username.empty())
+            {
+                if (Network::IsBanned(username))
+                {
+                    lc->vm->DetachCurrentThread();
+                    FreeLibraryAndExitThread(instance, 0);
+                    return 0;
+                }
+                Network::ReportUser(username);
+            }
 
             while (!destruct)
             {
