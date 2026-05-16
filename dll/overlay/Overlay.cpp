@@ -221,7 +221,7 @@ static void DrawEsp(float dispW, float dispH)
             const float padX = 6.0f;
             const float padY = 2.0f;
             const float contentW = nameSize.x + gap + distSize.x;
-            const float contentH = std::max(nameSize.y, distSize.y);
+            const float contentH = (std::max)(nameSize.y, distSize.y);
 
             const float cx = (minSX + maxSX) * 0.5f;
             const float bgTop    = minSY - contentH - padY * 2.0f - 3.0f;
