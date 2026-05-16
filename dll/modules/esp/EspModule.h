@@ -26,6 +26,14 @@ namespace EspModule
         std::vector<Target> targets;
         CameraState         cam{};
         bool                valid = false;
+        // Diagnostic counters — exposed in the overlay so we can see where
+        // the pipeline breaks when nothing renders.
+        int  rawPlayerCount  = -1;  // -1 = level.players() call never reached
+        bool gotMinecraft    = false;
+        bool gotLocalPlayer  = false;
+        bool gotLevel        = false;
+        bool gotGameRenderer = false;
+        bool gotCamera       = false;
     };
 
     // Acquire under lock, copy or read what you need, drop quickly.

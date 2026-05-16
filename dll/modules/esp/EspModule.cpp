@@ -55,22 +55,38 @@ namespace EspModule
             }
 
             back.targets.clear();
-            back.valid = false;
+            back.valid           = false;
+            back.rawPlayerCount  = -1;
+            back.gotMinecraft    = false;
+            back.gotLocalPlayer  = false;
+            back.gotLevel        = false;
+            back.gotGameRenderer = false;
+            back.gotCamera       = false;
+
+            auto publishDiag = [&]() {
+                std::lock_guard<std::mutex> lk(snapMutex);
+                std::swap(snapshot, back);
+            };
 
             jobject mcInst = mc.GetInstance();
-            if (mcInst == nullptr) { lc->env->PopLocalFrame(nullptr); std::this_thread::yield(); continue; }
+            if (mcInst == nullptr) { lc->env->PopLocalFrame(nullptr); publishDiag(); std::this_thread::yield(); continue; }
+            back.gotMinecraft = true;
 
             Player localPlayer = mc.GetLocalPlayer();
-            if (localPlayer.GetInstance() == nullptr) { lc->env->PopLocalFrame(nullptr); std::this_thread::yield(); continue; }
+            if (localPlayer.GetInstance() == nullptr) { lc->env->PopLocalFrame(nullptr); publishDiag(); std::this_thread::yield(); continue; }
+            back.gotLocalPlayer = true;
 
             Level level = mc.GetLevel();
-            if (level.GetInstance() == nullptr) { lc->env->PopLocalFrame(nullptr); std::this_thread::yield(); continue; }
+            if (level.GetInstance() == nullptr) { lc->env->PopLocalFrame(nullptr); publishDiag(); std::this_thread::yield(); continue; }
+            back.gotLevel = true;
 
             GameRenderer gr = mc.GetGameRenderer();
-            if (gr.GetInstance() == nullptr) { lc->env->PopLocalFrame(nullptr); std::this_thread::yield(); continue; }
+            if (gr.GetInstance() == nullptr) { lc->env->PopLocalFrame(nullptr); publishDiag(); std::this_thread::yield(); continue; }
+            back.gotGameRenderer = true;
 
             Camera cam = gr.getMainCamera();
-            if (cam.GetInstance() == nullptr) { lc->env->PopLocalFrame(nullptr); std::this_thread::yield(); continue; }
+            if (cam.GetInstance() == nullptr) { lc->env->PopLocalFrame(nullptr); publishDiag(); std::this_thread::yield(); continue; }
+            back.gotCamera = true;
 
             // Camera snapshot
             Vec3 camPos = cam.getPosition();
@@ -84,6 +100,7 @@ namespace EspModule
 
             // Players
             auto players = level.players();
+            back.rawPlayerCount = (int)players.size();
             jobject localInst = localPlayer.GetInstance();
             for (auto& p : players)
             {

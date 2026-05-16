@@ -316,6 +316,24 @@ static BOOL WINAPI hk_wglSwapBuffers(HDC hdc)
                 ImGui::SliderInt("##maxdist", &g_settings.maxDistance, 5, 256);
                 ImGui::SameLine(0, 0);
                 ImGui::TextDisabled(" Max: %dm", g_settings.maxDistance);
+
+                // Diagnostics — copy the snapshot stats under lock and show them
+                ImGui::Spacing();
+                ImGui::TextDisabled("Diagnostics");
+                EspModule::Snapshot snap;
+                {
+                    std::lock_guard<std::mutex> lk(EspModule::snapMutex);
+                    snap = EspModule::snapshot;
+                }
+                ImGui::Text("valid=%d  mc=%d  lp=%d  lvl=%d  gr=%d  cam=%d",
+                    snap.valid, snap.gotMinecraft, snap.gotLocalPlayer,
+                    snap.gotLevel, snap.gotGameRenderer, snap.gotCamera);
+                ImGui::Text("players()=%d  targets=%d",
+                    snap.rawPlayerCount, (int)snap.targets.size());
+                ImGui::Text("cam=(%.1f,%.1f,%.1f)  yaw=%.1f  pitch=%.1f  fov=%.1f",
+                    snap.cam.x, snap.cam.y, snap.cam.z,
+                    snap.cam.yRot, snap.cam.xRot, snap.cam.fov);
+
                 ImGui::Unindent();
             }
 
