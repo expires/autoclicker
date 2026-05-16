@@ -99,6 +99,6 @@
   "mtd_GameRenderer_getFov":       "method_3196",
   "desc_GameRenderer_getFov":      "(Lnet/minecraft/class_4184;FZ)F",
 
-  "mtd_ClientLevel_players":       "players",
+  "mtd_ClientLevel_players":       "method_18456",
   "desc_ClientLevel_players":      "()Ljava/util/List;"
 }
