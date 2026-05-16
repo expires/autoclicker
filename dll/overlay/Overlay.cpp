@@ -126,14 +126,13 @@ static void ApplyStyle()
     c[ImGuiCol_SeparatorHovered]      = FromHex(0x5865f2, 0.40f);
     c[ImGuiCol_SeparatorActive]       = FromHex(0x5865f2, 0.80f);
 
-    // Chrome-tab style: inactive tabs sit raised above the content as clearly
-    // lighter cards; active tab matches WindowBg so it "merges" into the
-    // panel below (the way Chrome tabs visually connect to the page).
-    c[ImGuiCol_Tab]                   = FromHex(0x161d2e); // inactive: lighter card
+    // Inactive tabs dark (matching WindowBg), active tab clearly lit — the
+    // selected one is the one that stands out as the brighter "card".
+    c[ImGuiCol_Tab]                   = FromHex(0x0b0f17); // inactive: blends with bg
     c[ImGuiCol_TabHovered]            = FromHex(0x1d2438);
-    c[ImGuiCol_TabActive]             = FromHex(0x0b0f17); // matches WindowBg
-    c[ImGuiCol_TabUnfocused]          = FromHex(0x161d2e);
-    c[ImGuiCol_TabUnfocusedActive]    = FromHex(0x0b0f17);
+    c[ImGuiCol_TabActive]             = FromHex(0x161d2e); // selected: brighter
+    c[ImGuiCol_TabUnfocused]          = FromHex(0x0b0f17);
+    c[ImGuiCol_TabUnfocusedActive]    = FromHex(0x161d2e);
     c[ImGuiCol_TabSelectedOverline]   = ImVec4(0, 0, 0, 0); // no overline
 
     c[ImGuiCol_ScrollbarBg]           = FromHex(0x0b0f17);

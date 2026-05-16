@@ -60,7 +60,8 @@
       "Bash(curl -s \"https://linkieapi.shedaniel.me/api/search?namespace=mojang&version=1.21.11&query=Style.getColor&limit=3&allowMethods=true&allowClasses=false&allowFields=false\")",
       "Bash(curl -s \"https://linkieapi.shedaniel.me/api/search?namespace=mojang&version=1.21.11&query=TextColor&limit=3&allowClasses=true&allowMethods=false&allowFields=false\")",
       "Bash(curl -s \"https://linkieapi.shedaniel.me/api/search?namespace=mojang&version=1.21.11&query=TextColor.getValue&limit=3&allowMethods=true&allowClasses=false&allowFields=false\")",
-      "WebFetch(domain:cdn.discordapp.com)"
+      "WebFetch(domain:cdn.discordapp.com)",
+      "Bash(git *)"
     ]
   }
 }

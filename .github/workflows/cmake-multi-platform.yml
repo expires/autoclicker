@@ -76,3 +76,33 @@ jobs:
         with:
           files: release/**/*
           token: ${{ secrets.GITHUB_TOKEN }}
+
+  # Rolling release for the injector to fetch. Each push to main replaces the
+  # assets on the 'latest' tag so injector.exe's hardcoded URL
+  #   github.com/expires/autoclicker/releases/latest/download/ac.dll
+  # always points at the freshest DLL.
+  release-rolling:
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Download build artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: autoclicker-fabric_1.21.11
+          path: ./rolling
+
+      - name: Publish rolling release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: latest
+          name: "Latest (auto)"
+          body: "Auto-built from main @ ${{ github.sha }}"
+          prerelease: true
+          files: |
+            ./rolling/ac.dll
+            ./rolling/injector.exe
+          token: ${{ secrets.GITHUB_TOKEN }}
