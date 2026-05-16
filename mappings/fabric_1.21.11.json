@@ -79,6 +79,15 @@
   "desc_Entity_getBoundingBox":    "()Lnet/minecraft/class_238;",
   "mtd_Entity_setGlowingTag":      "method_5834",
   "fld_Entity_hasGlowingTag":      "field_5958",
+  "fld_Entity_xo":                 "field_6014",
+  "fld_Entity_yo":                 "field_6036",
+  "fld_Entity_zo":                 "field_5969",
+
+  "class_DeltaTracker":            "net.minecraft.class_9779",
+  "mtd_Minecraft_getDeltaTracker": "method_61966",
+  "desc_Minecraft_getDeltaTracker":"()Lnet/minecraft/class_9779;",
+  "mtd_DeltaTracker_getPartialTick":"method_60637",
+  "desc_DeltaTracker_getPartialTick":"(Z)F",
 
   "fld_AABB_minX":                 "field_1323",
   "fld_AABB_minY":                 "field_1322",

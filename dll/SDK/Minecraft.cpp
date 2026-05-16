@@ -91,3 +91,13 @@ GameRenderer Minecraft::GetGameRenderer()
 	jobject rtn = lc->env->GetObjectField(this->GetInstance(), f);
 	return GameRenderer(rtn);
 }
+
+DeltaTracker Minecraft::GetDeltaTracker()
+{
+	jmethodID m = lc->env->GetMethodID(this->GetClass(),
+		MTD_Minecraft_getDeltaTracker, DESC_Minecraft_getDeltaTracker);
+	if (!m) { lc->env->ExceptionClear(); return DeltaTracker(nullptr); }
+	jobject rtn = lc->env->CallObjectMethod(this->GetInstance(), m);
+	if (lc->env->ExceptionCheck()) { lc->env->ExceptionClear(); return DeltaTracker(nullptr); }
+	return DeltaTracker(rtn);
+}

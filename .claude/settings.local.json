@@ -39,7 +39,12 @@
       "Bash(curl -s \"https://linkieapi.shedaniel.me/api/search?namespace=yarn&version=1.21.11&query=Entity.setGlowing&limit=5&allowMethods=true&allowClasses=false&allowFields=false\")",
       "Bash(curl -s \"https://linkieapi.shedaniel.me/api/search?namespace=yarn&version=1.21.11&query=isCurrentlyGlowing&limit=3&allowMethods=true&allowClasses=false&allowFields=false\")",
       "Bash(curl -s \"https://linkieapi.shedaniel.me/api/search?namespace=mojang&version=1.21.11&query=Entity.hasGlowingTag&limit=5&allowFields=true&allowMethods=true&allowClasses=false\")",
-      "Bash(curl -s \"https://linkieapi.shedaniel.me/api/search?namespace=yarn&version=1.21.11&query=Entity.glowing&limit=5&allowFields=true&allowMethods=false&allowClasses=false\")"
+      "Bash(curl -s \"https://linkieapi.shedaniel.me/api/search?namespace=yarn&version=1.21.11&query=Entity.glowing&limit=5&allowFields=true&allowMethods=false&allowClasses=false\")",
+      "Bash(curl -s \"https://linkieapi.shedaniel.me/api/search?namespace=mojang&version=1.21.11&query=Entity.xo&limit=3&allowFields=true&allowMethods=false&allowClasses=false\")",
+      "Bash(curl -s \"https://linkieapi.shedaniel.me/api/search?namespace=mojang&version=1.21.11&query=Entity.yo&limit=3&allowFields=true&allowMethods=false&allowClasses=false\")",
+      "Bash(curl -s \"https://linkieapi.shedaniel.me/api/search?namespace=mojang&version=1.21.11&query=Entity.zo&limit=3&allowFields=true&allowMethods=false&allowClasses=false\")",
+      "Bash(curl -s \"https://linkieapi.shedaniel.me/api/search?namespace=mojang&version=1.21.11&query=Minecraft.getDeltaTracker&limit=3&allowMethods=true&allowClasses=false&allowFields=false\")",
+      "Bash(curl -s \"https://linkieapi.shedaniel.me/api/search?namespace=mojang&version=1.21.11&query=DeltaTracker.getGameTimeDeltaPartialTick&limit=3&allowMethods=true&allowClasses=false&allowFields=false\")"
     ]
   }
 }

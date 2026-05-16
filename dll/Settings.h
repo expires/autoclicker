@@ -8,10 +8,10 @@ struct Settings
     bool selfDestruct = false;
 
     bool espEnabled   = false;
-    bool useGlow      = true;   // engine-rendered outline via setGlowingTag
-    bool drawBox      = false;  // 2D AABB rect (jitters at no-interp; off by default)
-    bool drawName     = false;
-    bool drawDistance = false;
+    bool useGlow      = false;  // engine outline; Lunar's render path ignores it
+    bool drawBox      = true;
+    bool drawName     = true;
+    bool drawDistance = true;
     int  maxDistance  = 100; // meters
 };
 

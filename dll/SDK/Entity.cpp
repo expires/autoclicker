@@ -86,6 +86,22 @@ double Entity::getX() { return getPosition().getX(); }
 double Entity::getY() { return getPosition().getY(); }
 double Entity::getZ() { return getPosition().getZ(); }
 
+double Entity::getXo()
+{
+    jfieldID f = lc->env->GetFieldID(this->GetClass(), FLD_Entity_xo, "D");
+    return lc->env->GetDoubleField(this->instance, f);
+}
+double Entity::getYo()
+{
+    jfieldID f = lc->env->GetFieldID(this->GetClass(), FLD_Entity_yo, "D");
+    return lc->env->GetDoubleField(this->instance, f);
+}
+double Entity::getZo()
+{
+    jfieldID f = lc->env->GetFieldID(this->GetClass(), FLD_Entity_zo, "D");
+    return lc->env->GetDoubleField(this->instance, f);
+}
+
 float Entity::getYRot()
 {
     jfieldID f = lc->env->GetFieldID(this->GetClass(), FLD_Entity_yRot, "F");

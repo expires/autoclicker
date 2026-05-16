@@ -155,18 +155,31 @@ static void DrawEsp(float dispW, float dispH)
     const ImU32 colTextShadow = IM_COL32(0, 0, 0, 200);
     const float maxDistSq = (float)g_settings.maxDistance * (float)g_settings.maxDistance;
 
+    const double pt = (double)snap.partialTick;
+
     for (const auto& t : snap.targets)
     {
-        double ddx = t.x - snap.cam.x;
-        double ddy = t.y - snap.cam.y;
-        double ddz = t.z - snap.cam.z;
+        // Interpolate entity position the same way MC does at render time.
+        // Camera.position was already interpolated by Camera.setup(), so the
+        // two now share the same frame's partial tick.
+        const double ix = t.prevX + (t.x - t.prevX) * pt;
+        const double iy = t.prevY + (t.y - t.prevY) * pt;
+        const double iz = t.prevZ + (t.z - t.prevZ) * pt;
+
+        double ddx = ix - snap.cam.x;
+        double ddy = iy - snap.cam.y;
+        double ddz = iz - snap.cam.z;
         double distSq = ddx*ddx + ddy*ddy + ddz*ddz;
         if (distSq > maxDistSq) continue;
 
-        // Project all 8 AABB corners; take screen-space min/max.
-        const double cx[2] = {t.minX, t.maxX};
-        const double cy[2] = {t.minY, t.maxY};
-        const double cz[2] = {t.minZ, t.maxZ};
+        // Rebuild AABB around the interpolated feet position.
+        const double minX = ix - t.halfWidth, maxX = ix + t.halfWidth;
+        const double minY = iy,               maxY = iy + t.height;
+        const double minZ = iz - t.halfDepth, maxZ = iz + t.halfDepth;
+
+        const double cx[2] = {minX, maxX};
+        const double cy[2] = {minY, maxY};
+        const double cz[2] = {minZ, maxZ};
 
         float minSX =  1e9f, minSY =  1e9f;
         float maxSX = -1e9f, maxSY = -1e9f;

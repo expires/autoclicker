@@ -60,6 +60,10 @@ foreach(KEY
     fld_Entity_position desc_Entity_position fld_Entity_yRot fld_Entity_xRot
     mtd_Entity_getBoundingBox   desc_Entity_getBoundingBox
     mtd_Entity_setGlowingTag fld_Entity_hasGlowingTag
+    fld_Entity_xo fld_Entity_yo fld_Entity_zo
+    class_DeltaTracker
+    mtd_Minecraft_getDeltaTracker   desc_Minecraft_getDeltaTracker
+    mtd_DeltaTracker_getPartialTick desc_DeltaTracker_getPartialTick
     fld_AABB_minX fld_AABB_minY fld_AABB_minZ fld_AABB_maxX fld_AABB_maxY fld_AABB_maxZ
     fld_Vec3_x fld_Vec3_y fld_Vec3_z
     fld_Camera_position desc_Camera_position fld_Camera_xRot fld_Camera_yRot

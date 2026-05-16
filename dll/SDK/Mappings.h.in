@@ -85,6 +85,15 @@
 #define DESC_Entity_getBoundingBox  "@desc_Entity_getBoundingBox@"
 #define MTD_Entity_setGlowingTag    "@mtd_Entity_setGlowingTag@"
 #define FLD_Entity_hasGlowingTag    "@fld_Entity_hasGlowingTag@"
+#define FLD_Entity_xo               "@fld_Entity_xo@"
+#define FLD_Entity_yo               "@fld_Entity_yo@"
+#define FLD_Entity_zo               "@fld_Entity_zo@"
+
+#define MC_DeltaTracker                  "@class_DeltaTracker@"
+#define MTD_Minecraft_getDeltaTracker    "@mtd_Minecraft_getDeltaTracker@"
+#define DESC_Minecraft_getDeltaTracker   "@desc_Minecraft_getDeltaTracker@"
+#define MTD_DeltaTracker_getPartialTick  "@mtd_DeltaTracker_getPartialTick@"
+#define DESC_DeltaTracker_getPartialTick "@desc_DeltaTracker_getPartialTick@"
 
 #define FLD_AABB_minX  "@fld_AABB_minX@"
 #define FLD_AABB_minY  "@fld_AABB_minY@"

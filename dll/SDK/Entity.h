@@ -29,6 +29,12 @@ public:
     double getY();
     double getZ();
 
+    // Previous-tick position fields, used for render-time interpolation.
+    // MC renders entities at lerp(partialTick, [xyz]o, [xyz]).
+    double getXo();
+    double getYo();
+    double getZo();
+
     // Yaw / pitch fields directly on Entity.
     float getYRot();
     float getXRot();

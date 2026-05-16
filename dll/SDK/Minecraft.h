@@ -7,6 +7,7 @@
 #include "Gui.h"
 #include "Level.h"
 #include "GameRenderer.h"
+#include "DeltaTracker.h"
 
 class Minecraft
 {
@@ -30,4 +31,6 @@ public:
 	Level GetLevel();
 
 	GameRenderer GetGameRenderer();
+
+	DeltaTracker GetDeltaTracker();
 };

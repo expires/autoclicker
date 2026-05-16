@@ -8,9 +8,12 @@ namespace EspModule
 {
     struct Target
     {
-        double x, y, z;
-        double minX, minY, minZ;
-        double maxX, maxY, maxZ;
+        double x,    y,    z;     // current-tick position
+        double prevX, prevY, prevZ; // previous-tick position
+        // AABB extents centered on the entity's feet position. Stored as
+        // half-extents (and full height) so the overlay can rebuild the box
+        // around the lerped position without needing to re-read the AABB.
+        double halfWidth, height, halfDepth;
         std::string name;
     };
 
@@ -25,6 +28,7 @@ namespace EspModule
     {
         std::vector<Target> targets;
         CameraState         cam{};
+        float               partialTick = 1.0f;
         bool                valid = false;
         // Diagnostic counters — exposed in the overlay so we can see where
         // the pipeline breaks when nothing renders.

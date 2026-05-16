@@ -111,14 +111,25 @@ namespace EspModule
             if (cam.GetInstance() == nullptr) { lc->env->PopLocalFrame(nullptr); publishDiag(); std::this_thread::yield(); continue; }
             back.gotCamera = true;
 
-            // Camera snapshot
+            // Partial tick — the render-time interpolation factor MC uses for
+            // entity positions and the camera. We read entity positions at the
+            // tick boundary (xo / current); the overlay lerps using this value.
+            DeltaTracker dt = mc.GetDeltaTracker();
+            if (dt.GetInstance() != nullptr)
+                back.partialTick = dt.getPartialTick(true);
+            else
+                back.partialTick = 1.0f;
+
+            // Camera snapshot. Camera.position is already interpolated to the
+            // current render's partial tick by Camera.setup(), so we use it
+            // as-is without further lerping.
             Vec3 camPos = cam.getPosition();
             back.cam.x    = camPos.getX();
             back.cam.y    = camPos.getY();
             back.cam.z    = camPos.getZ();
             back.cam.yRot = cam.getYRot();
             back.cam.xRot = cam.getXRot();
-            back.cam.fov  = gr.getFov(cam, 1.0f, true);
+            back.cam.fov  = gr.getFov(cam, back.partialTick, true);
             if (lc->env->ExceptionCheck()) { lc->env->ExceptionClear(); back.cam.fov = 70.0f; }
 
             // Players
@@ -138,13 +149,13 @@ namespace EspModule
                 t.x = pos.getX();
                 t.y = pos.getY();
                 t.z = pos.getZ();
+                t.prevX = p.getXo();
+                t.prevY = p.getYo();
+                t.prevZ = p.getZo();
 
                 double dx = t.x - back.cam.x, dy = t.y - back.cam.y, dz = t.z - back.cam.z;
                 double distSq = dx*dx + dy*dy + dz*dz;
 
-                // Engine-rendered outline. Cheap method call; fine to set every
-                // iteration. setGlowingTag(false) is idempotent so we can also
-                // use it to clear out-of-range glows mid-flight.
                 bool shouldGlow = g_settings.useGlow && distSq <= maxDistSq;
                 if (p.setGlowingTag(shouldGlow))
                 {
@@ -158,14 +169,18 @@ namespace EspModule
                 AABB box = p.getBoundingBox();
                 if (box.GetInstance() != nullptr)
                 {
-                    t.minX = box.minX(); t.minY = box.minY(); t.minZ = box.minZ();
-                    t.maxX = box.maxX(); t.maxY = box.maxY(); t.maxZ = box.maxZ();
+                    // Convert absolute AABB to extents centered on feet. Width
+                    // and depth are symmetrical around the entity's X/Z; height
+                    // is the full Y span from feet upward.
+                    t.halfWidth = (box.maxX() - box.minX()) * 0.5;
+                    t.height    =  box.maxY() - box.minY();
+                    t.halfDepth = (box.maxZ() - box.minZ()) * 0.5;
                 }
                 else
                 {
-                    t.minX = t.x - 0.3; t.maxX = t.x + 0.3;
-                    t.minY = t.y;        t.maxY = t.y + 1.8;
-                    t.minZ = t.z - 0.3; t.maxZ = t.z + 0.3;
+                    t.halfWidth = 0.3;
+                    t.height    = 1.8;
+                    t.halfDepth = 0.3;
                 }
 
                 Component nameC = p.getName();
