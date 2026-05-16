@@ -49,6 +49,25 @@ static void SectionHeader(const char* label)
     ImGui::Dummy({0, 2});
 }
 
+// Checkbox where "checked" = the whole box filled with the accent color, not
+// a checkmark icon. ImGui's built-in Checkbox always uses FrameBg for the box
+// + CheckMark on top; we swap FrameBg based on state and hide the checkmark.
+static bool FilledCheckbox(const char* label, bool* v)
+{
+    const ImVec4 frameOff    = FromHex(0x161d2e);
+    const ImVec4 frameOffHov = FromHex(0x1d2438);
+    const ImVec4 frameOn     = FromHex(0x5865f2);
+    const ImVec4 frameOnHov  = FromHex(0x6b76f3);
+    const bool   on = *v;
+    ImGui::PushStyleColor(ImGuiCol_FrameBg,        on ? frameOn    : frameOff);
+    ImGui::PushStyleColor(ImGuiCol_FrameBgHovered, on ? frameOnHov : frameOffHov);
+    ImGui::PushStyleColor(ImGuiCol_FrameBgActive,  on ? frameOn    : frameOffHov);
+    ImGui::PushStyleColor(ImGuiCol_CheckMark,      ImVec4(0, 0, 0, 0)); // hidden
+    const bool changed = ImGui::Checkbox(label, v);
+    ImGui::PopStyleColor(4);
+    return changed;
+}
+
 static void ApplyStyle()
 {
     ImGuiStyle& s = ImGui::GetStyle();
@@ -61,7 +80,11 @@ static void ApplyStyle()
     s.WindowRounding     = 8.0f;
     s.FrameRounding      = 4.0f;
     s.GrabRounding       = 6.0f;
-    s.TabRounding        = 2.0f;
+    // Chrome-style tabs: rounded top, the active tab blends into the panel
+    // below, inactive tabs sit on a darker bar.
+    s.TabRounding        = 8.0f;
+    s.TabBarBorderSize   = 0.0f;
+    s.TabBorderSize      = 0.0f;
     s.ScrollbarRounding  = 4.0f;
     s.ChildRounding      = 6.0f;
     s.PopupRounding      = 4.0f;
@@ -103,14 +126,15 @@ static void ApplyStyle()
     c[ImGuiCol_SeparatorHovered]      = FromHex(0x5865f2, 0.40f);
     c[ImGuiCol_SeparatorActive]       = FromHex(0x5865f2, 0.80f);
 
-    // Tabs — keep the fill the same as the window so the active tab "blends",
-    // then highlight selection with TabSelectedOverline for the underline look.
-    c[ImGuiCol_Tab]                   = FromHex(0x0b0f17);
-    c[ImGuiCol_TabHovered]            = FromHex(0x161d2e);
-    c[ImGuiCol_TabActive]             = FromHex(0x0b0f17);
-    c[ImGuiCol_TabUnfocused]          = FromHex(0x0b0f17);
+    // Chrome-tab style: inactive tabs sit raised above the content as clearly
+    // lighter cards; active tab matches WindowBg so it "merges" into the
+    // panel below (the way Chrome tabs visually connect to the page).
+    c[ImGuiCol_Tab]                   = FromHex(0x161d2e); // inactive: lighter card
+    c[ImGuiCol_TabHovered]            = FromHex(0x1d2438);
+    c[ImGuiCol_TabActive]             = FromHex(0x0b0f17); // matches WindowBg
+    c[ImGuiCol_TabUnfocused]          = FromHex(0x161d2e);
     c[ImGuiCol_TabUnfocusedActive]    = FromHex(0x0b0f17);
-    c[ImGuiCol_TabSelectedOverline]   = FromHex(0x5865f2);
+    c[ImGuiCol_TabSelectedOverline]   = ImVec4(0, 0, 0, 0); // no overline
 
     c[ImGuiCol_ScrollbarBg]           = FromHex(0x0b0f17);
     c[ImGuiCol_ScrollbarGrab]         = FromHex(0x1e2535);
@@ -376,7 +400,7 @@ static BOOL WINAPI hk_wglSwapBuffers(HDC hdc)
         if (s_visible)
         {
             ImGui::SetNextWindowSize({display.x * 0.30f, 0}, ImGuiCond_Always);
-            ImGui::Begin("AutoClicker", nullptr,
+            ImGui::Begin("manuclicker", nullptr,
                 ImGuiWindowFlags_NoScrollbar |
                 ImGuiWindowFlags_NoCollapse  |
                 ImGuiWindowFlags_NoResize);
@@ -387,8 +411,8 @@ static BOOL WINAPI hk_wglSwapBuffers(HDC hdc)
                 {
                     SectionHeader("BEHAVIOR");
                     ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(6.0f, 5.0f));
-                    ImGui::Checkbox("Enabled",      &g_settings.acEnabled);
-                    ImGui::Checkbox("Break Blocks", &g_settings.breakBlocks);
+                    FilledCheckbox("Enabled",      &g_settings.acEnabled);
+                    FilledCheckbox("Break Blocks", &g_settings.breakBlocks);
                     ImGui::PopStyleVar();
 
                     SectionHeader("CLICK RATE");
@@ -409,16 +433,16 @@ static BOOL WINAPI hk_wglSwapBuffers(HDC hdc)
                 {
                     SectionHeader("VISIBILITY");
                     ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(6.0f, 5.0f));
-                    ImGui::Checkbox("Enabled", &g_settings.espEnabled);
+                    FilledCheckbox("Enabled", &g_settings.espEnabled);
                     ImGui::PopStyleVar();
 
                     if (g_settings.espEnabled)
                     {
                         ImGui::Indent(16.0f);
                         ImGui::PushStyleColor(ImGuiCol_Text, FromHex(0x8892a4));
-                        ImGui::Checkbox("Box",      &g_settings.drawBox);
-                        ImGui::Checkbox("Name",     &g_settings.drawName);
-                        ImGui::Checkbox("Distance", &g_settings.drawDistance);
+                        FilledCheckbox("Box",      &g_settings.drawBox);
+                        FilledCheckbox("Name",     &g_settings.drawName);
+                        FilledCheckbox("Distance", &g_settings.drawDistance);
                         ImGui::PopStyleColor();
                         ImGui::Unindent(16.0f);
                     }
