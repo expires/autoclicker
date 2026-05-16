@@ -8,7 +8,6 @@
 #include "imgui_impl_opengl3.h"
 #include "../Settings.h"
 #include "../modules/esp/EspModule.h"
-#include "../SDK/JvmtiAgent.h"
 #include <MinHook.h>
 
 #ifndef M_PI
@@ -216,19 +215,42 @@ static void DrawEsp(float dispW, float dispH)
                 dist = distBuf;
             }
 
-            ImVec2 nameSize = name[0] ? ImGui::CalcTextSize(name) : ImVec2(0, 0);
-            ImVec2 distSize = dist[0] ? ImGui::CalcTextSize(dist) : ImVec2(0, 0);
-            const float gap = (name[0] && dist[0]) ? 6.0f : 0.0f;
-            const float padX = 6.0f;
-            const float padY = 2.0f;
+            // World-locked nametag position: MC renders its nametag at
+            //   entity.y + entity.height + 0.5  (0.5 block above head)
+            // Project that world point straight to screen so our pill sits
+            // exactly where the vanilla nametag does.
+            ImVec2 tagPos;
+            if (!ProjectWorld(ix, iy + t.height + 0.5, iz, snap.cam, dispW, dispH, tagPos))
+                continue;
+
+            // MC scales nametag text by 0.025 world units per font pixel, font
+            // is ~9 px tall in font space, so vanilla nametag height in world
+            // space is ~0.225 blocks. Convert to screen pixels using the same
+            // focal length our projection uses so we get matching apparent
+            // size at every distance.
+            double fovRad = snap.cam.fov * M_PI / 180.0;
+            if (fovRad <= 0.01) fovRad = 70.0 * M_PI / 180.0;
+            double f = 1.0 / std::tan(fovRad / 2.0);
+            const double WORLD_TEXT_HEIGHT = 0.225;
+            const double dist3D = std::sqrt(distSq);
+            float fontSize = (float)(WORLD_TEXT_HEIGHT * f * dispH * 0.5 / dist3D);
+            if (fontSize < 6.0f)  fontSize = 6.0f;
+            if (fontSize > 40.0f) fontSize = 40.0f;
+
+            ImFont* font = ImGui::GetFont();
+            ImVec2 nameSize = name[0] ? font->CalcTextSizeA(fontSize, FLT_MAX, 0.0f, name) : ImVec2(0,0);
+            ImVec2 distSize = dist[0] ? font->CalcTextSizeA(fontSize, FLT_MAX, 0.0f, dist) : ImVec2(0,0);
+            const float gap      = (name[0] && dist[0]) ? fontSize * 0.35f : 0.0f;
+            const float padX     = fontSize * 0.35f;
+            const float padY     = fontSize * 0.12f;
             const float contentW = nameSize.x + gap + distSize.x;
             const float contentH = (std::max)(nameSize.y, distSize.y);
 
-            const float cx = (minSX + maxSX) * 0.5f;
-            const float bgTop    = minSY - contentH - padY * 2.0f - 3.0f;
-            const float bgLeft   = cx - contentW * 0.5f - padX;
-            const float bgRight  = cx + contentW * 0.5f + padX;
-            const float bgBottom = bgTop + contentH + padY * 2.0f;
+            // Center the pill on the projected world-space nametag anchor.
+            const float bgLeft   = tagPos.x - contentW * 0.5f - padX;
+            const float bgRight  = tagPos.x + contentW * 0.5f + padX;
+            const float bgTop    = tagPos.y - contentH * 0.5f - padY;
+            const float bgBottom = tagPos.y + contentH * 0.5f + padY;
             const float rounding = (bgBottom - bgTop) * 0.5f;
 
             const ImU32 bgCol     = IM_COL32(12,  14, 20, 200);
@@ -241,8 +263,15 @@ static void DrawEsp(float dispW, float dispH)
 
             float cursorX = bgLeft + padX;
             const float textY = bgTop + padY + (contentH - nameSize.y) * 0.5f;
-            if (name[0]) { dl->AddText(ImVec2(cursorX, textY), nameCol, name); cursorX += nameSize.x + gap; }
-            if (dist[0]) { dl->AddText(ImVec2(cursorX, bgTop + padY + (contentH - distSize.y) * 0.5f), distCol, dist); }
+            if (name[0]) {
+                dl->AddText(font, fontSize, ImVec2(cursorX, textY), nameCol, name);
+                cursorX += nameSize.x + gap;
+            }
+            if (dist[0]) {
+                dl->AddText(font, fontSize,
+                    ImVec2(cursorX, bgTop + padY + (contentH - distSize.y) * 0.5f),
+                    distCol, dist);
+            }
         }
     }
 }
@@ -366,9 +395,6 @@ static BOOL WINAPI hk_wglSwapBuffers(HDC hdc)
                 ImGui::Text("players()=%d  targets=%d  glow ok=%d fail=%d",
                     snap.rawPlayerCount, (int)snap.targets.size(),
                     snap.glowCallsOk, snap.glowCallsFail);
-                ImGui::Text("jvmti step=%d/7  err=%d  active=%d",
-                    JvmtiAgent::GetStep(), JvmtiAgent::GetError(),
-                    JvmtiAgent::IsActive() ? 1 : 0);
                 ImGui::Text("cam=(%.1f,%.1f,%.1f)  yaw=%.1f  pitch=%.1f  fov=%.1f",
                     snap.cam.x, snap.cam.y, snap.cam.z,
                     snap.cam.yRot, snap.cam.xRot, snap.cam.fov);

@@ -95,10 +95,6 @@
 #define MTD_DeltaTracker_getPartialTick  "@mtd_DeltaTracker_getPartialTick@"
 #define DESC_DeltaTracker_getPartialTick "@desc_DeltaTracker_getPartialTick@"
 
-#define MC_AvatarRenderer                    "@class_AvatarRenderer@"
-#define MTD_AvatarRenderer_shouldShowName    "@mtd_AvatarRenderer_shouldShowName@"
-#define DESC_AvatarRenderer_shouldShowName   "@desc_AvatarRenderer_shouldShowName@"
-
 #define FLD_AABB_minX  "@fld_AABB_minX@"
 #define FLD_AABB_minY  "@fld_AABB_minY@"
 #define FLD_AABB_minZ  "@fld_AABB_minZ@"
