@@ -171,7 +171,7 @@ int main()
     char dllPath[MAX_PATH];
     snprintf(dllPath, sizeof(dllPath), "%sac_%s.dll", tempDir, hash);
 
-    PrintStep("Downloading DLL from GitHub...");
+    PrintStep("Downloading...");
     HRESULT hr = URLDownloadToFileA(nullptr, DLL_URL, dllPath, 0, nullptr);
     if (FAILED(hr))
     {
