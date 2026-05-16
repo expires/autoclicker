@@ -123,7 +123,28 @@ static uint32_t extractColor(jobject component, uint32_t fallback)
     lc->env->DeleteLocalRef(textColor);
     if (lc->env->ExceptionCheck()) { lc->env->ExceptionClear(); return fallback; }
 
-    return 0xFF000000u | (uint32_t)(rgb & 0x00FFFFFF);
+    // MC's TextColor.getValue() returns 0x00RRGGBB. ImGui's ImU32 is ABGR
+    // (R in the low byte, B in the high byte) — swap R and B here so colors
+    // render correctly. Without this swap gold (0xFFAA00) prints as blue.
+    uint32_t r = (uint32_t)((rgb >> 16) & 0xFFu);
+    uint32_t g = (uint32_t)((rgb >>  8) & 0xFFu);
+    uint32_t b = (uint32_t)( rgb        & 0xFFu);
+    return (0xFFu << 24) | (b << 16) | (g << 8) | r;
+}
+
+// Multiply RGB channels by `factor` (alpha preserved). Used to make team
+// prefix/suffix render slightly dimmer than the player's name so the name
+// stays visually dominant.
+static uint32_t darkenRGB(uint32_t argb, float factor)
+{
+    uint32_t a = (argb >> 24) & 0xFFu;
+    uint32_t r = (uint32_t)(((argb >> 16) & 0xFFu) * factor);
+    uint32_t g = (uint32_t)(((argb >>  8) & 0xFFu) * factor);
+    uint32_t b = (uint32_t)(( argb        & 0xFFu) * factor);
+    if (r > 0xFF) r = 0xFF;
+    if (g > 0xFF) g = 0xFF;
+    if (b > 0xFF) b = 0xFF;
+    return (a << 24) | (r << 16) | (g << 8) | b;
 }
 
 std::vector<std::pair<std::string, uint32_t>> Entity::getFormattedNameChunks()
@@ -191,11 +212,18 @@ std::vector<std::pair<std::string, uint32_t>> Entity::getFormattedNameChunks()
                     if (sizeM && getM)
                     {
                         jint n = lc->env->CallIntMethod(siblings, sizeM);
+                        // formatNameForTeam appends the bare `name` component
+                        // by reference as one of the siblings — its identity
+                        // is preserved, so IsSameObject picks it out cleanly
+                        // and everything else (prefix/suffix) gets dimmed.
+                        jobject nameInst = nameC.GetInstance();
                         for (jint i = 0; i < n; ++i)
                         {
                             jobject sib = lc->env->CallObjectMethod(siblings, getM, i);
                             if (!sib) continue;
                             uint32_t col = extractColor(sib, rootColor);
+                            const bool isName = lc->env->IsSameObject(sib, nameInst);
+                            if (!isName) col = darkenRGB(col, 0.65f);
                             Component sibC(sib);
                             std::string s = sibC.getString();
                             lc->env->DeleteLocalRef(sib);
