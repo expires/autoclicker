@@ -83,6 +83,7 @@
 #define FLD_Entity_xRot             "@fld_Entity_xRot@"
 #define MTD_Entity_getBoundingBox   "@mtd_Entity_getBoundingBox@"
 #define DESC_Entity_getBoundingBox  "@desc_Entity_getBoundingBox@"
+#define MTD_Entity_setGlowingTag    "@mtd_Entity_setGlowingTag@"
 
 #define FLD_AABB_minX  "@fld_AABB_minX@"
 #define FLD_AABB_minY  "@fld_AABB_minY@"

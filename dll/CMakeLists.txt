@@ -59,6 +59,7 @@ foreach(KEY
     fld_Minecraft_gameRenderer  desc_Minecraft_gameRenderer
     fld_Entity_position desc_Entity_position fld_Entity_yRot fld_Entity_xRot
     mtd_Entity_getBoundingBox   desc_Entity_getBoundingBox
+    mtd_Entity_setGlowingTag
     fld_AABB_minX fld_AABB_minY fld_AABB_minZ fld_AABB_maxX fld_AABB_maxY fld_AABB_maxZ
     fld_Vec3_x fld_Vec3_y fld_Vec3_z
     fld_Camera_position desc_Camera_position fld_Camera_xRot fld_Camera_yRot

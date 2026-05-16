@@ -35,6 +35,10 @@ public:
 
     AABB getBoundingBox();
 
+    // Client-side only: flips Entity.hasGlowingTag. isCurrentlyGlowing() reads
+    // this and the engine renders the outline. Not synced to server.
+    void setGlowingTag(bool glowing);
+
 private:
     jobject instance;
 };

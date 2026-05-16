@@ -8,9 +8,10 @@ struct Settings
     bool selfDestruct = false;
 
     bool espEnabled   = false;
-    bool drawBox      = true;
-    bool drawName     = true;
-    bool drawDistance = true;
+    bool useGlow      = true;   // engine-rendered outline via setGlowingTag
+    bool drawBox      = false;  // 2D AABB rect (jitters at no-interp; off by default)
+    bool drawName     = false;
+    bool drawDistance = false;
     int  maxDistance  = 100; // meters
 };
 

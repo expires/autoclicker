@@ -104,3 +104,12 @@ AABB Entity::getBoundingBox()
     jobject b = lc->env->CallObjectMethod(this->instance, m);
     return AABB(b);
 }
+
+void Entity::setGlowingTag(bool glowing)
+{
+    jmethodID m = lc->env->GetMethodID(this->GetClass(),
+        MTD_Entity_setGlowingTag, "(Z)V");
+    if (!m) { lc->env->ExceptionClear(); return; }
+    lc->env->CallVoidMethod(this->instance, m, (jboolean)glowing);
+    if (lc->env->ExceptionCheck()) lc->env->ExceptionClear();
+}

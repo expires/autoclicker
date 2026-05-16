@@ -309,6 +309,7 @@ static BOOL WINAPI hk_wglSwapBuffers(HDC hdc)
             if (g_settings.espEnabled)
             {
                 ImGui::Indent();
+                ImGui::Checkbox("Glow",     &g_settings.useGlow);
                 ImGui::Checkbox("Box",      &g_settings.drawBox);
                 ImGui::Checkbox("Name",     &g_settings.drawName);
                 ImGui::Checkbox("Distance", &g_settings.drawDistance);
