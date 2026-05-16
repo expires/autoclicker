@@ -20,4 +20,13 @@ namespace JvmtiAgent
     // we can see at a glance whether the hook is installed (printf goes nowhere
     // in Lunar's no-console environment).
     bool IsActive();
+
+    // The highest step Init() reached. 0 = nothing, 7 = full success.
+    //   1 = got jvmtiEnv          5 = found AvatarRenderer class
+    //   2 = added capabilities    6 = found shouldShowName method
+    //   3 = set event callbacks   7 = SetBreakpoint succeeded
+    //   4 = enabled notification
+    int  GetStep();
+    // JVMTI error code from the failing call (0 = success or N/A).
+    int  GetError();
 }
