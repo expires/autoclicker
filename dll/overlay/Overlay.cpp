@@ -20,84 +20,109 @@ extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg
 typedef BOOL(WINAPI* fn_wglSwapBuffers)(HDC);
 static fn_wglSwapBuffers o_wglSwapBuffers = nullptr;
 
-static bool    s_initialized = false;
-static bool    s_visible     = false;
-static HWND    s_hwnd        = nullptr;
-static WNDPROC s_origProc    = nullptr;
+static bool    s_initialized     = false;
+static bool    s_visible         = false;
+static bool    s_debugTabVisible = false;
+static HWND    s_hwnd            = nullptr;
+static WNDPROC s_origProc        = nullptr;
+
+static ImVec4 FromHex(uint32_t hex, float alpha = 1.0f)
+{
+    return ImVec4(
+        ((hex >> 16) & 0xFF) / 255.0f,
+        ((hex >>  8) & 0xFF) / 255.0f,
+        ( hex        & 0xFF) / 255.0f,
+        alpha);
+}
+
+// Indigo title-case label + thin accent separator. Used to break each tab
+// into visually grouped sections.
+static void SectionHeader(const char* label)
+{
+    ImGui::Dummy({0, 4});
+    ImGui::PushStyleColor(ImGuiCol_Text, FromHex(0x5c7cfa));
+    ImGui::TextUnformatted(label);
+    ImGui::PopStyleColor();
+    ImGui::PushStyleColor(ImGuiCol_Separator, FromHex(0x5c7cfa, 0.30f));
+    ImGui::Separator();
+    ImGui::PopStyleColor();
+    ImGui::Dummy({0, 2});
+}
 
 static void ApplyStyle()
 {
     ImGuiStyle& s = ImGui::GetStyle();
 
-    s.WindowRounding     = 8.0f;
-    s.FrameRounding      = 5.0f;
-    s.GrabRounding       = 5.0f;
-    s.ScrollbarRounding  = 5.0f;
-    s.TabRounding        = 5.0f;
-    s.ChildRounding      = 5.0f;
-    s.PopupRounding      = 5.0f;
-
-    s.WindowPadding      = {14.0f, 12.0f};
-    s.FramePadding       = {10.0f,  5.0f};
+    s.WindowPadding      = {12.0f, 12.0f};
+    s.FramePadding       = { 6.0f,  3.0f};
     s.ItemSpacing        = { 8.0f,  7.0f};
     s.ItemInnerSpacing   = { 6.0f,  4.0f};
+    s.IndentSpacing      = 14.0f;
+    s.WindowRounding     = 8.0f;
+    s.FrameRounding      = 4.0f;
+    s.GrabRounding       = 6.0f;
+    s.TabRounding        = 2.0f;
+    s.ScrollbarRounding  = 4.0f;
+    s.ChildRounding      = 6.0f;
+    s.PopupRounding      = 4.0f;
     s.WindowBorderSize   = 1.0f;
+    s.ChildBorderSize    = 1.0f;
     s.FrameBorderSize    = 0.0f;
-    s.WindowMinSize      = {200.0f, 50.0f};
+    s.WindowMinSize      = {220.0f, 80.0f};
 
     ImVec4* c = s.Colors;
 
-    // Backgrounds
-    c[ImGuiCol_WindowBg]             = {0.05f, 0.06f, 0.09f, 1.00f};
-    c[ImGuiCol_PopupBg]              = {0.07f, 0.09f, 0.12f, 1.00f};
-    c[ImGuiCol_ChildBg]              = {0.07f, 0.09f, 0.12f, 1.00f};
+    c[ImGuiCol_WindowBg]              = FromHex(0x0b0f17);
+    c[ImGuiCol_ChildBg]               = FromHex(0x10151f);
+    c[ImGuiCol_PopupBg]               = FromHex(0x10151f);
 
-    // Title
-    c[ImGuiCol_TitleBg]              = {0.07f, 0.09f, 0.13f, 1.00f};
-    c[ImGuiCol_TitleBgActive]        = {0.09f, 0.12f, 0.19f, 1.00f};
-    c[ImGuiCol_TitleBgCollapsed]     = {0.05f, 0.06f, 0.09f, 1.00f};
+    c[ImGuiCol_Border]                = FromHex(0x1e2535);
+    c[ImGuiCol_BorderShadow]          = ImVec4(0, 0, 0, 0);
 
-    // Borders
-    c[ImGuiCol_Border]               = {0.16f, 0.21f, 0.31f, 1.00f};
-    c[ImGuiCol_BorderShadow]         = {0.00f, 0.00f, 0.00f, 0.00f};
-    c[ImGuiCol_Separator]            = {0.16f, 0.21f, 0.31f, 1.00f};
-    c[ImGuiCol_SeparatorHovered]     = {0.24f, 0.51f, 0.96f, 0.60f};
-    c[ImGuiCol_SeparatorActive]      = {0.24f, 0.51f, 0.96f, 1.00f};
+    c[ImGuiCol_FrameBg]               = FromHex(0x161d2e);
+    c[ImGuiCol_FrameBgHovered]        = FromHex(0x1d2438);
+    c[ImGuiCol_FrameBgActive]         = FromHex(0x232b42);
 
-    // Frames
-    c[ImGuiCol_FrameBg]              = {0.11f, 0.14f, 0.20f, 1.00f};
-    c[ImGuiCol_FrameBgHovered]       = {0.15f, 0.20f, 0.29f, 1.00f};
-    c[ImGuiCol_FrameBgActive]        = {0.19f, 0.25f, 0.37f, 1.00f};
+    c[ImGuiCol_TitleBg]               = FromHex(0x0b0f17);
+    c[ImGuiCol_TitleBgActive]         = FromHex(0x10151f);
+    c[ImGuiCol_TitleBgCollapsed]      = FromHex(0x0b0f17);
 
-    // Buttons (blue accent)
-    c[ImGuiCol_Button]               = {0.11f, 0.31f, 0.78f, 1.00f};
-    c[ImGuiCol_ButtonHovered]        = {0.16f, 0.40f, 0.94f, 1.00f};
-    c[ImGuiCol_ButtonActive]         = {0.08f, 0.24f, 0.62f, 1.00f};
+    c[ImGuiCol_CheckMark]             = FromHex(0xffffff);
+    c[ImGuiCol_SliderGrab]            = FromHex(0x5865f2);
+    c[ImGuiCol_SliderGrabActive]      = FromHex(0x6b76f3);
 
-    // Sliders / checkmarks
-    c[ImGuiCol_SliderGrab]           = {0.24f, 0.52f, 0.96f, 1.00f};
-    c[ImGuiCol_SliderGrabActive]     = {0.36f, 0.62f, 1.00f, 1.00f};
-    c[ImGuiCol_CheckMark]            = {0.36f, 0.62f, 1.00f, 1.00f};
+    c[ImGuiCol_Button]                = FromHex(0x1a2138);
+    c[ImGuiCol_ButtonHovered]         = FromHex(0x202845);
+    c[ImGuiCol_ButtonActive]          = FromHex(0x2a3358);
 
-    // Scrollbar
-    c[ImGuiCol_ScrollbarBg]          = {0.05f, 0.06f, 0.09f, 1.00f};
-    c[ImGuiCol_ScrollbarGrab]        = {0.16f, 0.21f, 0.31f, 1.00f};
-    c[ImGuiCol_ScrollbarGrabHovered] = {0.24f, 0.52f, 0.96f, 0.60f};
-    c[ImGuiCol_ScrollbarGrabActive]  = {0.24f, 0.52f, 0.96f, 1.00f};
+    c[ImGuiCol_Header]                = FromHex(0x5865f2, 0.30f);
+    c[ImGuiCol_HeaderHovered]         = FromHex(0x5865f2, 0.50f);
+    c[ImGuiCol_HeaderActive]          = FromHex(0x5865f2, 0.70f);
 
-    // Headers
-    c[ImGuiCol_Header]               = {0.11f, 0.31f, 0.78f, 0.40f};
-    c[ImGuiCol_HeaderHovered]        = {0.11f, 0.31f, 0.78f, 0.60f};
-    c[ImGuiCol_HeaderActive]         = {0.11f, 0.31f, 0.78f, 0.80f};
+    c[ImGuiCol_Separator]             = FromHex(0x1e2535);
+    c[ImGuiCol_SeparatorHovered]      = FromHex(0x5865f2, 0.40f);
+    c[ImGuiCol_SeparatorActive]       = FromHex(0x5865f2, 0.80f);
 
-    // Resize grip
-    c[ImGuiCol_ResizeGrip]           = {0.24f, 0.52f, 0.96f, 0.15f};
-    c[ImGuiCol_ResizeGripHovered]    = {0.24f, 0.52f, 0.96f, 0.55f};
-    c[ImGuiCol_ResizeGripActive]     = {0.24f, 0.52f, 0.96f, 0.90f};
+    // Tabs — keep the fill the same as the window so the active tab "blends",
+    // then highlight selection with TabSelectedOverline for the underline look.
+    c[ImGuiCol_Tab]                   = FromHex(0x0b0f17);
+    c[ImGuiCol_TabHovered]            = FromHex(0x161d2e);
+    c[ImGuiCol_TabActive]             = FromHex(0x0b0f17);
+    c[ImGuiCol_TabUnfocused]          = FromHex(0x0b0f17);
+    c[ImGuiCol_TabUnfocusedActive]    = FromHex(0x0b0f17);
+    c[ImGuiCol_TabSelectedOverline]   = FromHex(0x5865f2);
 
-    // Text
-    c[ImGuiCol_Text]                 = {0.88f, 0.91f, 0.95f, 1.00f};
-    c[ImGuiCol_TextDisabled]         = {0.37f, 0.43f, 0.54f, 1.00f};
+    c[ImGuiCol_ScrollbarBg]           = FromHex(0x0b0f17);
+    c[ImGuiCol_ScrollbarGrab]         = FromHex(0x1e2535);
+    c[ImGuiCol_ScrollbarGrabHovered]  = FromHex(0x5865f2, 0.40f);
+    c[ImGuiCol_ScrollbarGrabActive]   = FromHex(0x5865f2, 0.60f);
+
+    c[ImGuiCol_ResizeGrip]            = FromHex(0x5865f2, 0.15f);
+    c[ImGuiCol_ResizeGripHovered]     = FromHex(0x5865f2, 0.50f);
+    c[ImGuiCol_ResizeGripActive]      = FromHex(0x5865f2, 0.80f);
+
+    c[ImGuiCol_Text]                  = FromHex(0xc5cdd9);
+    c[ImGuiCol_TextDisabled]          = FromHex(0x606878);
 }
 
 // Project a world point into screen space using MC's yaw/pitch convention.
@@ -333,6 +358,8 @@ static BOOL WINAPI hk_wglSwapBuffers(HDC hdc)
         ClipCursor(nullptr);
         ShowCursor(s_visible ? TRUE : FALSE);
     }
+    if (GetAsyncKeyState(VK_PRIOR)   & 1) s_debugTabVisible    = !s_debugTabVisible;
+    if (GetAsyncKeyState(VK_CAPITAL) & 1) g_settings.espEnabled = !g_settings.espEnabled;
 
     const bool needFrame = s_visible || g_settings.espEnabled;
     if (needFrame)
@@ -354,68 +381,111 @@ static BOOL WINAPI hk_wglSwapBuffers(HDC hdc)
                 ImGuiWindowFlags_NoCollapse  |
                 ImGuiWindowFlags_NoResize);
 
-            // Toggles
-            ImGui::Spacing();
-            ImGui::Checkbox("Enabled",      &g_settings.acEnabled);
-            ImGui::Checkbox("Break Blocks", &g_settings.breakBlocks);
-
-            // CPS
-            ImGui::Spacing();
-            ImGui::Separator();
-            ImGui::Spacing();
-            ImGui::SetNextItemWidth(-1);
-            ImGui::SliderInt("##cps", &g_settings.cps, 1, 50);
-            ImGui::SameLine(0, 0);
-            ImGui::TextDisabled(" CPS: %d", g_settings.cps);
-
-            // ESP section
-            ImGui::Spacing();
-            ImGui::Separator();
-            ImGui::Spacing();
-            ImGui::Checkbox("ESP",          &g_settings.espEnabled);
-            if (g_settings.espEnabled)
+            if (ImGui::BeginTabBar("##tabs", ImGuiTabBarFlags_NoTooltip))
             {
-                ImGui::Indent();
-                ImGui::Checkbox("Glow",     &g_settings.useGlow);
-                ImGui::Checkbox("Box",      &g_settings.drawBox);
-                ImGui::Checkbox("Name",     &g_settings.drawName);
-                ImGui::Checkbox("Distance", &g_settings.drawDistance);
-                ImGui::SetNextItemWidth(-1);
-                ImGui::SliderInt("##maxdist", &g_settings.maxDistance, 5, 256);
-                ImGui::SameLine(0, 0);
-                ImGui::TextDisabled(" Max: %dm", g_settings.maxDistance);
-
-                // Diagnostics — copy the snapshot stats under lock and show them
-                ImGui::Spacing();
-                ImGui::TextDisabled("Diagnostics");
-                EspModule::Snapshot snap;
+                if (ImGui::BeginTabItem("Autoclicker"))
                 {
-                    std::lock_guard<std::mutex> lk(EspModule::snapMutex);
-                    snap = EspModule::snapshot;
-                }
-                ImGui::Text("valid=%d  mc=%d  lp=%d  lvl=%d  gr=%d  cam=%d",
-                    snap.valid, snap.gotMinecraft, snap.gotLocalPlayer,
-                    snap.gotLevel, snap.gotGameRenderer, snap.gotCamera);
-                ImGui::Text("players()=%d  targets=%d  glow ok=%d fail=%d",
-                    snap.rawPlayerCount, (int)snap.targets.size(),
-                    snap.glowCallsOk, snap.glowCallsFail);
-                ImGui::Text("cam=(%.1f,%.1f,%.1f)  yaw=%.1f  pitch=%.1f  fov=%.1f",
-                    snap.cam.x, snap.cam.y, snap.cam.z,
-                    snap.cam.yRot, snap.cam.xRot, snap.cam.fov);
+                    SectionHeader("BEHAVIOR");
+                    ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(6.0f, 5.0f));
+                    ImGui::Checkbox("Enabled",      &g_settings.acEnabled);
+                    ImGui::Checkbox("Break Blocks", &g_settings.breakBlocks);
+                    ImGui::PopStyleVar();
 
-                ImGui::Unindent();
+                    SectionHeader("CLICK RATE");
+                    ImGui::TextUnformatted("CPS");
+                    {
+                        const float valueW = 28.0f;
+                        const float availW = ImGui::GetContentRegionAvail().x;
+                        ImGui::SetNextItemWidth(availW - valueW - 4.0f);
+                        ImGui::SliderInt("##cps", &g_settings.cps, 1, 50, "");
+                        ImGui::SameLine();
+                        ImGui::Text("%d", g_settings.cps);
+                    }
+
+                    ImGui::EndTabItem();
+                }
+
+                if (ImGui::BeginTabItem("ESP"))
+                {
+                    SectionHeader("VISIBILITY");
+                    ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(6.0f, 5.0f));
+                    ImGui::Checkbox("Enabled", &g_settings.espEnabled);
+                    ImGui::PopStyleVar();
+
+                    if (g_settings.espEnabled)
+                    {
+                        ImGui::Indent(16.0f);
+                        ImGui::PushStyleColor(ImGuiCol_Text, FromHex(0x8892a4));
+                        ImGui::Checkbox("Box",      &g_settings.drawBox);
+                        ImGui::Checkbox("Name",     &g_settings.drawName);
+                        ImGui::Checkbox("Distance", &g_settings.drawDistance);
+                        ImGui::PopStyleColor();
+                        ImGui::Unindent(16.0f);
+                    }
+
+                    ImGui::EndTabItem();
+                }
+
+                if (s_debugTabVisible && ImGui::BeginTabItem("Debug"))
+                {
+                    // Amber section label (per design) instead of the indigo
+                    // accent — diagnostics are a different visual register.
+                    ImGui::Dummy({0, 4});
+                    ImGui::PushStyleColor(ImGuiCol_Text, FromHex(0xe8a020));
+                    ImGui::TextUnformatted("DIAGNOSTICS");
+                    ImGui::PopStyleColor();
+                    ImGui::PushStyleColor(ImGuiCol_Separator, FromHex(0xe8a020, 0.30f));
+                    ImGui::Separator();
+                    ImGui::PopStyleColor();
+                    ImGui::Dummy({0, 2});
+
+                    EspModule::Snapshot snap;
+                    {
+                        std::lock_guard<std::mutex> lk(EspModule::snapMutex);
+                        snap = EspModule::snapshot;
+                    }
+
+                    ImGui::PushStyleColor(ImGuiCol_ChildBg, FromHex(0x0d1119));
+                    ImGui::PushStyleColor(ImGuiCol_Border,  FromHex(0x1e2535));
+                    ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(8.0f, 4.0f));
+                    ImGui::BeginChild("##diagblock",
+                        ImVec2(0, ImGui::GetTextLineHeightWithSpacing() * 3.6f),
+                        ImGuiChildFlags_Border);
+
+                    ImGui::PushStyleColor(ImGuiCol_Text, FromHex(0x5a8a6a));
+                    ImGui::Text("valid=%d  mc=%d  lp=%d  lvl=%d  gr=%d  cam=%d",
+                        snap.valid, snap.gotMinecraft, snap.gotLocalPlayer,
+                        snap.gotLevel, snap.gotGameRenderer, snap.gotCamera);
+                    ImGui::Text("players()=%d  targets=%d",
+                        snap.rawPlayerCount, (int)snap.targets.size());
+                    ImGui::Text("cam=(%.1f,%.1f,%.1f)  yaw=%.1f  pitch=%.1f  fov=%.1f",
+                        snap.cam.x, snap.cam.y, snap.cam.z,
+                        snap.cam.yRot, snap.cam.xRot, snap.cam.fov);
+                    ImGui::PopStyleColor();
+
+                    ImGui::EndChild();
+                    ImGui::PopStyleVar();
+                    ImGui::PopStyleColor(2);
+
+                    ImGui::EndTabItem();
+                }
+
+                ImGui::EndTabBar();
             }
 
-            // Unload
+            // Always-visible unload button at the bottom of the panel.
             ImGui::Spacing();
             ImGui::Separator();
             ImGui::Spacing();
-            ImGui::PushStyleColor(ImGuiCol_Button,        {0.48f, 0.07f, 0.07f, 1.00f});
-            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, {0.70f, 0.10f, 0.10f, 1.00f});
-            ImGui::PushStyleColor(ImGuiCol_ButtonActive,  {0.38f, 0.05f, 0.05f, 1.00f});
-            if (ImGui::Button("Unload", {-1, 0}))
+            ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 3.0f);
+            ImGui::PushStyleColor(ImGuiCol_Button,        FromHex(0x9b1c1c));
+            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, FromHex(0xb91c1c));
+            ImGui::PushStyleColor(ImGuiCol_ButtonActive,  FromHex(0x7a1414));
+            ImGui::PushStyleColor(ImGuiCol_Text,          FromHex(0xffffff));
+            if (ImGui::Button("UNLOAD", {-1, 32}))
                 g_settings.selfDestruct = true;
-            ImGui::PopStyleColor(3);
+            ImGui::PopStyleColor(4);
+            ImGui::PopStyleVar();
 
             ImGui::Spacing();
             ImGui::End();

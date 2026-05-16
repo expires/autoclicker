@@ -7,12 +7,12 @@ struct Settings
     int  cps          = 10;
     bool selfDestruct = false;
 
-    bool espEnabled   = false;
-    bool useGlow      = false;  // engine outline; Lunar's render path ignores it
+    bool espEnabled   = true;
     bool drawBox      = true;
-    bool drawName     = true;   // JVMTI hook suppresses MC's nametag so no duplicate
+    bool drawName     = true;
     bool drawDistance = true;
-    int  maxDistance  = 100; // meters
+    // 8 chunks (128 blocks). Fixed — no UI slider for this anymore.
+    int  maxDistance  = 128;
 };
 
 inline Settings g_settings;

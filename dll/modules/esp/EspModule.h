@@ -43,8 +43,6 @@ namespace EspModule
         bool gotLevel        = false;
         bool gotGameRenderer = false;
         bool gotCamera       = false;
-        int  glowCallsOk     = 0;   // setGlowingTag(true) calls that succeeded
-        int  glowCallsFail   = 0;   // setGlowingTag(true) calls that failed
     };
 
     // Acquire under lock, copy or read what you need, drop quickly.

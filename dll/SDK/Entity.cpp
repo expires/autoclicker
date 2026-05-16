@@ -74,78 +74,128 @@ Component Entity::getTypeName()
     return Component(rtn);
 }
 
-// Reads the Style.getColor().getValue() chain for a single Component instance.
-// Returns the fallback color if any link is null/missing/throws.
-static uint32_t extractColor(jobject component, uint32_t fallback)
+// Returns ImGui-format ABGR (alpha 0xFF) if the component's Style has an
+// explicit color set, or 0 (alpha 0 = sentinel "no color") if the color is
+// inherited from an ancestor. The caller uses the zero-alpha to fall back to
+// the inherited color, the same way MC's renderer resolves Style inheritance.
+static uint32_t readLocalColor(jobject component)
 {
-    if (!component) return fallback;
+    if (!component) return 0;
 
     jclass compCls = lc->GetClass(MC_Component);
-    if (!compCls) return fallback;
+    if (!compCls) return 0;
     jmethodID getStyleM = lc->env->GetMethodID(compCls,
         MTD_Component_getStyle, DESC_Component_getStyle);
-    if (!getStyleM) { lc->env->ExceptionClear(); return fallback; }
+    if (!getStyleM) { lc->env->ExceptionClear(); return 0; }
 
     jobject style = lc->env->CallObjectMethod(component, getStyleM);
     if (lc->env->ExceptionCheck() || !style) {
         lc->env->ExceptionClear();
-        return fallback;
+        return 0;
     }
 
     jclass styleCls = lc->GetClass(MC_Style);
-    if (!styleCls) { lc->env->DeleteLocalRef(style); return fallback; }
+    if (!styleCls) { lc->env->DeleteLocalRef(style); return 0; }
     jmethodID getColorM = lc->env->GetMethodID(styleCls,
         MTD_Style_getColor, DESC_Style_getColor);
     if (!getColorM) {
         lc->env->ExceptionClear();
         lc->env->DeleteLocalRef(style);
-        return fallback;
+        return 0;
     }
 
     jobject textColor = lc->env->CallObjectMethod(style, getColorM);
     lc->env->DeleteLocalRef(style);
     if (lc->env->ExceptionCheck() || !textColor) {
         lc->env->ExceptionClear();
-        return fallback;
+        return 0;
     }
 
     jclass colorCls = lc->GetClass(MC_TextColor);
-    if (!colorCls) { lc->env->DeleteLocalRef(textColor); return fallback; }
+    if (!colorCls) { lc->env->DeleteLocalRef(textColor); return 0; }
     jmethodID getValueM = lc->env->GetMethodID(colorCls,
         MTD_TextColor_getValue, "()I");
     if (!getValueM) {
         lc->env->ExceptionClear();
         lc->env->DeleteLocalRef(textColor);
-        return fallback;
+        return 0;
     }
 
     jint rgb = lc->env->CallIntMethod(textColor, getValueM);
     lc->env->DeleteLocalRef(textColor);
-    if (lc->env->ExceptionCheck()) { lc->env->ExceptionClear(); return fallback; }
+    if (lc->env->ExceptionCheck()) { lc->env->ExceptionClear(); return 0; }
 
-    // MC's TextColor.getValue() returns 0x00RRGGBB. ImGui's ImU32 is ABGR
-    // (R in the low byte, B in the high byte) — swap R and B here so colors
-    // render correctly. Without this swap gold (0xFFAA00) prints as blue.
+    // MC stores 0x00RRGGBB. ImGui's ImU32 is ABGR — swap R and B.
     uint32_t r = (uint32_t)((rgb >> 16) & 0xFFu);
     uint32_t g = (uint32_t)((rgb >>  8) & 0xFFu);
     uint32_t b = (uint32_t)( rgb        & 0xFFu);
     return (0xFFu << 24) | (b << 16) | (g << 8) | r;
 }
 
-// Multiply RGB channels by `factor` (alpha preserved). Used to make team
-// prefix/suffix render slightly dimmer than the player's name so the name
-// stays visually dominant.
-static uint32_t darkenRGB(uint32_t argb, float factor)
+// Recursively flattens a Component tree into (text, color) chunks the same
+// way MC's renderer composes nametags: each node's effective color is its
+// own Style.color if set, otherwise inherited from its parent. Leaves emit
+// their full recursive text; interior nodes recurse into siblings so deeply
+// nested prefix structures (e.g. empty().append(coloredText)) resolve
+// correctly to the coloredText's color rather than the parent's fallback.
+static void flattenComponent(jobject component, uint32_t inheritedColor,
+                             std::vector<std::pair<std::string, uint32_t>>& out)
 {
-    uint32_t a = (argb >> 24) & 0xFFu;
-    uint32_t r = (uint32_t)(((argb >> 16) & 0xFFu) * factor);
-    uint32_t g = (uint32_t)(((argb >>  8) & 0xFFu) * factor);
-    uint32_t b = (uint32_t)(( argb        & 0xFFu) * factor);
-    if (r > 0xFF) r = 0xFF;
-    if (g > 0xFF) g = 0xFF;
-    if (b > 0xFF) b = 0xFF;
-    return (a << 24) | (r << 16) | (g << 8) | b;
+    if (!component) return;
+
+    const uint32_t local     = readLocalColor(component);
+    const uint32_t effective = local ? local : inheritedColor;
+
+    jclass compCls = lc->GetClass(MC_Component);
+    if (!compCls) return;
+    jmethodID getSiblingsM = lc->env->GetMethodID(compCls,
+        MTD_Component_getSiblings, DESC_Component_getSiblings);
+    if (!getSiblingsM) {
+        lc->env->ExceptionClear();
+        Component c(component);
+        std::string s = c.getString();
+        if (!s.empty()) out.emplace_back(std::move(s), effective);
+        return;
+    }
+
+    jobject siblings = lc->env->CallObjectMethod(component, getSiblingsM);
+    if (lc->env->ExceptionCheck()) { lc->env->ExceptionClear(); siblings = nullptr; }
+
+    jint n = 0;
+    jclass    listCls = nullptr;
+    jmethodID sizeM   = nullptr;
+    jmethodID getM    = nullptr;
+    if (siblings) {
+        listCls = lc->env->FindClass("java/util/List");
+        if (listCls) {
+            sizeM = lc->env->GetMethodID(listCls, "size", "()I");
+            getM  = lc->env->GetMethodID(listCls, "get",  "(I)Ljava/lang/Object;");
+            if (sizeM && getM) n = lc->env->CallIntMethod(siblings, sizeM);
+        }
+    }
+
+    if (n == 0) {
+        // Leaf — emit this node's recursive text with effective color.
+        Component c(component);
+        std::string s = c.getString();
+        if (!s.empty()) out.emplace_back(std::move(s), effective);
+    } else {
+        // Interior node — walk children with our effective color as their
+        // inherited fallback. The root's own text is skipped because for
+        // formatNameForTeam's structure the root is Component.empty().
+        for (jint i = 0; i < n; ++i) {
+            jobject sib = lc->env->CallObjectMethod(siblings, getM, i);
+            if (sib) {
+                flattenComponent(sib, effective, out);
+                lc->env->DeleteLocalRef(sib);
+            }
+        }
+    }
+
+    if (listCls) lc->env->DeleteLocalRef(listCls);
+    if (siblings) lc->env->DeleteLocalRef(siblings);
 }
+
 
 std::vector<std::pair<std::string, uint32_t>> Entity::getFormattedNameChunks()
 {
@@ -155,8 +205,8 @@ std::vector<std::pair<std::string, uint32_t>> Entity::getFormattedNameChunks()
     Component nameC = getName();
     if (nameC.GetInstance() == nullptr) return chunks;
 
-    // Resolve the team and produce the formatted MutableComponent. If anything
-    // fails we fall back to the bare name as a single white chunk.
+    // Resolve team + run formatNameForTeam. On any failure we fall through
+    // with formatted=nullptr and flatten the bare name instead.
     jobject formatted = nullptr;
     jmethodID getTeamM = lc->env->GetMethodID(this->GetClass(),
         MTD_Entity_getTeam, DESC_Entity_getTeam);
@@ -187,64 +237,8 @@ std::vector<std::pair<std::string, uint32_t>> Entity::getFormattedNameChunks()
     }
     else { lc->env->ExceptionClear(); }
 
-    // Use the formatted component if available, otherwise the bare name.
     jobject root = formatted ? formatted : nameC.GetInstance();
-    const uint32_t rootColor = extractColor(root, DEFAULT_COLOR);
-
-    // Walk top-level siblings — formatNameForTeam typically produces an empty
-    // root with [prefix, name, suffix] siblings, each carrying its own Style.
-    jclass compCls = lc->GetClass(MC_Component);
-    if (compCls)
-    {
-        jmethodID getSiblingsM = lc->env->GetMethodID(compCls,
-            MTD_Component_getSiblings, DESC_Component_getSiblings);
-        if (getSiblingsM)
-        {
-            jobject siblings = lc->env->CallObjectMethod(root, getSiblingsM);
-            if (lc->env->ExceptionCheck()) { lc->env->ExceptionClear(); siblings = nullptr; }
-            if (siblings)
-            {
-                jclass listCls = lc->env->FindClass("java/util/List");
-                if (listCls)
-                {
-                    jmethodID sizeM = lc->env->GetMethodID(listCls, "size", "()I");
-                    jmethodID getM  = lc->env->GetMethodID(listCls, "get",  "(I)Ljava/lang/Object;");
-                    if (sizeM && getM)
-                    {
-                        jint n = lc->env->CallIntMethod(siblings, sizeM);
-                        // formatNameForTeam appends the bare `name` component
-                        // by reference as one of the siblings — its identity
-                        // is preserved, so IsSameObject picks it out cleanly
-                        // and everything else (prefix/suffix) gets dimmed.
-                        jobject nameInst = nameC.GetInstance();
-                        for (jint i = 0; i < n; ++i)
-                        {
-                            jobject sib = lc->env->CallObjectMethod(siblings, getM, i);
-                            if (!sib) continue;
-                            uint32_t col = extractColor(sib, rootColor);
-                            const bool isName = lc->env->IsSameObject(sib, nameInst);
-                            if (!isName) col = darkenRGB(col, 0.65f);
-                            Component sibC(sib);
-                            std::string s = sibC.getString();
-                            lc->env->DeleteLocalRef(sib);
-                            if (!s.empty()) chunks.emplace_back(std::move(s), col);
-                        }
-                    }
-                    lc->env->DeleteLocalRef(listCls);
-                }
-                lc->env->DeleteLocalRef(siblings);
-            }
-        }
-        else { lc->env->ExceptionClear(); }
-    }
-
-    // No siblings (or all empty) — fall back to the whole component as one chunk.
-    if (chunks.empty())
-    {
-        Component rootC(root);
-        std::string s = rootC.getString();
-        if (!s.empty()) chunks.emplace_back(std::move(s), rootColor);
-    }
+    flattenComponent(root, DEFAULT_COLOR, chunks);
 
     if (formatted) lc->env->DeleteLocalRef(formatted);
     return chunks;

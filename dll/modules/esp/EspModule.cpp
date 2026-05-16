@@ -32,32 +32,11 @@ namespace EspModule
 
         Minecraft mc;
         Snapshot back;
-        // Tracks whether we currently have glow-tags set on any players, so we
-        // know to run a cleanup pass when ESP is toggled off or the DLL unloads.
-        bool glowApplied = false;
-
-        auto cleanupGlow = [&]() {
-            if (lc->env->PushLocalFrame(64) != 0) { lc->env->ExceptionClear(); return; }
-            jobject mcInst = mc.GetInstance();
-            if (mcInst)
-            {
-                Level lvl = mc.GetLevel();
-                if (lvl.GetInstance())
-                {
-                    auto players = lvl.players();
-                    for (auto& p : players) p.setGlowingTag(false);
-                }
-            }
-            if (lc->env->ExceptionCheck()) lc->env->ExceptionClear();
-            lc->env->PopLocalFrame(nullptr);
-            glowApplied = false;
-        };
 
         while (!AutoclickerModule::destruct)
         {
             if (!g_settings.espEnabled)
             {
-                if (glowApplied) cleanupGlow();
                 {
                     std::lock_guard<std::mutex> lk(snapMutex);
                     snapshot.valid = false;
@@ -83,8 +62,6 @@ namespace EspModule
             back.gotLevel        = false;
             back.gotGameRenderer = false;
             back.gotCamera       = false;
-            back.glowCallsOk     = 0;
-            back.glowCallsFail   = 0;
 
             auto publishDiag = [&]() {
                 std::lock_guard<std::mutex> lk(snapMutex);
@@ -155,16 +132,7 @@ namespace EspModule
 
                 double dx = t.x - back.cam.x, dy = t.y - back.cam.y, dz = t.z - back.cam.z;
                 double distSq = dx*dx + dy*dy + dz*dz;
-
-                bool shouldGlow = g_settings.useGlow && distSq <= maxDistSq;
-                if (p.setGlowingTag(shouldGlow))
-                {
-                    if (shouldGlow) back.glowCallsOk++;
-                }
-                else
-                {
-                    back.glowCallsFail++;
-                }
+                if (distSq > maxDistSq) continue;
 
                 AABB box = p.getBoundingBox();
                 if (box.GetInstance() != nullptr)
@@ -190,7 +158,6 @@ namespace EspModule
 
                 back.targets.push_back(std::move(t));
             }
-            glowApplied = g_settings.useGlow;
 
             if (lc->env->ExceptionCheck()) lc->env->ExceptionClear();
 
@@ -203,9 +170,6 @@ namespace EspModule
                 std::swap(snapshot, back);
             }
         }
-
-        // Final cleanup before detaching — don't leave glowing players behind.
-        if (glowApplied) cleanupGlow();
 
         lc->vm->DetachCurrentThread();
         return 0;
