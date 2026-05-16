@@ -150,9 +150,7 @@ static void DrawEsp(float dispW, float dispH)
     }
 
     ImDrawList* dl = ImGui::GetBackgroundDrawList();
-    const ImU32 colBox  = IM_COL32(255, 80,  80,  220);
-    const ImU32 colText = IM_COL32(255, 255, 255, 230);
-    const ImU32 colTextShadow = IM_COL32(0, 0, 0, 200);
+    const ImU32 colBox = IM_COL32(255, 80,  80,  220);
     const float maxDistSq = (float)g_settings.maxDistance * (float)g_settings.maxDistance;
 
     const double pt = (double)snap.partialTick;
@@ -208,20 +206,42 @@ static void DrawEsp(float dispW, float dispH)
 
         if (g_settings.drawName || g_settings.drawDistance)
         {
-            char buf[128];
-            float dist = (float)std::sqrt(distSq);
-            if (g_settings.drawName && g_settings.drawDistance)
-                snprintf(buf, sizeof(buf), "%s [%.1fm]", t.name.c_str(), dist);
-            else if (g_settings.drawName)
-                snprintf(buf, sizeof(buf), "%s", t.name.c_str());
-            else
-                snprintf(buf, sizeof(buf), "%.1fm", dist);
+            const char* name = g_settings.drawName ? t.name.c_str() : "";
+            char distBuf[16] = {};
+            const char* dist = "";
+            if (g_settings.drawDistance)
+            {
+                snprintf(distBuf, sizeof(distBuf), "%.1fm", (float)std::sqrt(distSq));
+                dist = distBuf;
+            }
 
-            ImVec2 ts = ImGui::CalcTextSize(buf);
-            float tx = (minSX + maxSX) * 0.5f - ts.x * 0.5f;
-            float ty = minSY - ts.y - 2.0f;
-            dl->AddText(ImVec2(tx + 1, ty + 1), colTextShadow, buf);
-            dl->AddText(ImVec2(tx,     ty),     colText,       buf);
+            ImVec2 nameSize = name[0] ? ImGui::CalcTextSize(name) : ImVec2(0, 0);
+            ImVec2 distSize = dist[0] ? ImGui::CalcTextSize(dist) : ImVec2(0, 0);
+            const float gap = (name[0] && dist[0]) ? 6.0f : 0.0f;
+            const float padX = 6.0f;
+            const float padY = 2.0f;
+            const float contentW = nameSize.x + gap + distSize.x;
+            const float contentH = std::max(nameSize.y, distSize.y);
+
+            const float cx = (minSX + maxSX) * 0.5f;
+            const float bgTop    = minSY - contentH - padY * 2.0f - 3.0f;
+            const float bgLeft   = cx - contentW * 0.5f - padX;
+            const float bgRight  = cx + contentW * 0.5f + padX;
+            const float bgBottom = bgTop + contentH + padY * 2.0f;
+            const float rounding = (bgBottom - bgTop) * 0.5f;
+
+            const ImU32 bgCol     = IM_COL32(12,  14, 20, 200);
+            const ImU32 borderCol = IM_COL32(80,  90, 110, 180);
+            const ImU32 nameCol   = IM_COL32(255, 255, 255, 240);
+            const ImU32 distCol   = IM_COL32(170, 200, 255, 220);
+
+            dl->AddRectFilled(ImVec2(bgLeft, bgTop), ImVec2(bgRight, bgBottom), bgCol, rounding);
+            dl->AddRect      (ImVec2(bgLeft, bgTop), ImVec2(bgRight, bgBottom), borderCol, rounding, 0, 1.0f);
+
+            float cursorX = bgLeft + padX;
+            const float textY = bgTop + padY + (contentH - nameSize.y) * 0.5f;
+            if (name[0]) { dl->AddText(ImVec2(cursorX, textY), nameCol, name); cursorX += nameSize.x + gap; }
+            if (dist[0]) { dl->AddText(ImVec2(cursorX, bgTop + padY + (contentH - distSize.y) * 0.5f), distCol, dist); }
         }
     }
 }
