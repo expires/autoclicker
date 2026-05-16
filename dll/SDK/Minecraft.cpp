@@ -77,3 +77,17 @@ HitResult Minecraft::getHitResult()
 
 	return HitResult(rtn);
 }
+
+Level Minecraft::GetLevel()
+{
+	jfieldID f = lc->env->GetFieldID(this->GetClass(), FLD_Minecraft_level, DESC_Minecraft_level);
+	jobject rtn = lc->env->GetObjectField(this->GetInstance(), f);
+	return Level(rtn);
+}
+
+GameRenderer Minecraft::GetGameRenderer()
+{
+	jfieldID f = lc->env->GetFieldID(this->GetClass(), FLD_Minecraft_gameRenderer, DESC_Minecraft_gameRenderer);
+	jobject rtn = lc->env->GetObjectField(this->GetInstance(), f);
+	return GameRenderer(rtn);
+}

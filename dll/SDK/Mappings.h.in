@@ -63,3 +63,47 @@
 #define DESC_ItemStack_getItem          "@desc_ItemStack_getItem@"
 #define MTD_Item_getName                "@mtd_Item_getName@"
 #define DESC_Item_getName               "@desc_Item_getName@"
+
+// ESP additions
+#define MC_ClientLevel             "@class_ClientLevel@"
+#define MC_AbstractClientPlayer    "@class_AbstractClientPlayer@"
+#define MC_Camera                  "@class_Camera@"
+#define MC_GameRenderer            "@class_GameRenderer@"
+#define MC_AABB                    "@class_AABB@"
+#define MC_Vec3                    "@class_Vec3@"
+
+#define FLD_Minecraft_level             "@fld_Minecraft_level@"
+#define DESC_Minecraft_level            "@desc_Minecraft_level@"
+#define FLD_Minecraft_gameRenderer      "@fld_Minecraft_gameRenderer@"
+#define DESC_Minecraft_gameRenderer     "@desc_Minecraft_gameRenderer@"
+
+#define FLD_Entity_position         "@fld_Entity_position@"
+#define DESC_Entity_position        "@desc_Entity_position@"
+#define FLD_Entity_yRot             "@fld_Entity_yRot@"
+#define FLD_Entity_xRot             "@fld_Entity_xRot@"
+#define MTD_Entity_getBoundingBox   "@mtd_Entity_getBoundingBox@"
+#define DESC_Entity_getBoundingBox  "@desc_Entity_getBoundingBox@"
+
+#define FLD_AABB_minX  "@fld_AABB_minX@"
+#define FLD_AABB_minY  "@fld_AABB_minY@"
+#define FLD_AABB_minZ  "@fld_AABB_minZ@"
+#define FLD_AABB_maxX  "@fld_AABB_maxX@"
+#define FLD_AABB_maxY  "@fld_AABB_maxY@"
+#define FLD_AABB_maxZ  "@fld_AABB_maxZ@"
+
+#define FLD_Vec3_x  "@fld_Vec3_x@"
+#define FLD_Vec3_y  "@fld_Vec3_y@"
+#define FLD_Vec3_z  "@fld_Vec3_z@"
+
+#define FLD_Camera_position    "@fld_Camera_position@"
+#define DESC_Camera_position   "@desc_Camera_position@"
+#define FLD_Camera_xRot        "@fld_Camera_xRot@"
+#define FLD_Camera_yRot        "@fld_Camera_yRot@"
+
+#define FLD_GameRenderer_mainCamera   "@fld_GameRenderer_mainCamera@"
+#define DESC_GameRenderer_mainCamera  "@desc_GameRenderer_mainCamera@"
+#define MTD_GameRenderer_getFov       "@mtd_GameRenderer_getFov@"
+#define DESC_GameRenderer_getFov      "@desc_GameRenderer_getFov@"
+
+#define MTD_ClientLevel_players       "@mtd_ClientLevel_players@"
+#define DESC_ClientLevel_players      "@desc_ClientLevel_players@"

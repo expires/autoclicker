@@ -1,11 +1,18 @@
 #include "Overlay.h"
 #include <Windows.h>
 #include <gl/GL.h>
+#include <cmath>
+#include <mutex>
 #include "imgui.h"
 #include "imgui_impl_win32.h"
 #include "imgui_impl_opengl3.h"
 #include "../Settings.h"
+#include "../modules/esp/EspModule.h"
 #include <MinHook.h>
+
+#ifndef M_PI
+#define M_PI 3.14159265358979323846
+#endif
 
 // Declared manually — intentionally commented out in imgui_impl_win32.h to avoid <windows.h> dependency
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
@@ -93,6 +100,119 @@ static void ApplyStyle()
     c[ImGuiCol_TextDisabled]         = {0.37f, 0.43f, 0.54f, 1.00f};
 }
 
+// Project a world point into screen space using MC's yaw/pitch convention.
+// Returns false if the point is behind the camera.
+static bool ProjectWorld(double wx, double wy, double wz,
+                         const EspModule::CameraState& cam,
+                         float dispW, float dispH, ImVec2& out)
+{
+    double dx = wx - cam.x;
+    double dy = wy - cam.y;
+    double dz = wz - cam.z;
+
+    double yawRad   = cam.yRot * M_PI / 180.0;
+    double pitchRad = cam.xRot * M_PI / 180.0;
+
+    // Undo yaw rotation around Y
+    double cy = std::cos(yawRad);
+    double sy = std::sin(yawRad);
+    double x1 =  dx * cy + dz * sy;
+    double z1 = -dx * sy + dz * cy;
+    double y1 =  dy;
+
+    // Undo pitch rotation around X
+    double cp = std::cos(pitchRad);
+    double sp = std::sin(pitchRad);
+    double y2 =  y1 * cp + z1 * sp;
+    double z2 = -y1 * sp + z1 * cp;
+    double x2 =  x1;
+
+    if (z2 <= 0.1) return false;
+
+    double fovRad = cam.fov * M_PI / 180.0;
+    if (fovRad <= 0.01) fovRad = 70.0 * M_PI / 180.0;
+    double f = 1.0 / std::tan(fovRad / 2.0);
+    double aspect = (double)dispW / (double)dispH;
+
+    // Sign flip on X because MC's +X at yaw=0 sits to the player's left.
+    out.x = (float)(dispW * 0.5 - (x2 / z2) * f / aspect * dispW * 0.5);
+    out.y = (float)(dispH * 0.5 - (y2 / z2) * f                * dispH * 0.5);
+    return true;
+}
+
+static void DrawEsp(float dispW, float dispH)
+{
+    EspModule::Snapshot snap;
+    {
+        std::lock_guard<std::mutex> lk(EspModule::snapMutex);
+        if (!EspModule::snapshot.valid) return;
+        snap = EspModule::snapshot;
+    }
+
+    ImDrawList* dl = ImGui::GetBackgroundDrawList();
+    const ImU32 colBox  = IM_COL32(255, 80,  80,  220);
+    const ImU32 colText = IM_COL32(255, 255, 255, 230);
+    const ImU32 colTextShadow = IM_COL32(0, 0, 0, 200);
+    const float maxDistSq = (float)g_settings.maxDistance * (float)g_settings.maxDistance;
+
+    for (const auto& t : snap.targets)
+    {
+        double ddx = t.x - snap.cam.x;
+        double ddy = t.y - snap.cam.y;
+        double ddz = t.z - snap.cam.z;
+        double distSq = ddx*ddx + ddy*ddy + ddz*ddz;
+        if (distSq > maxDistSq) continue;
+
+        // Project all 8 AABB corners; take screen-space min/max.
+        const double cx[2] = {t.minX, t.maxX};
+        const double cy[2] = {t.minY, t.maxY};
+        const double cz[2] = {t.minZ, t.maxZ};
+
+        float minSX =  1e9f, minSY =  1e9f;
+        float maxSX = -1e9f, maxSY = -1e9f;
+        bool any = false;
+
+        for (int i = 0; i < 8; ++i)
+        {
+            ImVec2 p;
+            double wx = cx[(i >> 0) & 1];
+            double wy = cy[(i >> 1) & 1];
+            double wz = cz[(i >> 2) & 1];
+            if (!ProjectWorld(wx, wy, wz, snap.cam, dispW, dispH, p)) continue;
+            any = true;
+            if (p.x < minSX) minSX = p.x;
+            if (p.y < minSY) minSY = p.y;
+            if (p.x > maxSX) maxSX = p.x;
+            if (p.y > maxSY) maxSY = p.y;
+        }
+        if (!any) continue;
+
+        // Clip insane offscreen values
+        if (maxSX < 0 || minSX > dispW || maxSY < 0 || minSY > dispH) continue;
+
+        if (g_settings.drawBox)
+            dl->AddRect(ImVec2(minSX, minSY), ImVec2(maxSX, maxSY), colBox, 0.0f, 0, 1.5f);
+
+        if (g_settings.drawName || g_settings.drawDistance)
+        {
+            char buf[128];
+            float dist = (float)std::sqrt(distSq);
+            if (g_settings.drawName && g_settings.drawDistance)
+                snprintf(buf, sizeof(buf), "%s [%.1fm]", t.name.c_str(), dist);
+            else if (g_settings.drawName)
+                snprintf(buf, sizeof(buf), "%s", t.name.c_str());
+            else
+                snprintf(buf, sizeof(buf), "%.1fm", dist);
+
+            ImVec2 ts = ImGui::CalcTextSize(buf);
+            float tx = (minSX + maxSX) * 0.5f - ts.x * 0.5f;
+            float ty = minSY - ts.y - 2.0f;
+            dl->AddText(ImVec2(tx + 1, ty + 1), colTextShadow, buf);
+            dl->AddText(ImVec2(tx,     ty),     colText,       buf);
+        }
+    }
+}
+
 static LRESULT CALLBACK HookedWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
     if (s_visible && ImGui_ImplWin32_WndProcHandler(hwnd, msg, wParam, lParam))
@@ -147,46 +267,72 @@ static BOOL WINAPI hk_wglSwapBuffers(HDC hdc)
         ShowCursor(s_visible ? TRUE : FALSE);
     }
 
-    if (s_visible)
+    const bool needFrame = s_visible || g_settings.espEnabled;
+    if (needFrame)
     {
         ImGui_ImplOpenGL3_NewFrame();
         ImGui_ImplWin32_NewFrame();
         ImGui::NewFrame();
 
         const ImVec2 display = ImGui::GetIO().DisplaySize;
-        ImGui::SetNextWindowSize({display.x * 0.30f, 0}, ImGuiCond_Always);
-        ImGui::Begin("AutoClicker", nullptr,
-            ImGuiWindowFlags_NoScrollbar |
-            ImGuiWindowFlags_NoCollapse  |
-            ImGuiWindowFlags_NoResize);
 
-        // Toggles
-        ImGui::Spacing();
-        ImGui::Checkbox("Enabled",      &g_settings.acEnabled);
-        ImGui::Checkbox("Break Blocks", &g_settings.breakBlocks);
+        if (g_settings.espEnabled)
+            DrawEsp(display.x, display.y);
 
-        // CPS
-        ImGui::Spacing();
-        ImGui::Separator();
-        ImGui::Spacing();
-        ImGui::SetNextItemWidth(-1);
-        ImGui::SliderInt("##cps", &g_settings.cps, 1, 50);
-        ImGui::SameLine(0, 0);
-        ImGui::TextDisabled(" CPS: %d", g_settings.cps);
+        if (s_visible)
+        {
+            ImGui::SetNextWindowSize({display.x * 0.30f, 0}, ImGuiCond_Always);
+            ImGui::Begin("AutoClicker", nullptr,
+                ImGuiWindowFlags_NoScrollbar |
+                ImGuiWindowFlags_NoCollapse  |
+                ImGuiWindowFlags_NoResize);
 
-        // Unload
-        ImGui::Spacing();
-        ImGui::Separator();
-        ImGui::Spacing();
-        ImGui::PushStyleColor(ImGuiCol_Button,        {0.48f, 0.07f, 0.07f, 1.00f});
-        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, {0.70f, 0.10f, 0.10f, 1.00f});
-        ImGui::PushStyleColor(ImGuiCol_ButtonActive,  {0.38f, 0.05f, 0.05f, 1.00f});
-        if (ImGui::Button("Unload", {-1, 0}))
-            g_settings.selfDestruct = true;
-        ImGui::PopStyleColor(3);
+            // Toggles
+            ImGui::Spacing();
+            ImGui::Checkbox("Enabled",      &g_settings.acEnabled);
+            ImGui::Checkbox("Break Blocks", &g_settings.breakBlocks);
 
-        ImGui::Spacing();
-        ImGui::End();
+            // CPS
+            ImGui::Spacing();
+            ImGui::Separator();
+            ImGui::Spacing();
+            ImGui::SetNextItemWidth(-1);
+            ImGui::SliderInt("##cps", &g_settings.cps, 1, 50);
+            ImGui::SameLine(0, 0);
+            ImGui::TextDisabled(" CPS: %d", g_settings.cps);
+
+            // ESP section
+            ImGui::Spacing();
+            ImGui::Separator();
+            ImGui::Spacing();
+            ImGui::Checkbox("ESP",          &g_settings.espEnabled);
+            if (g_settings.espEnabled)
+            {
+                ImGui::Indent();
+                ImGui::Checkbox("Box",      &g_settings.drawBox);
+                ImGui::Checkbox("Name",     &g_settings.drawName);
+                ImGui::Checkbox("Distance", &g_settings.drawDistance);
+                ImGui::SetNextItemWidth(-1);
+                ImGui::SliderInt("##maxdist", &g_settings.maxDistance, 5, 256);
+                ImGui::SameLine(0, 0);
+                ImGui::TextDisabled(" Max: %dm", g_settings.maxDistance);
+                ImGui::Unindent();
+            }
+
+            // Unload
+            ImGui::Spacing();
+            ImGui::Separator();
+            ImGui::Spacing();
+            ImGui::PushStyleColor(ImGuiCol_Button,        {0.48f, 0.07f, 0.07f, 1.00f});
+            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, {0.70f, 0.10f, 0.10f, 1.00f});
+            ImGui::PushStyleColor(ImGuiCol_ButtonActive,  {0.38f, 0.05f, 0.05f, 1.00f});
+            if (ImGui::Button("Unload", {-1, 0}))
+                g_settings.selfDestruct = true;
+            ImGui::PopStyleColor(3);
+
+            ImGui::Spacing();
+            ImGui::End();
+        }
 
         ImGui::Render();
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());

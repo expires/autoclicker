@@ -54,6 +54,17 @@ foreach(KEY
     mtd_EntityHitResult_getEntity  desc_EntityHitResult_getEntity
     mtd_ItemStack_getItem          desc_ItemStack_getItem
     mtd_Item_getName               desc_Item_getName
+    class_ClientLevel class_AbstractClientPlayer class_Camera class_GameRenderer class_AABB class_Vec3
+    fld_Minecraft_level         desc_Minecraft_level
+    fld_Minecraft_gameRenderer  desc_Minecraft_gameRenderer
+    fld_Entity_position desc_Entity_position fld_Entity_yRot fld_Entity_xRot
+    mtd_Entity_getBoundingBox   desc_Entity_getBoundingBox
+    fld_AABB_minX fld_AABB_minY fld_AABB_minZ fld_AABB_maxX fld_AABB_maxY fld_AABB_maxZ
+    fld_Vec3_x fld_Vec3_y fld_Vec3_z
+    fld_Camera_position desc_Camera_position fld_Camera_xRot fld_Camera_yRot
+    fld_GameRenderer_mainCamera desc_GameRenderer_mainCamera
+    mtd_GameRenderer_getFov     desc_GameRenderer_getFov
+    mtd_ClientLevel_players     desc_ClientLevel_players
 )
     string(JSON ${KEY} GET "${MAPPING_JSON}" "${KEY}")
 endforeach()
@@ -131,6 +142,8 @@ file(GLOB SDK_HEADERS          "SDK/*.h")
 file(GLOB SDK_SOURCES          "SDK/*.cpp")
 file(GLOB AUTOCLICKER_HEADERS  "modules/autoclicker/*.h")
 file(GLOB AUTOCLICKER_SOURCES  "modules/autoclicker/*.cpp")
+file(GLOB ESP_HEADERS          "modules/esp/*.h")
+file(GLOB ESP_SOURCES          "modules/esp/*.cpp")
 file(GLOB OVERLAY_HEADERS      "overlay/*.h")
 file(GLOB OVERLAY_SOURCES      "overlay/*.cpp")
 file(GLOB NETWORK_HEADERS      "network/*.h")
@@ -140,6 +153,8 @@ add_library(${PROJECT_NAME} SHARED
     main.cpp
     ${AUTOCLICKER_HEADERS}
     ${AUTOCLICKER_SOURCES}
+    ${ESP_HEADERS}
+    ${ESP_SOURCES}
     ${SDK_SOURCES}
     ${SDK_HEADERS}
     ${OVERLAY_HEADERS}
@@ -154,6 +169,8 @@ source_group("Header Files\\SDK"         FILES ${SDK_HEADERS})
 source_group("Source Files\\SDK"         FILES ${SDK_SOURCES})
 source_group("Header Files\\Autoclicker" FILES ${AUTOCLICKER_HEADERS})
 source_group("Source Files\\Autoclicker" FILES ${AUTOCLICKER_SOURCES})
+source_group("Header Files\\ESP"         FILES ${ESP_HEADERS})
+source_group("Source Files\\ESP"         FILES ${ESP_SOURCES})
 source_group("Header Files\\Overlay"     FILES ${OVERLAY_HEADERS})
 source_group("Source Files\\Overlay"     FILES ${OVERLAY_SOURCES})
 source_group("Header Files\\Network"     FILES ${NETWORK_HEADERS})

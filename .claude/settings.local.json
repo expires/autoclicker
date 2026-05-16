@@ -1,0 +1,36 @@
+{
+  "permissions": {
+    "allow": [
+      "WebFetch(domain:linkie.shedaniel.dev)",
+      "WebSearch",
+      "WebFetch(domain:github.com)",
+      "Bash(gh repo *)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "Bash(curl -s \"https://linkie.shedaniel.dev/api/search?namespace=mojang&version=1.21.11&query=Camera&limit=5&allowClasses=true&allowMethods=false&allowFields=false&translateMode=ns&translate=intermediary\")",
+      "Bash(curl -s -o /tmp/linkie.json -w \"HTTP: %{http_code}\\\\nContent-Type: %{content_type}\\\\nSize: %{size_download}\\\\n\" \"https://linkie.shedaniel.me/api/search?namespace=mojang&version=1.21.11&query=Camera&limit=5&allowClasses=true&translateMode=ns&translate=intermediary\")",
+      "Read(//tmp/**)",
+      "Bash(curl -s -o /dev/null -w 'HTTP: %{http_code}\\\\n' --max-time 5 https://__TRACKED_VAR__/api/namespaces)",
+      "Bash(curl -s -w \"\\\\n---HTTP:%{http_code}---\\\\n\" \"https://linkieapi.shedaniel.me/api/search?namespace=mojang&version=1.21.11&query=Camera&limit=3&allowClasses=true&translateMode=ns&translate=intermediary\")",
+      "Bash(curl -s \"https://linkieapi.shedaniel.me/api/namespaces\")",
+      "Bash(python3 -c \"import json,sys; d=json.load\\(sys.stdin\\); print\\([n['id'] for n in d]\\)\")",
+      "Bash(node -e \"console.log\\(JSON.parse\\(require\\('fs'\\).readFileSync\\('/tmp/ns.json'\\)\\).map\\(n=>n.id\\)\\)\")",
+      "Bash(curl -s \"https://linkieapi.shedaniel.me/api/search?namespace=yarn&version=1.21.11&query=Camera&limit=5&allowClasses=true\")",
+      "Bash(curl -s \"https://linkieapi.shedaniel.me/api/search?namespace=mojang&version=1.21.11&query=Camera&limit=3&allowClasses=true\")",
+      "Bash(curl -s \"https://linkieapi.shedaniel.me/api/source?namespace=mojang&class=net/minecraft/client/Camera&version=1.21.11\")",
+      "Bash(curl -s \"https://linkieapi.shedaniel.me/api/search?namespace=mojang&version=1.21.11&query=Camera.position&limit=5&allowFields=true&allowClasses=false&allowMethods=false\")",
+      "Bash(curl -s 'https://linkieapi.shedaniel.me/api/search?namespace=mojang&version=1.21.11&query=__TRACKED_VAR__&limit=3&allowClasses=true&allowFields=false&allowMethods=false')",
+      "Bash(curl -s 'https://linkieapi.shedaniel.me/api/search?namespace=mojang&version=1.21.11&query=__TRACKED_VAR__&limit=2&allowClasses=false&allowFields=true&allowMethods=false')",
+      "Bash(curl -s 'https://linkieapi.shedaniel.me/api/search?namespace=mojang&version=1.21.11&query=__TRACKED_VAR__&limit=3&allowClasses=false&allowFields=true&allowMethods=false')",
+      "Bash(curl -s \"https://linkieapi.shedaniel.me/api/search?namespace=mojang&version=1.21.11&query=Entity.position&limit=3&allowClasses=false&allowFields=true&allowMethods=false\")",
+      "Bash(curl -s \"https://linkieapi.shedaniel.me/api/search?namespace=mojang&version=1.21.11&query=Entity.getBoundingBox&limit=3&allowClasses=false&allowMethods=true&allowFields=false\")",
+      "Bash(curl -s \"https://linkieapi.shedaniel.me/api/search?namespace=yarn&version=1.21.11&query=Entity.getBoundingBox&limit=3&allowMethods=true&allowClasses=false&allowFields=false\")",
+      "Bash(curl -s \"https://linkieapi.shedaniel.me/api/search?namespace=mojang&version=1.21.11&query=ClientLevel.players&limit=5&allowMethods=true&allowClasses=false&allowFields=false\")",
+      "Bash(curl -s \"https://linkieapi.shedaniel.me/api/search?namespace=mojang&version=1.21.11&query=Level.players&limit=5&allowMethods=true&allowClasses=false&allowFields=false\")",
+      "Bash(curl -s \"https://linkieapi.shedaniel.me/api/search?namespace=mojang&version=1.21.11&query=GameRenderer.getFov&limit=5&allowMethods=true&allowClasses=false&allowFields=false\")",
+      "Bash(curl -s \"https://linkieapi.shedaniel.me/api/search?namespace=yarn&version=1.21.11&query=Level.getPlayers&limit=5&allowMethods=true&allowClasses=false&allowFields=false\")",
+      "Bash(curl -s \"https://linkieapi.shedaniel.me/api/search?namespace=yarn&version=1.21.11&query=ClientLevel.getPlayers&limit=5&allowMethods=true&allowClasses=false&allowFields=false\")",
+      "Bash(curl -s \"https://linkieapi.shedaniel.me/api/search?namespace=yarn&version=1.21.11&query=ClientWorld.players&limit=5&allowMethods=true&allowClasses=false&allowFields=false\")",
+      "Bash(curl -s \"https://linkieapi.shedaniel.me/api/search?namespace=yarn&version=1.21.11&query=class_638.players&limit=5&allowMethods=true&allowClasses=false&allowFields=false\")"
+    ]
+  }
+}

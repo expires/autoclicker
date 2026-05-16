@@ -73,3 +73,34 @@ Component Entity::getTypeName()
 
     return Component(rtn);
 }
+
+// 1.21.11+: Entity.x/y/z no longer exist as primitive fields; position is a
+// Vec3 reference on Entity. Each accessor reads the Vec3 and pulls a coord.
+Vec3 Entity::getPosition()
+{
+    jfieldID f = lc->env->GetFieldID(this->GetClass(), FLD_Entity_position, DESC_Entity_position);
+    jobject v = lc->env->GetObjectField(this->instance, f);
+    return Vec3(v);
+}
+double Entity::getX() { return getPosition().getX(); }
+double Entity::getY() { return getPosition().getY(); }
+double Entity::getZ() { return getPosition().getZ(); }
+
+float Entity::getYRot()
+{
+    jfieldID f = lc->env->GetFieldID(this->GetClass(), FLD_Entity_yRot, "F");
+    return lc->env->GetFloatField(this->instance, f);
+}
+float Entity::getXRot()
+{
+    jfieldID f = lc->env->GetFieldID(this->GetClass(), FLD_Entity_xRot, "F");
+    return lc->env->GetFloatField(this->instance, f);
+}
+
+AABB Entity::getBoundingBox()
+{
+    jmethodID m = lc->env->GetMethodID(this->GetClass(),
+        MTD_Entity_getBoundingBox, DESC_Entity_getBoundingBox);
+    jobject b = lc->env->CallObjectMethod(this->instance, m);
+    return AABB(b);
+}

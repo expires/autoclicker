@@ -57,5 +57,48 @@
   "mtd_ItemStack_getItem":          "method_57385",
   "desc_ItemStack_getItem":         "()Lnet/minecraft/class_1792;",
   "mtd_Item_getName":               "method_65043",
-  "desc_Item_getName":              "(Lnet/minecraft/class_1799;)Lnet/minecraft/class_2561;"
+  "desc_Item_getName":              "(Lnet/minecraft/class_1799;)Lnet/minecraft/class_2561;",
+
+  "class_ClientLevel":             "net.minecraft.class_638",
+  "class_AbstractClientPlayer":    "net.minecraft.class_742",
+  "class_Camera":                  "net.minecraft.class_4184",
+  "class_GameRenderer":            "net.minecraft.class_757",
+  "class_AABB":                    "net.minecraft.class_238",
+  "class_Vec3":                    "net.minecraft.class_243",
+
+  "fld_Minecraft_level":           "field_1687",
+  "desc_Minecraft_level":          "Lnet/minecraft/class_638;",
+  "fld_Minecraft_gameRenderer":    "field_1773",
+  "desc_Minecraft_gameRenderer":   "Lnet/minecraft/class_757;",
+
+  "fld_Entity_position":           "field_22467",
+  "desc_Entity_position":          "Lnet/minecraft/class_243;",
+  "fld_Entity_yRot":               "field_6031",
+  "fld_Entity_xRot":               "field_5965",
+  "mtd_Entity_getBoundingBox":     "method_5829",
+  "desc_Entity_getBoundingBox":    "()Lnet/minecraft/class_238;",
+
+  "fld_AABB_minX":                 "field_1323",
+  "fld_AABB_minY":                 "field_1322",
+  "fld_AABB_minZ":                 "field_1321",
+  "fld_AABB_maxX":                 "field_1320",
+  "fld_AABB_maxY":                 "field_1325",
+  "fld_AABB_maxZ":                 "field_1324",
+
+  "fld_Vec3_x":                    "field_1352",
+  "fld_Vec3_y":                    "field_1351",
+  "fld_Vec3_z":                    "field_1350",
+
+  "fld_Camera_position":           "field_18712",
+  "desc_Camera_position":          "Lnet/minecraft/class_243;",
+  "fld_Camera_xRot":               "field_18717",
+  "fld_Camera_yRot":               "field_18718",
+
+  "fld_GameRenderer_mainCamera":   "field_18765",
+  "desc_GameRenderer_mainCamera":  "Lnet/minecraft/class_4184;",
+  "mtd_GameRenderer_getFov":       "method_3196",
+  "desc_GameRenderer_getFov":      "(Lnet/minecraft/class_4184;FZ)F",
+
+  "mtd_ClientLevel_players":       "players",
+  "desc_ClientLevel_players":      "()Ljava/util/List;"
 }

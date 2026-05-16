@@ -14,7 +14,7 @@ jobs:
     runs-on: windows-latest
     strategy:
       matrix:
-        mapping: [mojang_1.21.4, fabric_1.21.11]
+        mapping: [fabric_1.21.11]
 
     steps:
       - name: Checkout
@@ -70,7 +70,6 @@ jobs:
 
       - name: Rename DLLs for release
         run: |
-          rename release\autoclicker-mojang_1.21.4\ac.dll ac_mojang_1.21.4.dll
           rename release\autoclicker-fabric_1.21.11\ac.dll ac_fabric_1.21.11.dll
 
       - name: Create release
