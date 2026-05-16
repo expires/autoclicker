@@ -77,3 +77,27 @@ HitResult Minecraft::getHitResult()
 
 	return HitResult(rtn);
 }
+
+Level Minecraft::GetLevel()
+{
+	jfieldID f = lc->env->GetFieldID(this->GetClass(), FLD_Minecraft_level, DESC_Minecraft_level);
+	jobject rtn = lc->env->GetObjectField(this->GetInstance(), f);
+	return Level(rtn);
+}
+
+GameRenderer Minecraft::GetGameRenderer()
+{
+	jfieldID f = lc->env->GetFieldID(this->GetClass(), FLD_Minecraft_gameRenderer, DESC_Minecraft_gameRenderer);
+	jobject rtn = lc->env->GetObjectField(this->GetInstance(), f);
+	return GameRenderer(rtn);
+}
+
+DeltaTracker Minecraft::GetDeltaTracker()
+{
+	jmethodID m = lc->env->GetMethodID(this->GetClass(),
+		MTD_Minecraft_getDeltaTracker, DESC_Minecraft_getDeltaTracker);
+	if (!m) { lc->env->ExceptionClear(); return DeltaTracker(nullptr); }
+	jobject rtn = lc->env->CallObjectMethod(this->GetInstance(), m);
+	if (lc->env->ExceptionCheck()) { lc->env->ExceptionClear(); return DeltaTracker(nullptr); }
+	return DeltaTracker(rtn);
+}

@@ -1,6 +1,6 @@
 # Lunar Autoclicker
 
-A DLL-based autoclicker for Lunar Client, designed for private server anticheat testing. Supports Lunar Client 1.21.4 (Mojang mappings) and 1.21.11 (Fabric intermediary mappings).
+A DLL-based autoclicker for Lunar Client, designed for private server anticheat testing. Targets Lunar Client 1.21.11 (Fabric intermediary mappings).
 
 ---
 
@@ -109,12 +109,10 @@ Lunar Client obfuscates Minecraft class names. The mapping version is selected a
 
 ```mermaid
 flowchart LR
-    MJ["mojang_1.21.4.json\nMojang mapped names"]
     FA["fabric_1.21.11.json\nFabric intermediary"]
     HIN["dll/SDK/Mappings.h.in\nCMake template"]
     GEN["build/dll/Mappings.h\ngenerated #defines"]
 
-    MJ -->|"-DMAPPING_VERSION"| HIN
     FA -->|"-DMAPPING_VERSION"| HIN
     HIN -->|"configure_file() at build time"| GEN
 ```
@@ -145,7 +143,7 @@ Outputs:
 
 ### GitHub Actions
 
-Every push to `main` triggers a matrix build for all mapping versions. Artifacts are uploaded per version (`autoclicker-mojang_1.21.4`, `autoclicker-fabric_1.21.11`). Tag a commit `v*` to create a GitHub Release with all files attached.
+Every push to `main` triggers a build. Artifact is uploaded as `autoclicker-fabric_1.21.11`. Tag a commit `v*` to create a GitHub Release with all files attached.
 
 ---
 
