@@ -230,13 +230,21 @@ static void DrawEsp(float dispW, float dispH)
             if (!ProjectWorld(ix, iy + t.height + 0.5, iz, snap.cam, dispW, dispH, tagPos))
                 continue;
 
-            // Fixed font size — no distance scaling. The previous distance-
-            // matched scaling produced a "shrinks when you walk up to them"
-            // feel; this stays readable from every range.
-            constexpr float BASE_FONT_SIZE     = 16.0f;
-            constexpr float FONT_SCALE         = 1.2f;
+            // Scale with distance the way MC's nametag does so the pill stays
+            // visually proportional to the player model. World-space text
+            // height ~0.225 blocks; projected to screen pixels with the same
+            // focal length as our box. 1.2× on top makes it slightly larger
+            // than vanilla. Floor at 14px keeps it readable far away; no
+            // upper cap so it grows naturally as you approach.
             constexpr float NAMETAG_Y_SHIFT_PX = 4.0f;
-            const float fontSize = BASE_FONT_SIZE * FONT_SCALE;
+            constexpr float WORLD_TEXT_HEIGHT  = 0.225f;
+            constexpr float FONT_SCALE         = 1.2f;
+            double fovRad = snap.cam.fov * M_PI / 180.0;
+            if (fovRad <= 0.01) fovRad = 70.0 * M_PI / 180.0;
+            double f = 1.0 / std::tan(fovRad / 2.0);
+            const double dist3D = std::sqrt(distSq);
+            float fontSize = (float)(WORLD_TEXT_HEIGHT * f * dispH * 0.5 / dist3D) * FONT_SCALE;
+            if (fontSize < 14.0f) fontSize = 14.0f;
 
             ImFont* font = ImGui::GetFont();
             float contentW = 0.0f;
