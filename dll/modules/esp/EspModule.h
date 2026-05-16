@@ -1,7 +1,9 @@
 #pragma once
 #include <Windows.h>
+#include <cstdint>
 #include <mutex>
 #include <string>
+#include <utility>
 #include <vector>
 
 namespace EspModule
@@ -14,7 +16,10 @@ namespace EspModule
         // half-extents (and full height) so the overlay can rebuild the box
         // around the lerped position without needing to re-read the AABB.
         double halfWidth, height, halfDepth;
-        std::string name;
+        // Team-formatted name decomposed into (text, ARGB) chunks. Each chunk
+        // is one styled span — the overlay renders them side-by-side with
+        // their per-chunk colors to match MC's vanilla nametag look.
+        std::vector<std::pair<std::string, uint32_t>> nameChunks;
     };
 
     struct CameraState

@@ -74,46 +74,152 @@ Component Entity::getTypeName()
     return Component(rtn);
 }
 
-std::string Entity::getFormattedName()
+// Reads the Style.getColor().getValue() chain for a single Component instance.
+// Returns the fallback color if any link is null/missing/throws.
+static uint32_t extractColor(jobject component, uint32_t fallback)
 {
-    Component nameC = getName();
-    if (nameC.GetInstance() == nullptr) return "";
+    if (!component) return fallback;
 
-    // Resolve the player's scoreboard team. If there is no team or the lookup
-    // fails, fall back to the bare name with no formatting.
+    jclass compCls = lc->GetClass(MC_Component);
+    if (!compCls) return fallback;
+    jmethodID getStyleM = lc->env->GetMethodID(compCls,
+        MTD_Component_getStyle, DESC_Component_getStyle);
+    if (!getStyleM) { lc->env->ExceptionClear(); return fallback; }
+
+    jobject style = lc->env->CallObjectMethod(component, getStyleM);
+    if (lc->env->ExceptionCheck() || !style) {
+        lc->env->ExceptionClear();
+        return fallback;
+    }
+
+    jclass styleCls = lc->GetClass(MC_Style);
+    if (!styleCls) { lc->env->DeleteLocalRef(style); return fallback; }
+    jmethodID getColorM = lc->env->GetMethodID(styleCls,
+        MTD_Style_getColor, DESC_Style_getColor);
+    if (!getColorM) {
+        lc->env->ExceptionClear();
+        lc->env->DeleteLocalRef(style);
+        return fallback;
+    }
+
+    jobject textColor = lc->env->CallObjectMethod(style, getColorM);
+    lc->env->DeleteLocalRef(style);
+    if (lc->env->ExceptionCheck() || !textColor) {
+        lc->env->ExceptionClear();
+        return fallback;
+    }
+
+    jclass colorCls = lc->GetClass(MC_TextColor);
+    if (!colorCls) { lc->env->DeleteLocalRef(textColor); return fallback; }
+    jmethodID getValueM = lc->env->GetMethodID(colorCls,
+        MTD_TextColor_getValue, "()I");
+    if (!getValueM) {
+        lc->env->ExceptionClear();
+        lc->env->DeleteLocalRef(textColor);
+        return fallback;
+    }
+
+    jint rgb = lc->env->CallIntMethod(textColor, getValueM);
+    lc->env->DeleteLocalRef(textColor);
+    if (lc->env->ExceptionCheck()) { lc->env->ExceptionClear(); return fallback; }
+
+    return 0xFF000000u | (uint32_t)(rgb & 0x00FFFFFF);
+}
+
+std::vector<std::pair<std::string, uint32_t>> Entity::getFormattedNameChunks()
+{
+    std::vector<std::pair<std::string, uint32_t>> chunks;
+    const uint32_t DEFAULT_COLOR = 0xFFFFFFFFu; // white
+
+    Component nameC = getName();
+    if (nameC.GetInstance() == nullptr) return chunks;
+
+    // Resolve the team and produce the formatted MutableComponent. If anything
+    // fails we fall back to the bare name as a single white chunk.
+    jobject formatted = nullptr;
     jmethodID getTeamM = lc->env->GetMethodID(this->GetClass(),
         MTD_Entity_getTeam, DESC_Entity_getTeam);
-    if (!getTeamM) { lc->env->ExceptionClear(); return nameC.getString(); }
+    if (getTeamM)
+    {
+        jobject team = lc->env->CallObjectMethod(this->instance, getTeamM);
+        if (lc->env->ExceptionCheck()) { lc->env->ExceptionClear(); team = nullptr; }
+        if (team)
+        {
+            jclass teamCls = lc->GetClass(MC_PlayerTeam);
+            if (teamCls)
+            {
+                jmethodID formatM = lc->env->GetStaticMethodID(teamCls,
+                    MTD_PlayerTeam_formatNameForTeam, DESC_PlayerTeam_formatNameForTeam);
+                if (formatM)
+                {
+                    formatted = lc->env->CallStaticObjectMethod(teamCls, formatM,
+                        team, nameC.GetInstance());
+                    if (lc->env->ExceptionCheck()) {
+                        lc->env->ExceptionClear();
+                        formatted = nullptr;
+                    }
+                }
+                else { lc->env->ExceptionClear(); }
+            }
+            lc->env->DeleteLocalRef(team);
+        }
+    }
+    else { lc->env->ExceptionClear(); }
 
-    jobject team = lc->env->CallObjectMethod(this->instance, getTeamM);
-    if (lc->env->ExceptionCheck()) { lc->env->ExceptionClear(); return nameC.getString(); }
-    if (team == nullptr) return nameC.getString();
+    // Use the formatted component if available, otherwise the bare name.
+    jobject root = formatted ? formatted : nameC.GetInstance();
+    const uint32_t rootColor = extractColor(root, DEFAULT_COLOR);
 
-    // PlayerTeam.formatNameForTeam(Team, Component) is static. The first arg's
-    // declared type is the Team interface but our jobject points at PlayerTeam
-    // which implements it — JNI takes either fine.
-    jclass teamCls = lc->GetClass(MC_PlayerTeam);
-    if (!teamCls) { lc->env->DeleteLocalRef(team); return nameC.getString(); }
-
-    jmethodID formatM = lc->env->GetStaticMethodID(teamCls,
-        MTD_PlayerTeam_formatNameForTeam, DESC_PlayerTeam_formatNameForTeam);
-    if (!formatM) {
-        lc->env->ExceptionClear();
-        lc->env->DeleteLocalRef(team);
-        return nameC.getString();
+    // Walk top-level siblings — formatNameForTeam typically produces an empty
+    // root with [prefix, name, suffix] siblings, each carrying its own Style.
+    jclass compCls = lc->GetClass(MC_Component);
+    if (compCls)
+    {
+        jmethodID getSiblingsM = lc->env->GetMethodID(compCls,
+            MTD_Component_getSiblings, DESC_Component_getSiblings);
+        if (getSiblingsM)
+        {
+            jobject siblings = lc->env->CallObjectMethod(root, getSiblingsM);
+            if (lc->env->ExceptionCheck()) { lc->env->ExceptionClear(); siblings = nullptr; }
+            if (siblings)
+            {
+                jclass listCls = lc->env->FindClass("java/util/List");
+                if (listCls)
+                {
+                    jmethodID sizeM = lc->env->GetMethodID(listCls, "size", "()I");
+                    jmethodID getM  = lc->env->GetMethodID(listCls, "get",  "(I)Ljava/lang/Object;");
+                    if (sizeM && getM)
+                    {
+                        jint n = lc->env->CallIntMethod(siblings, sizeM);
+                        for (jint i = 0; i < n; ++i)
+                        {
+                            jobject sib = lc->env->CallObjectMethod(siblings, getM, i);
+                            if (!sib) continue;
+                            uint32_t col = extractColor(sib, rootColor);
+                            Component sibC(sib);
+                            std::string s = sibC.getString();
+                            lc->env->DeleteLocalRef(sib);
+                            if (!s.empty()) chunks.emplace_back(std::move(s), col);
+                        }
+                    }
+                    lc->env->DeleteLocalRef(listCls);
+                }
+                lc->env->DeleteLocalRef(siblings);
+            }
+        }
+        else { lc->env->ExceptionClear(); }
     }
 
-    jobject formatted = lc->env->CallStaticObjectMethod(teamCls, formatM, team, nameC.GetInstance());
-    lc->env->DeleteLocalRef(team);
-    if (lc->env->ExceptionCheck() || !formatted) {
-        lc->env->ExceptionClear();
-        return nameC.getString();
+    // No siblings (or all empty) — fall back to the whole component as one chunk.
+    if (chunks.empty())
+    {
+        Component rootC(root);
+        std::string s = rootC.getString();
+        if (!s.empty()) chunks.emplace_back(std::move(s), rootColor);
     }
 
-    // formatted is a MutableComponent (implements Component); getString() works
-    // via virtual dispatch the same way it does for plain Components.
-    Component formattedComp(formatted);
-    return formattedComp.getString();
+    if (formatted) lc->env->DeleteLocalRef(formatted);
+    return chunks;
 }
 
 // 1.21.11+: Entity.x/y/z no longer exist as primitive fields; position is a

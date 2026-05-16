@@ -183,9 +183,10 @@ namespace EspModule
                     t.halfDepth = 0.3;
                 }
 
-                // Use the team-formatted name so prefixes like "[Clan]" show
-                // up the same way MC's vanilla renderer composes them.
-                t.name = p.getFormattedName();
+                // Pull team-formatted name with per-chunk colors so the
+                // overlay can paint each Style-span (prefix / name / suffix)
+                // in its own color the same way MC's renderer does.
+                t.nameChunks = p.getFormattedNameChunks();
 
                 back.targets.push_back(std::move(t));
             }

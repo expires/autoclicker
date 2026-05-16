@@ -3,6 +3,9 @@
 #include "Component.h"
 #include "AABB.h"
 #include "Vec3.h"
+#include <cstdint>
+#include <utility>
+#include <vector>
 
 class Entity
 {
@@ -21,12 +24,12 @@ public:
 
     Component getTypeName();
 
-    // Returns the team-formatted display string (e.g. "[Clan] manu") the same
-    // way MC's renderer composes it: pulls the bare name via getName(), looks
-    // up the player's scoreboard team via getTeam(), and if non-null pipes
-    // through PlayerTeam.formatNameForTeam to prepend the prefix and append
-    // the suffix. Falls back to bare name on any JNI failure or null team.
-    std::string getFormattedName();
+    // Returns the team-formatted display name decomposed into colored chunks
+    // (e.g. {"[Clan] ", 0xFF5555FF}, {"manu", 0xFFFFFFFF}). Walks the formatted
+    // Component's siblings; each sibling becomes one chunk with its Style's
+    // color. Colors are full ARGB (alpha forced to 0xFF). Empty vector means
+    // we couldn't read the name at all.
+    std::vector<std::pair<std::string, uint32_t>> getFormattedNameChunks();
 
     // 1.21.11+: position is a Vec3 reference, not three primitive doubles.
     // getX/Y/Z dereference the Vec3 each call; for hot loops fetch the Vec3 once

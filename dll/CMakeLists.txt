@@ -67,6 +67,11 @@ foreach(KEY
     class_PlayerTeam
     mtd_Entity_getTeam               desc_Entity_getTeam
     mtd_PlayerTeam_formatNameForTeam desc_PlayerTeam_formatNameForTeam
+    class_Style class_TextColor
+    mtd_Component_getStyle    desc_Component_getStyle
+    mtd_Component_getSiblings desc_Component_getSiblings
+    mtd_Style_getColor        desc_Style_getColor
+    mtd_TextColor_getValue
     fld_AABB_minX fld_AABB_minY fld_AABB_minZ fld_AABB_maxX fld_AABB_maxY fld_AABB_maxZ
     fld_Vec3_x fld_Vec3_y fld_Vec3_z
     fld_Camera_position desc_Camera_position fld_Camera_xRot fld_Camera_yRot

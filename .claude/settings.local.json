@@ -53,7 +53,13 @@
       "Bash(curl -s \"https://linkieapi.shedaniel.me/api/search?namespace=yarn&version=1.21.11&query=Entity.getDisplayName&limit=5&allowMethods=true&allowClasses=false&allowFields=false\")",
       "Bash(curl -s \"https://linkieapi.shedaniel.me/api/search?namespace=yarn&version=1.21.11&query=class_1297.getName&limit=10&allowMethods=true&allowClasses=false&allowFields=false\")",
       "Bash(curl -s \"https://linkieapi.shedaniel.me/api/search?namespace=mojang&version=1.21.11&query=PlayerTeam.formatNameForTeam&limit=3&allowMethods=true&allowClasses=false&allowFields=false\")",
-      "Bash(curl -s \"https://linkieapi.shedaniel.me/api/search?namespace=mojang&version=1.21.11&query=Entity.getTeam&limit=3&allowMethods=true&allowClasses=false&allowFields=false\")"
+      "Bash(curl -s \"https://linkieapi.shedaniel.me/api/search?namespace=mojang&version=1.21.11&query=Entity.getTeam&limit=3&allowMethods=true&allowClasses=false&allowFields=false\")",
+      "Bash(curl -s \"https://linkieapi.shedaniel.me/api/search?namespace=mojang&version=1.21.11&query=Component.getStyle&limit=3&allowMethods=true&allowClasses=false&allowFields=false\")",
+      "Bash(curl -s \"https://linkieapi.shedaniel.me/api/search?namespace=mojang&version=1.21.11&query=Component.getSiblings&limit=3&allowMethods=true&allowClasses=false&allowFields=false\")",
+      "Bash(curl -s \"https://linkieapi.shedaniel.me/api/search?namespace=mojang&version=1.21.11&query=Style&limit=2&allowClasses=true&allowMethods=false&allowFields=false\")",
+      "Bash(curl -s \"https://linkieapi.shedaniel.me/api/search?namespace=mojang&version=1.21.11&query=Style.getColor&limit=3&allowMethods=true&allowClasses=false&allowFields=false\")",
+      "Bash(curl -s \"https://linkieapi.shedaniel.me/api/search?namespace=mojang&version=1.21.11&query=TextColor&limit=3&allowClasses=true&allowMethods=false&allowFields=false\")",
+      "Bash(curl -s \"https://linkieapi.shedaniel.me/api/search?namespace=mojang&version=1.21.11&query=TextColor.getValue&limit=3&allowMethods=true&allowClasses=false&allowFields=false\")"
     ]
   }
 }

@@ -206,71 +206,67 @@ static void DrawEsp(float dispW, float dispH)
 
         if (g_settings.drawName || g_settings.drawDistance)
         {
-            const char* name = g_settings.drawName ? t.name.c_str() : "";
-            char distBuf[16] = {};
-            const char* dist = "";
-            if (g_settings.drawDistance)
-            {
-                snprintf(distBuf, sizeof(distBuf), "%.1fm", (float)std::sqrt(distSq));
-                dist = distBuf;
+            // Build the list of colored chunks we'll render. drawName toggles
+            // include the team-formatted player chunks; drawDistance appends
+            // a final dimmed chunk with the distance.
+            struct Chunk { std::string text; ImU32 col; };
+            std::vector<Chunk> chunks;
+            if (g_settings.drawName) {
+                for (const auto& nc : t.nameChunks)
+                    if (!nc.first.empty())
+                        chunks.push_back({nc.first, (ImU32)nc.second});
             }
+            if (g_settings.drawDistance) {
+                char distBuf[16];
+                snprintf(distBuf, sizeof(distBuf), " %.1fm", (float)std::sqrt(distSq));
+                chunks.push_back({distBuf, IM_COL32(170, 200, 255, 220)});
+            }
+            if (chunks.empty()) continue;
 
-            // World-locked nametag position: MC renders its nametag at
-            //   entity.y + entity.height + 0.5  (0.5 block above head)
-            // Project that world point straight to screen so our pill sits
-            // exactly where the vanilla nametag does.
+            // World-locked anchor: MC renders its nametag at
+            //   entity.y + entity.height + 0.5
+            // Project that point straight to screen.
             ImVec2 tagPos;
             if (!ProjectWorld(ix, iy + t.height + 0.5, iz, snap.cam, dispW, dispH, tagPos))
                 continue;
 
-            // MC scales nametag text by 0.025 world units per font pixel, font
-            // is ~9 px tall in font space, so vanilla nametag height in world
-            // space is ~0.225 blocks. Convert to screen pixels using the same
-            // focal length our projection uses so we get matching apparent
-            // size at every distance.
-            double fovRad = snap.cam.fov * M_PI / 180.0;
-            if (fovRad <= 0.01) fovRad = 70.0 * M_PI / 180.0;
-            double f = 1.0 / std::tan(fovRad / 2.0);
-            const double WORLD_TEXT_HEIGHT = 0.225;
-            const double dist3D = std::sqrt(distSq);
-            float fontSize = (float)(WORLD_TEXT_HEIGHT * f * dispH * 0.5 / dist3D);
-            if (fontSize < 6.0f)  fontSize = 6.0f;
-            if (fontSize > 40.0f) fontSize = 40.0f;
+            // Fixed font size — no distance scaling. The previous distance-
+            // matched scaling produced a "shrinks when you walk up to them"
+            // feel; this stays readable from every range.
+            constexpr float BASE_FONT_SIZE     = 16.0f;
+            constexpr float FONT_SCALE         = 1.2f;
+            constexpr float NAMETAG_Y_SHIFT_PX = 4.0f;
+            const float fontSize = BASE_FONT_SIZE * FONT_SCALE;
 
             ImFont* font = ImGui::GetFont();
-            ImVec2 nameSize = name[0] ? font->CalcTextSizeA(fontSize, FLT_MAX, 0.0f, name) : ImVec2(0,0);
-            ImVec2 distSize = dist[0] ? font->CalcTextSizeA(fontSize, FLT_MAX, 0.0f, dist) : ImVec2(0,0);
-            const float gap      = (name[0] && dist[0]) ? fontSize * 0.35f : 0.0f;
+            float contentW = 0.0f;
+            float contentH = 0.0f;
+            for (auto& c : chunks) {
+                ImVec2 sz = font->CalcTextSizeA(fontSize, FLT_MAX, 0.0f, c.text.c_str());
+                contentW += sz.x;
+                if (sz.y > contentH) contentH = sz.y;
+            }
+
             const float padX     = fontSize * 0.35f;
             const float padY     = fontSize * 0.12f;
-            const float contentW = nameSize.x + gap + distSize.x;
-            const float contentH = (std::max)(nameSize.y, distSize.y);
-
-            // Center the pill on the projected world-space nametag anchor.
+            const float anchorY  = tagPos.y + NAMETAG_Y_SHIFT_PX;
             const float bgLeft   = tagPos.x - contentW * 0.5f - padX;
             const float bgRight  = tagPos.x + contentW * 0.5f + padX;
-            const float bgTop    = tagPos.y - contentH * 0.5f - padY;
-            const float bgBottom = tagPos.y + contentH * 0.5f + padY;
+            const float bgTop    = anchorY - contentH * 0.5f - padY;
+            const float bgBottom = anchorY + contentH * 0.5f + padY;
             const float rounding = (bgBottom - bgTop) * 0.5f;
 
             const ImU32 bgCol     = IM_COL32(12,  14, 20, 200);
             const ImU32 borderCol = IM_COL32(80,  90, 110, 180);
-            const ImU32 nameCol   = IM_COL32(255, 255, 255, 240);
-            const ImU32 distCol   = IM_COL32(170, 200, 255, 220);
 
             dl->AddRectFilled(ImVec2(bgLeft, bgTop), ImVec2(bgRight, bgBottom), bgCol, rounding);
             dl->AddRect      (ImVec2(bgLeft, bgTop), ImVec2(bgRight, bgBottom), borderCol, rounding, 0, 1.0f);
 
             float cursorX = bgLeft + padX;
-            const float textY = bgTop + padY + (contentH - nameSize.y) * 0.5f;
-            if (name[0]) {
-                dl->AddText(font, fontSize, ImVec2(cursorX, textY), nameCol, name);
-                cursorX += nameSize.x + gap;
-            }
-            if (dist[0]) {
-                dl->AddText(font, fontSize,
-                    ImVec2(cursorX, bgTop + padY + (contentH - distSize.y) * 0.5f),
-                    distCol, dist);
+            const float textY = bgTop + padY + (contentH - fontSize) * 0.5f;
+            for (auto& c : chunks) {
+                dl->AddText(font, fontSize, ImVec2(cursorX, textY), c.col, c.text.c_str());
+                cursorX += font->CalcTextSizeA(fontSize, FLT_MAX, 0.0f, c.text.c_str()).x;
             }
         }
     }

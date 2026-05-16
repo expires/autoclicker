@@ -95,6 +95,16 @@
   "mtd_PlayerTeam_formatNameForTeam":"method_1142",
   "desc_PlayerTeam_formatNameForTeam":"(Lnet/minecraft/class_270;Lnet/minecraft/class_2561;)Lnet/minecraft/class_5250;",
 
+  "class_Style":                    "net.minecraft.class_2583",
+  "class_TextColor":                "net.minecraft.class_5251",
+  "mtd_Component_getStyle":         "method_10866",
+  "desc_Component_getStyle":        "()Lnet/minecraft/class_2583;",
+  "mtd_Component_getSiblings":      "method_10855",
+  "desc_Component_getSiblings":     "()Ljava/util/List;",
+  "mtd_Style_getColor":             "method_10973",
+  "desc_Style_getColor":            "()Lnet/minecraft/class_5251;",
+  "mtd_TextColor_getValue":         "method_27716",
+
   "fld_AABB_minX":                 "field_1323",
   "fld_AABB_minY":                 "field_1322",
   "fld_AABB_minZ":                 "field_1321",

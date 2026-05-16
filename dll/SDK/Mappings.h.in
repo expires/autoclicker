@@ -101,6 +101,16 @@
 #define MTD_PlayerTeam_formatNameForTeam       "@mtd_PlayerTeam_formatNameForTeam@"
 #define DESC_PlayerTeam_formatNameForTeam      "@desc_PlayerTeam_formatNameForTeam@"
 
+#define MC_Style                       "@class_Style@"
+#define MC_TextColor                   "@class_TextColor@"
+#define MTD_Component_getStyle         "@mtd_Component_getStyle@"
+#define DESC_Component_getStyle        "@desc_Component_getStyle@"
+#define MTD_Component_getSiblings      "@mtd_Component_getSiblings@"
+#define DESC_Component_getSiblings     "@desc_Component_getSiblings@"
+#define MTD_Style_getColor             "@mtd_Style_getColor@"
+#define DESC_Style_getColor            "@desc_Style_getColor@"
+#define MTD_TextColor_getValue         "@mtd_TextColor_getValue@"
+
 #define FLD_AABB_minX  "@fld_AABB_minX@"
 #define FLD_AABB_minY  "@fld_AABB_minY@"
 #define FLD_AABB_minZ  "@fld_AABB_minZ@"
