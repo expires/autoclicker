@@ -183,9 +183,9 @@ namespace EspModule
                     t.halfDepth = 0.3;
                 }
 
-                Component nameC = p.getName();
-                if (nameC.GetInstance() != nullptr)
-                    t.name = nameC.getString();
+                // Use the team-formatted name so prefixes like "[Clan]" show
+                // up the same way MC's vanilla renderer composes them.
+                t.name = p.getFormattedName();
 
                 back.targets.push_back(std::move(t));
             }
@@ -205,8 +205,6 @@ namespace EspModule
 
         // Final cleanup before detaching — don't leave glowing players behind.
         if (glowApplied) cleanupGlow();
-
-        JvmtiAgent::Shutdown();
 
         lc->vm->DetachCurrentThread();
         return 0;

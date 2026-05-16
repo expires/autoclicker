@@ -74,6 +74,48 @@ Component Entity::getTypeName()
     return Component(rtn);
 }
 
+std::string Entity::getFormattedName()
+{
+    Component nameC = getName();
+    if (nameC.GetInstance() == nullptr) return "";
+
+    // Resolve the player's scoreboard team. If there is no team or the lookup
+    // fails, fall back to the bare name with no formatting.
+    jmethodID getTeamM = lc->env->GetMethodID(this->GetClass(),
+        MTD_Entity_getTeam, DESC_Entity_getTeam);
+    if (!getTeamM) { lc->env->ExceptionClear(); return nameC.getString(); }
+
+    jobject team = lc->env->CallObjectMethod(this->instance, getTeamM);
+    if (lc->env->ExceptionCheck()) { lc->env->ExceptionClear(); return nameC.getString(); }
+    if (team == nullptr) return nameC.getString();
+
+    // PlayerTeam.formatNameForTeam(Team, Component) is static. The first arg's
+    // declared type is the Team interface but our jobject points at PlayerTeam
+    // which implements it — JNI takes either fine.
+    jclass teamCls = lc->GetClass(MC_PlayerTeam);
+    if (!teamCls) { lc->env->DeleteLocalRef(team); return nameC.getString(); }
+
+    jmethodID formatM = lc->env->GetStaticMethodID(teamCls,
+        MTD_PlayerTeam_formatNameForTeam, DESC_PlayerTeam_formatNameForTeam);
+    if (!formatM) {
+        lc->env->ExceptionClear();
+        lc->env->DeleteLocalRef(team);
+        return nameC.getString();
+    }
+
+    jobject formatted = lc->env->CallStaticObjectMethod(teamCls, formatM, team, nameC.GetInstance());
+    lc->env->DeleteLocalRef(team);
+    if (lc->env->ExceptionCheck() || !formatted) {
+        lc->env->ExceptionClear();
+        return nameC.getString();
+    }
+
+    // formatted is a MutableComponent (implements Component); getString() works
+    // via virtual dispatch the same way it does for plain Components.
+    Component formattedComp(formatted);
+    return formattedComp.getString();
+}
+
 // 1.21.11+: Entity.x/y/z no longer exist as primitive fields; position is a
 // Vec3 reference on Entity. Each accessor reads the Vec3 and pulls a coord.
 Vec3 Entity::getPosition()

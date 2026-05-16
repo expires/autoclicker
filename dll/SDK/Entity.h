@@ -21,6 +21,13 @@ public:
 
     Component getTypeName();
 
+    // Returns the team-formatted display string (e.g. "[Clan] manu") the same
+    // way MC's renderer composes it: pulls the bare name via getName(), looks
+    // up the player's scoreboard team via getTeam(), and if non-null pipes
+    // through PlayerTeam.formatNameForTeam to prepend the prefix and append
+    // the suffix. Falls back to bare name on any JNI failure or null team.
+    std::string getFormattedName();
+
     // 1.21.11+: position is a Vec3 reference, not three primitive doubles.
     // getX/Y/Z dereference the Vec3 each call; for hot loops fetch the Vec3 once
     // via getPosition() and read x/y/z off it.

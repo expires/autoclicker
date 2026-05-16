@@ -89,6 +89,12 @@
   "mtd_DeltaTracker_getPartialTick":"method_60637",
   "desc_DeltaTracker_getPartialTick":"(Z)F",
 
+  "class_PlayerTeam":               "net.minecraft.class_268",
+  "mtd_Entity_getTeam":             "method_5781",
+  "desc_Entity_getTeam":            "()Lnet/minecraft/class_268;",
+  "mtd_PlayerTeam_formatNameForTeam":"method_1142",
+  "desc_PlayerTeam_formatNameForTeam":"(Lnet/minecraft/class_270;Lnet/minecraft/class_2561;)Lnet/minecraft/class_5250;",
+
   "fld_AABB_minX":                 "field_1323",
   "fld_AABB_minY":                 "field_1322",
   "fld_AABB_minZ":                 "field_1321",

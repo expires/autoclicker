@@ -64,6 +64,9 @@ foreach(KEY
     class_DeltaTracker
     mtd_Minecraft_getDeltaTracker   desc_Minecraft_getDeltaTracker
     mtd_DeltaTracker_getPartialTick desc_DeltaTracker_getPartialTick
+    class_PlayerTeam
+    mtd_Entity_getTeam               desc_Entity_getTeam
+    mtd_PlayerTeam_formatNameForTeam desc_PlayerTeam_formatNameForTeam
     fld_AABB_minX fld_AABB_minY fld_AABB_minZ fld_AABB_maxX fld_AABB_maxY fld_AABB_maxZ
     fld_Vec3_x fld_Vec3_y fld_Vec3_z
     fld_Camera_position desc_Camera_position fld_Camera_xRot fld_Camera_yRot
