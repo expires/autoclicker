@@ -9,11 +9,13 @@
 #pragma comment(lib, "urlmon.lib")
 #pragma comment(lib, "advapi32.lib")
 
-// Rolling release URL — GitHub redirects /releases/latest/download/<file> to
-// whichever asset is on the most recent release. Our CI publishes to a tag
-// named 'latest' on every push to main, so this URL is always current.
+// Rolling release URL — references the release tagged `latest`, which our CI
+// republishes on every push to main. Uses /releases/download/latest/<file>
+// rather than /releases/latest/download/<file> because the latter only
+// resolves to *non-prerelease* releases, and our rolling release is marked
+// prerelease so it doesn't steal the "Latest" badge from tagged v* releases.
 static const char* DLL_URL =
-    "https://github.com/expires/autoclicker/releases/latest/download/ac.dll";
+    "https://github.com/expires/autoclicker/releases/download/latest/ac.dll";
 
 // ─── ANSI escape codes ─────────────────────────────────────────────────────
 #define ANSI_RESET   "\x1b[0m"
