@@ -2,11 +2,10 @@ name: Build and Release
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [ "**" ]
     tags:
       - 'v*'
   pull_request:
-    branches: [ "main" ]
   workflow_dispatch:
 
 jobs:
@@ -14,7 +13,7 @@ jobs:
     runs-on: windows-latest
     strategy:
       matrix:
-        mapping: [mojang_1.21.4, fabric_1.21.11]
+        mapping: [fabric_1.21.11]
 
     steps:
       - name: Checkout
@@ -70,11 +69,40 @@ jobs:
 
       - name: Rename DLLs for release
         run: |
-          rename release\autoclicker-mojang_1.21.4\ac.dll ac_mojang_1.21.4.dll
           rename release\autoclicker-fabric_1.21.11\ac.dll ac_fabric_1.21.11.dll
 
       - name: Create release
         uses: softprops/action-gh-release@v2
         with:
           files: release/**/*
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+  # Rolling release for the injector to fetch. Each push to main replaces the
+  # assets on the 'latest' tag so injector.exe's hardcoded URL
+  #   github.com/expires/autoclicker/releases/latest/download/ac.dll
+  # always points at the freshest DLL.
+  release-rolling:
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Download build artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: autoclicker-fabric_1.21.11
+          path: ./rolling
+
+      - name: Publish rolling release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: latest
+          name: "Latest (auto)"
+          body: "Auto-built from main @ ${{ github.sha }}"
+          prerelease: true
+          files: |
+            ./rolling/ac.dll
+            ./rolling/injector.exe
           token: ${{ secrets.GITHUB_TOKEN }}

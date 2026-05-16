@@ -5,6 +5,9 @@
 #include "Screen.h"
 #include "HitResult.h"
 #include "Gui.h"
+#include "Level.h"
+#include "GameRenderer.h"
+#include "DeltaTracker.h"
 
 class Minecraft
 {
@@ -25,4 +28,9 @@ public:
 
 	HitResult getHitResult();
 
+	Level GetLevel();
+
+	GameRenderer GetGameRenderer();
+
+	DeltaTracker GetDeltaTracker();
 };

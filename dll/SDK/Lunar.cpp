@@ -1,5 +1,7 @@
 #include "Lunar.h"
 
+thread_local JNIEnv *Lunar::env = nullptr;
+
 void Lunar::GetLoadedClasses()
 {
     jvmtiEnv *jvmti;
@@ -22,9 +24,15 @@ void Lunar::GetLoadedClasses()
     {
         jstring name = (jstring)env->CallObjectMethod(classesPtr[i], getName);
         const char *className = env->GetStringUTFChars(name, 0);
-        classes.emplace(std::make_pair((std::string)className, classesPtr[i]));
+        // Promote to global so the ref stays valid across threads + JNI frames.
+        // JVMTI returns local refs that would otherwise die when our outermost
+        // frame ends; we also need to share these with the ESP thread.
+        jclass global = (jclass)env->NewGlobalRef(classesPtr[i]);
+        classes.emplace(std::make_pair((std::string)className, global));
         env->ReleaseStringUTFChars(name, className);
+        env->DeleteLocalRef(classesPtr[i]);
     }
+    classesLoaded.store(true, std::memory_order_release);
 }
 
 jclass Lunar::GetClass(std::string classname)
