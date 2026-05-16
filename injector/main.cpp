@@ -2,6 +2,7 @@
 #include <tlhelp32.h>
 #include <urlmon.h>
 #include <wincrypt.h>
+#include <conio.h>
 #include <cstdio>
 #include <cstring>
 
@@ -14,6 +15,73 @@
 static const char* DLL_URL =
     "https://github.com/expires/autoclicker/releases/latest/download/ac.dll";
 
+// ─── ANSI escape codes ─────────────────────────────────────────────────────
+#define ANSI_RESET   "\x1b[0m"
+#define ANSI_BOLD    "\x1b[1m"
+#define ANSI_DIM     "\x1b[2m"
+#define ANSI_CYAN    "\x1b[36m"
+#define ANSI_GREEN   "\x1b[32m"
+#define ANSI_YELLOW  "\x1b[33m"
+#define ANSI_RED     "\x1b[31m"
+#define ANSI_MAGENTA "\x1b[35m"
+
+static void SetupConsole()
+{
+    // UTF-8 so the box-drawing + checkmark characters render correctly.
+    SetConsoleOutputCP(CP_UTF8);
+
+    // Enable ANSI escape sequence processing (Windows 10 1607+).
+    HANDLE h = GetStdHandle(STD_OUTPUT_HANDLE);
+    DWORD  mode = 0;
+    if (GetConsoleMode(h, &mode))
+        SetConsoleMode(h, mode | ENABLE_VIRTUAL_TERMINAL_PROCESSING);
+}
+
+static void PrintBanner()
+{
+    printf("\n" ANSI_CYAN ANSI_BOLD);
+    printf(
+        "                                   _ _      _             \n"
+        "                                  | (_)    | |            \n"
+        "  _ __ ___   __ _ _ __  _   _  ___| |_  ___| | _____ _ __ \n"
+        " | '_ ` _ \\ / _` | '_ \\| | | |/ __| | |/ __| |/ / _ \\ '__|\n"
+        " | | | | | | (_| | | | | |_| | (__| | | (__|   <  __/ |   \n"
+        " |_| |_| |_|\\__,_|_| |_|\\__,_|\\___|_|_|\\___|_|\\_\\___|_|   \n"
+        "                                                          \n"
+    );
+    printf(ANSI_RESET "\n");
+}
+
+static void PrintStep(const char* msg)
+{
+    printf("  " ANSI_YELLOW "[•]" ANSI_RESET " %s\n", msg);
+}
+
+static void PrintError(const char* msg)
+{
+    printf("  " ANSI_RED "[✗] %s" ANSI_RESET "\n", msg);
+}
+
+static void PrintSuccess()
+{
+    printf("\n");
+    printf("  " ANSI_GREEN "╭────────────────────────────────────────╮" ANSI_RESET "\n");
+    printf("  " ANSI_GREEN "│" ANSI_RESET "  " ANSI_BOLD ANSI_GREEN
+           "✓  Successfully injected" ANSI_RESET
+           "              " ANSI_GREEN "│" ANSI_RESET "\n");
+    printf("  " ANSI_GREEN "╰────────────────────────────────────────╯" ANSI_RESET "\n");
+    printf("\n");
+}
+
+static void WaitForKey()
+{
+    printf("  " ANSI_DIM "press any key to close..." ANSI_RESET);
+    fflush(stdout);
+    _getch();
+    printf("\n");
+}
+
+// ─── Injection plumbing ────────────────────────────────────────────────────
 DWORD GetProcessId(const wchar_t* procName)
 {
     HANDLE snap = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
@@ -46,9 +114,6 @@ void InjectDLL(DWORD pid, const char* dllPath)
     CloseHandle(hProc);
 }
 
-// Best-effort sweep of stale DLL files dropped here by previous injector runs.
-// Files locked by a still-running javaw will fail silently; the next run picks
-// them up once the target process has exited.
 static void CleanupStaleDlls(const char* tempDir)
 {
     char pattern[MAX_PATH];
@@ -65,8 +130,6 @@ static void CleanupStaleDlls(const char* tempDir)
     FindClose(h);
 }
 
-// 16 hex chars of CSPRNG output — picks a unique filename so two concurrent
-// runs can't collide on disk.
 static void GenerateRandomHex(char* out, size_t outSize)
 {
     BYTE bytes[8] = {};
@@ -78,7 +141,6 @@ static void GenerateRandomHex(char* out, size_t outSize)
     }
     else
     {
-        // Fallback: tick count + PID, mixed.
         DWORD t = GetTickCount() ^ GetCurrentProcessId();
         for (int i = 0; i < 8; ++i) bytes[i] = (BYTE)(t >> ((i & 3) * 8)) ^ (BYTE)(i * 31);
     }
@@ -88,32 +150,50 @@ static void GenerateRandomHex(char* out, size_t outSize)
 
 int main()
 {
-    char tempDir[MAX_PATH];
-    if (GetTempPathA(MAX_PATH, tempDir) == 0) return 1;
+    SetupConsole();
+    PrintBanner();
 
-    // 1. Wipe whatever's lying around from prior runs.
+    char tempDir[MAX_PATH];
+    if (GetTempPathA(MAX_PATH, tempDir) == 0)
+    {
+        PrintError("Failed to resolve temp directory");
+        WaitForKey();
+        return 1;
+    }
+
+    PrintStep("Cleaning stale files...");
     CleanupStaleDlls(tempDir);
 
-    // 2. Generate a fresh unique path.
     char hash[24] = {};
     GenerateRandomHex(hash, sizeof(hash));
     char dllPath[MAX_PATH];
     snprintf(dllPath, sizeof(dllPath), "%sac_%s.dll", tempDir, hash);
 
-    // 3. Pull the DLL from the rolling release. URLDownloadToFile handles
-    //    HTTPS + cross-host redirects (GitHub redirects releases/latest/download
-    //    to a hashed objects.githubusercontent.com URL).
+    PrintStep("Downloading DLL from GitHub...");
     HRESULT hr = URLDownloadToFileA(nullptr, DLL_URL, dllPath, 0, nullptr);
-    if (FAILED(hr)) return 1;
+    if (FAILED(hr))
+    {
+        PrintError("Download failed — check your internet connection");
+        WaitForKey();
+        return 1;
+    }
 
-    // 4. Find javaw and inject. If javaw isn't running we still leave the DLL
-    //    in place — next run's cleanup pass will sweep it.
+    PrintStep("Locating javaw.exe...");
     DWORD pid = GetProcessId(L"javaw.exe");
-    if (pid) InjectDLL(pid, dllPath);
+    if (!pid)
+    {
+        PrintError("javaw.exe not running — launch Lunar Client first");
+        WaitForKey();
+        return 1;
+    }
 
-    // 5. Belt-and-braces: schedule the file for delete on next reboot, so even
-    //    if no future injector run sweeps it, it doesn't accumulate forever.
+    PrintStep("Injecting...");
+    InjectDLL(pid, dllPath);
+
+    // Belt-and-braces deletion fallback in case nothing sweeps the file later.
     MoveFileExA(dllPath, nullptr, MOVEFILE_DELAY_UNTIL_REBOOT);
 
+    PrintSuccess();
+    WaitForKey();
     return 0;
 }
