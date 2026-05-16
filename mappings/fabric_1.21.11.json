@@ -78,6 +78,7 @@
   "mtd_Entity_getBoundingBox":     "method_5829",
   "desc_Entity_getBoundingBox":    "()Lnet/minecraft/class_238;",
   "mtd_Entity_setGlowingTag":      "method_5834",
+  "fld_Entity_hasGlowingTag":      "field_5958",
 
   "fld_AABB_minX":                 "field_1323",
   "fld_AABB_minY":                 "field_1322",

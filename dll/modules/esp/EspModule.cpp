@@ -83,6 +83,8 @@ namespace EspModule
             back.gotLevel        = false;
             back.gotGameRenderer = false;
             back.gotCamera       = false;
+            back.glowCallsOk     = 0;
+            back.glowCallsFail   = 0;
 
             auto publishDiag = [&]() {
                 std::lock_guard<std::mutex> lk(snapMutex);
@@ -144,7 +146,14 @@ namespace EspModule
                 // iteration. setGlowingTag(false) is idempotent so we can also
                 // use it to clear out-of-range glows mid-flight.
                 bool shouldGlow = g_settings.useGlow && distSq <= maxDistSq;
-                p.setGlowingTag(shouldGlow);
+                if (p.setGlowingTag(shouldGlow))
+                {
+                    if (shouldGlow) back.glowCallsOk++;
+                }
+                else
+                {
+                    back.glowCallsFail++;
+                }
 
                 AABB box = p.getBoundingBox();
                 if (box.GetInstance() != nullptr)

@@ -35,7 +35,11 @@
       "Bash(curl -s \"https://linkieapi.shedaniel.me/api/search?namespace=mojang&version=1.21.11&query=method_18456&limit=5&allowMethods=true&allowClasses=false&allowFields=false\")",
       "Bash(curl -s \"https://linkieapi.shedaniel.me/api/search?namespace=mojang&version=1.21.11&query=Entity.setGlowingTag&limit=3&allowMethods=true&allowClasses=false&allowFields=false\")",
       "Bash(curl -s \"https://linkieapi.shedaniel.me/api/search?namespace=mojang&version=1.21.11&query=Entity.setGlowingTag&limit=3&allowMethods=true\")",
-      "Bash(curl -s \"https://linkieapi.shedaniel.me/api/search?namespace=mojang&version=1.21.11&query=setGlowingTag&limit=5&allowMethods=true&allowClasses=false&allowFields=false\")"
+      "Bash(curl -s \"https://linkieapi.shedaniel.me/api/search?namespace=mojang&version=1.21.11&query=setGlowingTag&limit=5&allowMethods=true&allowClasses=false&allowFields=false\")",
+      "Bash(curl -s \"https://linkieapi.shedaniel.me/api/search?namespace=yarn&version=1.21.11&query=Entity.setGlowing&limit=5&allowMethods=true&allowClasses=false&allowFields=false\")",
+      "Bash(curl -s \"https://linkieapi.shedaniel.me/api/search?namespace=yarn&version=1.21.11&query=isCurrentlyGlowing&limit=3&allowMethods=true&allowClasses=false&allowFields=false\")",
+      "Bash(curl -s \"https://linkieapi.shedaniel.me/api/search?namespace=mojang&version=1.21.11&query=Entity.hasGlowingTag&limit=5&allowFields=true&allowMethods=true&allowClasses=false\")",
+      "Bash(curl -s \"https://linkieapi.shedaniel.me/api/search?namespace=yarn&version=1.21.11&query=Entity.glowing&limit=5&allowFields=true&allowMethods=false&allowClasses=false\")"
     ]
   }
 }

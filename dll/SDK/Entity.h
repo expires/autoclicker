@@ -37,7 +37,8 @@ public:
 
     // Client-side only: flips Entity.hasGlowingTag. isCurrentlyGlowing() reads
     // this and the engine renders the outline. Not synced to server.
-    void setGlowingTag(bool glowing);
+    // Returns true if the JNI lookup found the method and the call dispatched.
+    bool setGlowingTag(bool glowing);
 
 private:
     jobject instance;
