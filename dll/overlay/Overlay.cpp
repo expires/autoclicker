@@ -8,6 +8,7 @@
 #include "imgui_impl_opengl3.h"
 #include "../Settings.h"
 #include "../modules/esp/EspModule.h"
+#include "../SDK/JvmtiAgent.h"
 #include <MinHook.h>
 
 #ifndef M_PI
@@ -362,9 +363,10 @@ static BOOL WINAPI hk_wglSwapBuffers(HDC hdc)
                 ImGui::Text("valid=%d  mc=%d  lp=%d  lvl=%d  gr=%d  cam=%d",
                     snap.valid, snap.gotMinecraft, snap.gotLocalPlayer,
                     snap.gotLevel, snap.gotGameRenderer, snap.gotCamera);
-                ImGui::Text("players()=%d  targets=%d  glow ok=%d fail=%d",
+                ImGui::Text("players()=%d  targets=%d  glow ok=%d fail=%d  jvmtiHook=%d",
                     snap.rawPlayerCount, (int)snap.targets.size(),
-                    snap.glowCallsOk, snap.glowCallsFail);
+                    snap.glowCallsOk, snap.glowCallsFail,
+                    JvmtiAgent::IsActive() ? 1 : 0);
                 ImGui::Text("cam=(%.1f,%.1f,%.1f)  yaw=%.1f  pitch=%.1f  fov=%.1f",
                     snap.cam.x, snap.cam.y, snap.cam.z,
                     snap.cam.yRot, snap.cam.xRot, snap.cam.fov);

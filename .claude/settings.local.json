@@ -44,7 +44,11 @@
       "Bash(curl -s \"https://linkieapi.shedaniel.me/api/search?namespace=mojang&version=1.21.11&query=Entity.yo&limit=3&allowFields=true&allowMethods=false&allowClasses=false\")",
       "Bash(curl -s \"https://linkieapi.shedaniel.me/api/search?namespace=mojang&version=1.21.11&query=Entity.zo&limit=3&allowFields=true&allowMethods=false&allowClasses=false\")",
       "Bash(curl -s \"https://linkieapi.shedaniel.me/api/search?namespace=mojang&version=1.21.11&query=Minecraft.getDeltaTracker&limit=3&allowMethods=true&allowClasses=false&allowFields=false\")",
-      "Bash(curl -s \"https://linkieapi.shedaniel.me/api/search?namespace=mojang&version=1.21.11&query=DeltaTracker.getGameTimeDeltaPartialTick&limit=3&allowMethods=true&allowClasses=false&allowFields=false\")"
+      "Bash(curl -s \"https://linkieapi.shedaniel.me/api/search?namespace=mojang&version=1.21.11&query=DeltaTracker.getGameTimeDeltaPartialTick&limit=3&allowMethods=true&allowClasses=false&allowFields=false\")",
+      "Bash(curl -s \"https://linkieapi.shedaniel.me/api/search?namespace=mojang&version=1.21.11&query=PlayerRenderer&limit=3&allowClasses=true&allowFields=false&allowMethods=false\")",
+      "Bash(curl -s \"https://linkieapi.shedaniel.me/api/search?namespace=mojang&version=1.21.11&query=PlayerRenderer.shouldShowName&limit=5&allowMethods=true&allowClasses=false&allowFields=false\")",
+      "Bash(curl -s \"https://linkieapi.shedaniel.me/api/search?namespace=mojang&version=1.21.11&query=LivingEntityRenderer.shouldShowName&limit=5&allowMethods=true&allowClasses=false&allowFields=false\")",
+      "Bash(curl -s \"https://linkieapi.shedaniel.me/api/search?namespace=mojang&version=1.21.11&query=EntityRenderer.shouldShowName&limit=5&allowMethods=true&allowClasses=false&allowFields=false\")"
     ]
   }
 }

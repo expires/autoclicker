@@ -10,7 +10,7 @@ struct Settings
     bool espEnabled   = false;
     bool useGlow      = false;  // engine outline; Lunar's render path ignores it
     bool drawBox      = true;
-    bool drawName     = false;  // off by default — MC's vanilla nametag already shows
+    bool drawName     = true;   // JVMTI hook suppresses MC's nametag so no duplicate
     bool drawDistance = true;
     int  maxDistance  = 100; // meters
 };

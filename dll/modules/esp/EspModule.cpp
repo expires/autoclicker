@@ -1,6 +1,7 @@
 #include "EspModule.h"
 #include "../../Settings.h"
 #include "../../SDK/Minecraft.h"
+#include "../../SDK/JvmtiAgent.h"
 #include "Mappings.h"
 #include "../autoclicker/AutoclickerModule.h"
 #include <thread>
@@ -29,6 +30,12 @@ namespace EspModule
         if (lc->vm->AttachCurrentThread(reinterpret_cast<void**>(&lc->env), nullptr) != JNI_OK)
             return 0;
         if (lc->env == nullptr) return 0;
+
+        // Install the JVMTI breakpoint that suppresses MC's vanilla nametag
+        // when our drawName toggle is active. Must run AFTER the class map is
+        // populated (already guaranteed by the jvmReady() wait above) and
+        // AFTER this thread is attached.
+        JvmtiAgent::Init();
 
         Minecraft mc;
         Snapshot back;
@@ -205,6 +212,8 @@ namespace EspModule
 
         // Final cleanup before detaching — don't leave glowing players behind.
         if (glowApplied) cleanupGlow();
+
+        JvmtiAgent::Shutdown();
 
         lc->vm->DetachCurrentThread();
         return 0;
