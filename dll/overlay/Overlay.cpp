@@ -52,9 +52,13 @@ static void SectionHeader(const char* label)
 }
 
 // Full-width clickable row used as a sidebar tab item: an icon glyph on the
-// left, a label to its right, and a 2-px accent stripe along the right edge
-// when selected. Uses ImGui internals (ItemAdd / ButtonBehavior) so the row
-// participates in ImGui's standard hit-testing instead of polling mouse rects.
+// left, a label to its right, and a 2-px full-height accent stripe along the
+// right edge that slides between tabs when the selection changes. Mirrors
+// the `custom::tab` style from the reference GUI in .temp/.../custom.cpp.
+//
+// The accent stripe uses a static `line_pos` shared across every tab call —
+// only the selected tab updates the target, all tabs paint at the same Y so
+// the stripe visually "moves" between them as line_pos lerps.
 static bool SidebarTab(const char* icon, const char* label, bool selected)
 {
     using namespace ImGui;
@@ -77,26 +81,29 @@ static bool SidebarTab(const char* icon, const char* label, bool selected)
         dl->AddRectFilled(bb.Min, bb.Max,
             ColorConvertFloat4ToU32(FromHex(0x161d2e, 0.5f)));
 
-    if (selected) {
-        // Right-edge accent stripe — the visual "you are here" indicator.
-        dl->AddRectFilled(
-            ImVec2(bb.Max.x - 2.5f, bb.Min.y + 8.0f),
-            ImVec2(bb.Max.x,        bb.Max.y - 8.0f),
-            ColorConvertFloat4ToU32(FromHex(0x5865f2)));
-    }
+    // Animated accent stripe — full-height, 2-px wide, rounded-left.
+    static float line_pos = 0.f;
+    if (selected) line_pos = ImLerp(line_pos, bb.Min.y - window->Pos.y, 0.20f);
+    dl->AddRectFilled(
+        ImVec2(bb.Max.x - 2.0f, window->Pos.y + line_pos),
+        ImVec2(bb.Max.x,        window->Pos.y + line_pos + size.y),
+        ColorConvertFloat4ToU32(FromHex(0x5865f2)),
+        2.0f, ImDrawFlags_RoundCornersLeft);
 
     const ImU32 textCol = ColorConvertFloat4ToU32(
         selected ? FromHex(0xffffff) : FromHex(0x707a8c));
 
     PushStyleColor(ImGuiCol_Text, textCol);
 
-    // Icon glyph centered in a ~32-px left column.
+    // Icon glyph from the MDL2 / Fluent Icons font in Fonts[1].
+    PushFont(GetIO().Fonts->Fonts[1]);
     ImVec2 iconSz = CalcTextSize(icon);
-    RenderText(ImVec2(bb.Min.x + 18.0f - iconSz.x * 0.5f,
+    RenderText(ImVec2(bb.Min.x + 20.0f - iconSz.x * 0.5f,
                       bb.GetCenter().y - iconSz.y * 0.5f), icon);
+    PopFont();
 
     ImVec2 labelSz = CalcTextSize(label);
-    RenderText(ImVec2(bb.Min.x + 38.0f,
+    RenderText(ImVec2(bb.Min.x + 42.0f,
                       bb.GetCenter().y - labelSz.y * 0.5f), label);
 
     PopStyleColor();
@@ -411,27 +418,49 @@ static BOOL WINAPI hk_wglSwapBuffers(HDC hdc)
 
         // Properly null-init the path buffers — strcat_s on uninitialized
         // memory in release builds silently corrupts the path and we end up
-        // failing to load any font, leaving Fonts[1] missing and crashing
+        // failing to load any font, leaving the slot missing and crashing
         // the first PushFont call.
         char fontBold[MAX_PATH]    = {};
         char fontRegular[MAX_PATH] = {};
-        strcpy_s(fontBold,    sizeof(fontBold),    winDir);
-        strcat_s(fontBold,    sizeof(fontBold),    "\\Fonts\\segoeuib.ttf");
-        strcpy_s(fontRegular, sizeof(fontRegular), winDir);
-        strcat_s(fontRegular, sizeof(fontRegular), "\\Fonts\\segoeui.ttf");
+        char fontIcons[MAX_PATH]   = {};
+        char fontIconsMDL2[MAX_PATH] = {};
+        strcpy_s(fontBold,      sizeof(fontBold),      winDir); strcat_s(fontBold,      sizeof(fontBold),      "\\Fonts\\segoeuib.ttf");
+        strcpy_s(fontRegular,   sizeof(fontRegular),   winDir); strcat_s(fontRegular,   sizeof(fontRegular),   "\\Fonts\\segoeui.ttf");
+        strcpy_s(fontIcons,     sizeof(fontIcons),     winDir); strcat_s(fontIcons,     sizeof(fontIcons),     "\\Fonts\\SegoeIcons.ttf");  // Win11 Fluent Icons
+        strcpy_s(fontIconsMDL2, sizeof(fontIconsMDL2), winDir); strcat_s(fontIconsMDL2, sizeof(fontIconsMDL2), "\\Fonts\\segmdl2.ttf");      // Win10 MDL2 Assets
 
         ImFontConfig cfg;
         cfg.OversampleH = 3;
         cfg.OversampleV = 3;
         cfg.PixelSnapH  = false;
 
-        // Always populate Fonts[0] (body) and Fonts[1] (bold / icons) — fall
-        // back to the built-in default if either system font fails to load,
-        // so PushFont(Fonts[1]) is always safe.
+        // Three slots, always populated (fallback to default font so
+        // PushFont(Fonts[N]) is always safe):
+        //   0 — body regular
+        //   1 — icons (Private Use Area glyphs from Segoe Fluent / MDL2)
+        //   2 — bold (sidebar brand + content title)
+
+        // Slot 0 — body
         ImFont* fReg = (GetFileAttributesA(fontRegular) != INVALID_FILE_ATTRIBUTES)
             ? io.Fonts->AddFontFromFileTTF(fontRegular, 15.0f, &cfg) : nullptr;
         if (!fReg) io.Fonts->AddFontDefault();
 
+        // Slot 1 — icons. The glyphs we use (target, people, gear) live in
+        // the Private Use Area; ImGui's default range is Basic Latin only,
+        // so we explicitly request E000-F8FF or the glyphs render as boxes.
+        static const ImWchar iconRanges[] = { 0xE000, 0xF8FF, 0 };
+        ImFontConfig iconCfg;
+        iconCfg.OversampleH = 2;
+        iconCfg.OversampleV = 2;
+        iconCfg.PixelSnapH  = true;
+        const char* iconPath =
+            (GetFileAttributesA(fontIcons)     != INVALID_FILE_ATTRIBUTES) ? fontIcons     :
+            (GetFileAttributesA(fontIconsMDL2) != INVALID_FILE_ATTRIBUTES) ? fontIconsMDL2 : nullptr;
+        ImFont* fIcon = iconPath
+            ? io.Fonts->AddFontFromFileTTF(iconPath, 15.0f, &iconCfg, iconRanges) : nullptr;
+        if (!fIcon) io.Fonts->AddFontDefault();
+
+        // Slot 2 — bold
         ImFont* fBold = (GetFileAttributesA(fontBold) != INVALID_FILE_ATTRIBUTES)
             ? io.Fonts->AddFontFromFileTTF(fontBold, 19.0f, &cfg) : nullptr;
         if (!fBold) io.Fonts->AddFontDefault();
@@ -504,16 +533,19 @@ static BOOL WINAPI hk_wglSwapBuffers(HDC hdc)
                     ImGui::GetColorU32(ImGuiCol_Border));
 
                 ImGui::SetCursorPos(ImVec2(20, 22));
-                ImGui::PushFont(ImGui::GetIO().Fonts->Fonts[1]);
+                ImGui::PushFont(ImGui::GetIO().Fonts->Fonts[2]);
                 ImGui::TextUnformatted("manuclicker");
                 ImGui::PopFont();
 
+                // Glyphs from Segoe Fluent Icons / MDL2 Assets — UTF-8 byte
+                // escapes for codepoints in the Private Use Area:
+                //   U+E1F5  Target (crosshair-ish)
+                //   U+E716  People
+                //   U+E713  Settings (gear)
                 ImGui::SetCursorPos(ImVec2(0, 76));
-                ImGui::PushFont(ImGui::GetIO().Fonts->Fonts[1]);
-                if (SidebarTab("+", "Autoclicker", s_currentTab == 0)) s_currentTab = 0;
-                if (SidebarTab("P", "ESP",         s_currentTab == 1)) s_currentTab = 1;
-                if (SidebarTab("S", "Settings",    s_currentTab == 2)) s_currentTab = 2;
-                ImGui::PopFont();
+                if (SidebarTab("\xEE\x87\xB5", "Autoclicker", s_currentTab == 0)) s_currentTab = 0;
+                if (SidebarTab("\xEE\x9C\x96", "ESP",         s_currentTab == 1)) s_currentTab = 1;
+                if (SidebarTab("\xEE\x9C\x93", "Settings",    s_currentTab == 2)) s_currentTab = 2;
             }
             ImGui::EndChild();
 
@@ -525,7 +557,7 @@ static BOOL WINAPI hk_wglSwapBuffers(HDC hdc)
             {
                 // Big bold title in the top-left of the content area.
                 ImGui::SetCursorPos(ImVec2(22, 22));
-                ImGui::PushFont(ImGui::GetIO().Fonts->Fonts[1]);
+                ImGui::PushFont(ImGui::GetIO().Fonts->Fonts[2]);
                 ImGui::TextUnformatted(
                     s_currentTab == 0 ? "Autoclicker" :
                     s_currentTab == 1 ? "ESP" :
