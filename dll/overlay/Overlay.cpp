@@ -675,7 +675,7 @@ static void ReleaseAllHeldInputs()
     for (int vk = 0x01; vk <= 0xFE; ++vk) {
         // Skip our toggle keys — they're transient and the swallow logic
         // doesn't care about their up edge.
-        if (vk == VK_INSERT || vk == VK_CAPITAL) continue;
+        if (vk == VK_INSERT) continue;
         // Skip mouse buttons; handled with their own messages below.
         if (vk == VK_LBUTTON || vk == VK_RBUTTON || vk == VK_MBUTTON ||
             vk == VK_XBUTTON1 || vk == VK_XBUTTON2) continue;
@@ -872,7 +872,6 @@ static BOOL WINAPI hk_wglSwapBuffers(HDC hdc)
                 g_settings.acEnabled = !g_settings.acEnabled;
         }
     }
-    if (GetAsyncKeyState(VK_CAPITAL) & 1) g_settings.espEnabled = !g_settings.espEnabled;
 
     const bool needFrame = s_visible || g_settings.espEnabled;
     if (needFrame)
