@@ -156,6 +156,17 @@ namespace EspModule
                 // in its own color the same way MC's renderer does.
                 t.nameChunks = p.getFormattedNameChunks();
 
+                // formatNameForTeam emits chunks in order: [prefix] name [suffix].
+                // The team's own color is applied to every chunk that doesn't
+                // explicitly override it — guild prefixes override, the bare
+                // player name does not. The last non-empty chunk is therefore
+                // either the suffix or the name; either way it carries the
+                // team color, which is what we want for the box.
+                t.boxColor = 0xFFFFFFFFu;
+                for (auto it = t.nameChunks.rbegin(); it != t.nameChunks.rend(); ++it) {
+                    if (!it->first.empty()) { t.boxColor = it->second; break; }
+                }
+
                 back.targets.push_back(std::move(t));
             }
 

@@ -20,6 +20,10 @@ namespace EspModule
         // is one styled span — the overlay renders them side-by-side with
         // their per-chunk colors to match MC's vanilla nametag look.
         std::vector<std::pair<std::string, uint32_t>> nameChunks;
+        // ImGui ABGR color for the ESP box, derived from the player's team
+        // color so the box matches the nametag. Defaults to white if the
+        // player has no team / no resolvable color.
+        uint32_t boxColor = 0xFFFFFFFFu;
     };
 
     struct CameraState

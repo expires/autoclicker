@@ -198,7 +198,6 @@ static void DrawEsp(float dispW, float dispH)
     }
 
     ImDrawList* dl = ImGui::GetBackgroundDrawList();
-    const ImU32 colBox = IM_COL32(255, 80,  80,  220);
     const float maxDistSq = (float)g_settings.maxDistance * (float)g_settings.maxDistance;
 
     const double pt = (double)snap.partialTick;
@@ -250,7 +249,13 @@ static void DrawEsp(float dispW, float dispH)
         if (maxSX < 0 || minSX > dispW || maxSY < 0 || minSY > dispH) continue;
 
         if (g_settings.drawBox)
+        {
+            // Drop alpha to ~220/255 so the box reads as a subtle outline
+            // rather than fully saturated, matching the old hardcoded look
+            // but in the player's team color.
+            const ImU32 colBox = (t.boxColor & 0x00FFFFFFu) | (220u << 24);
             dl->AddRect(ImVec2(minSX, minSY), ImVec2(maxSX, maxSY), colBox, 0.0f, 0, 1.5f);
+        }
 
         if (g_settings.drawName || g_settings.drawDistance)
         {
