@@ -2,6 +2,8 @@
 #include <windows.h>
 #include <shlobj.h>
 #include <cstdio>
+#include <cstdlib>
+#include <cstring>
 #include <string>
 
 #pragma comment(lib, "shell32.lib")
@@ -54,12 +56,17 @@ void Settings::Load()
 
     char line[256];
     while (fgets(line, sizeof(line), f)) {
-        char key[64] = {};
-        int  val     = 0;
-        if (sscanf_s(line, "%63[^=]=%d", key, (unsigned)sizeof(key), &val) != 2)
-            continue;
+        // Hand-rolled key=value parser. sscanf_s with `%[^=]` was failing
+        // silently on x64 — its size argument is variadic and width
+        // mismatches between sizeof() and rsize_t made the parser return 0
+        // matches without telling us. strchr is unambiguous.
+        char* eq = strchr(line, '=');
+        if (!eq) continue;
+        *eq = '\0';
+        const char* keyStr = line;
+        const int   val    = atoi(eq + 1);
 
-        const std::string k = key;
+        const std::string k = keyStr;
         if      (k == "acEnabled")    acEnabled    = (val != 0);
         else if (k == "breakBlocks")  breakBlocks  = (val != 0);
         else if (k == "cps")          cps          = val;
