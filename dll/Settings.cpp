@@ -22,15 +22,9 @@ static std::string ConfigPath()
 void Settings::Save()
 {
     const std::string path = ConfigPath();
-    if (path.empty()) {
-        printf("[AC] Settings::Save: ConfigPath() returned empty — APPDATA unresolvable\n");
-        return;
-    }
+    if (path.empty()) return;
     FILE* f = nullptr;
-    if (fopen_s(&f, path.c_str(), "w") != 0 || !f) {
-        printf("[AC] Settings::Save: fopen_s failed for %s\n", path.c_str());
-        return;
-    }
+    if (fopen_s(&f, path.c_str(), "w") != 0 || !f) return;
 
     fprintf(f, "acEnabled=%d\n",    acEnabled    ? 1 : 0);
     fprintf(f, "breakBlocks=%d\n",  breakBlocks  ? 1 : 0);
@@ -44,24 +38,15 @@ void Settings::Save()
     fprintf(f, "espKey=%d\n",       espKey);
     fprintf(f, "version=%d\n",      version);
 
-    fflush(f);
     fclose(f);
-    printf("[AC] Settings::Save wrote cps=%d to %s\n", cps, path.c_str());
 }
 
 void Settings::Load()
 {
     const std::string path = ConfigPath();
-    if (path.empty()) {
-        printf("[AC] Settings::Load: ConfigPath() returned empty\n");
-        return;
-    }
+    if (path.empty()) return;
     FILE* f = nullptr;
-    if (fopen_s(&f, path.c_str(), "r") != 0 || !f) {
-        printf("[AC] Settings::Load: no config at %s (fresh install or load failure)\n", path.c_str());
-        return;
-    }
-    printf("[AC] Settings::Load reading %s\n", path.c_str());
+    if (fopen_s(&f, path.c_str(), "r") != 0 || !f) return;
 
     // Assume legacy / pre-versioned until proven otherwise; a missing
     // `version=` line then triggers the migration block below.
@@ -89,15 +74,23 @@ void Settings::Load()
     }
 
     fclose(f);
-    printf("[AC] Settings::Load done — cps=%d  espKey=%d  acKey=%d  menuKey=%d  version=%d\n",
-        cps, espKey, acKey, menuKey, version);
+
+    // Defensive: clamp keybinds to the valid VK range so a corrupt config
+    // (or one written by a future build with a different schema) can never
+    // feed an out-of-range vKey to GetAsyncKeyState.
+    auto clampVK = [](int v) { return (v >= 0 && v <= 0xFE) ? v : 0; };
+    menuKey = clampVK(menuKey);
+    acKey   = clampVK(acKey);
+    espKey  = clampVK(espKey);
+
+    // Sanity-clamp CPS and bools.
+    if (cps < 1)  cps = 1;
+    if (cps > 50) cps = 50;
 
     // Migration: any config older than the current schema gets its
     // keybinds force-cleared. Catches the historical CapsLock→ESP default
     // that users had previously committed to disk.
     if (version < CURRENT_VERSION) {
-        printf("[AC] Settings::Load migrating from v%d -> v%d (keybinds cleared)\n",
-            version, CURRENT_VERSION);
         menuKey = 0;
         acKey   = 0;
         espKey  = 0;

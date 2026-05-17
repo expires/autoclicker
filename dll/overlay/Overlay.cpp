@@ -836,10 +836,12 @@ static BOOL WINAPI hk_wglSwapBuffers(HDC hdc)
         const bool listeningSuppress = s_keybindListening;
         s_keybindListening = false;
 
-        // Menu key — falls back to INSERT if user cleared the binding so
-        // the menu can never become unreachable.
-        const int  menuVk   = g_settings.menuKey ? g_settings.menuKey : VK_INSERT;
-        const bool menuEdge = (GetAsyncKeyState(menuVk) & 1) != 0;
+        // Menu key — falls back to INSERT if user cleared the binding or
+        // the value is out of the valid VK range, so the menu can never
+        // become unreachable AND GetAsyncKeyState never sees a junk value.
+        const bool menuValid = (g_settings.menuKey > 0 && g_settings.menuKey <= 0xFE);
+        const int  menuVk    = menuValid ? g_settings.menuKey : VK_INSERT;
+        const bool menuEdge  = (GetAsyncKeyState(menuVk) & 1) != 0;
 
         // ESC only closes the overlay (never opens). Suppress it while a
         // keybind picker is active so ESC stays usable as "cancel pick".
@@ -872,9 +874,11 @@ static BOOL WINAPI hk_wglSwapBuffers(HDC hdc)
         static bool s_espKeyHeldPrev = false;
         static bool s_acKeyHeldPrev  = false;
 
-        const bool espHeld = g_settings.espKey &&
+        const bool espHeld =
+            (g_settings.espKey > 0 && g_settings.espKey <= 0xFE) &&
             (GetAsyncKeyState(g_settings.espKey) & 0x8000);
-        const bool acHeld  = g_settings.acKey &&
+        const bool acHeld  =
+            (g_settings.acKey > 0 && g_settings.acKey <= 0xFE) &&
             (GetAsyncKeyState(g_settings.acKey)  & 0x8000);
 
         if (!listeningSuppress) {
