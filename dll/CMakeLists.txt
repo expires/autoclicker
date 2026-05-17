@@ -167,6 +167,8 @@ file(GLOB NETWORK_SOURCES      "network/*.cpp")
 
 add_library(${PROJECT_NAME} SHARED
     main.cpp
+    Settings.h
+    Settings.cpp
     ${AUTOCLICKER_HEADERS}
     ${AUTOCLICKER_SOURCES}
     ${ESP_HEADERS}

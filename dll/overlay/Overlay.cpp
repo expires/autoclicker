@@ -37,11 +37,22 @@ static fn_ClipCursor   o_ClipCursor   = nullptr;
 static fn_ShowCursor   o_ShowCursor   = nullptr;
 static fn_SetCursor    o_SetCursor    = nullptr;
 
-static bool    s_initialized = false;
-static bool    s_visible     = false;
-static int     s_currentTab  = 0; // 0=Autoclicker, 1=ESP, 2=Settings
-static HWND    s_hwnd        = nullptr;
-static WNDPROC s_origProc    = nullptr;
+static bool    s_initialized        = false;
+static bool    s_visible            = false;
+static int     s_currentTab         = 0; // 0=Autoclicker, 1=ESP, 2=Settings
+static HWND    s_hwnd               = nullptr;
+static WNDPROC s_origProc           = nullptr;
+// Set when ESC is used to close the menu. Keeps the WndProc swallowing ESC
+// messages even after s_visible flips to false, until the key is physically
+// released — otherwise the auto-repeat WM_KEYDOWNs that arrive on the same
+// frame leak through to MC and open its pause menu.
+static bool    s_eatEscUntilRelease = false;
+
+// Set by RowKeybind during render whenever it's in "press a key" mode. The
+// toggle handler reads it at the start of the next frame to suppress ESC
+// close (so ESC can be used as a cancel inside the keybind picker without
+// also slamming the menu shut).
+static bool    s_keybindListening   = false;
 
 static ImVec4 FromHex(uint32_t hex, float alpha = 1.0f)
 {
@@ -122,6 +133,113 @@ static bool RowCheckbox(const char* label, bool* v)
     RenderText(ImVec2(bb.Min.x, bb.Max.y - labelSz.y - 13.0f), label);
 
     return pressed;
+}
+
+// Pretty name for a VK_* code. Uses GetKeyNameTextA + a scancode round-trip;
+// handles the navigation-cluster keys that need the extended bit set in
+// lParam to come back as "Insert" / "Home" / etc. instead of "Num 0".
+static const char* GetKeyName(int vk)
+{
+    if (vk == 0) return "none";
+    static char buf[32];
+    UINT scan = MapVirtualKeyW((UINT)vk, MAPVK_VK_TO_VSC);
+    LONG lp   = (LONG)(scan << 16);
+    switch (vk) {
+        case VK_INSERT: case VK_DELETE: case VK_HOME: case VK_END:
+        case VK_PRIOR:  case VK_NEXT:
+        case VK_UP:     case VK_DOWN:  case VK_LEFT: case VK_RIGHT:
+        case VK_DIVIDE: case VK_NUMLOCK:
+            lp |= (1L << 24); break;
+        default: break;
+    }
+    if (GetKeyNameTextA(lp, buf, sizeof(buf)) > 0) return buf;
+    snprintf(buf, sizeof(buf), "VK_%02X", vk);
+    return buf;
+}
+
+// Full-row key-bind picker. Click the right-hand pill to enter listening
+// mode (the next non-mouse key press wins; ESC cancels). Right-click the
+// pill to clear back to "none". Returns true on the frame the binding
+// changes so the caller can persist immediately.
+static bool RowKeybind(const char* label, int* vk)
+{
+    using namespace ImGui;
+    ImGuiWindow* window = GetCurrentWindow();
+    if (window->SkipItems) return false;
+
+    const float  w   = GetContentRegionAvail().x;
+    const float  h   = 30.0f;
+    const ImVec2 pos = window->DC.CursorPos;
+    const ImRect bb(pos, ImVec2(pos.x + w, pos.y + h));
+
+    ImGuiID id = window->GetID(label);
+    ItemSize(bb);
+    if (!ItemAdd(bb, id)) return false;
+
+    // Right-hand pill — the clickable area for picking the key.
+    const float pillW = 120.0f;
+    const ImRect pill(ImVec2(bb.Max.x - pillW, bb.Min.y + 4.0f),
+                      ImVec2(bb.Max.x,         bb.Max.y - 4.0f));
+
+    bool hovered, held;
+    bool pressed = ButtonBehavior(pill, id, &hovered, &held);
+
+    ImGuiStorage* storage = &window->StateStorage;
+    bool listening = storage->GetBool(id, false);
+    bool changed   = false;
+
+    if (pressed) listening = true;
+
+    // Right-click on the pill clears the binding.
+    if (IsMouseHoveringRect(pill.Min, pill.Max) &&
+        IsMouseClicked(ImGuiMouseButton_Right)) {
+        if (*vk != 0) { *vk = 0; changed = true; }
+        listening = false;
+    }
+
+    if (listening) {
+        s_keybindListening = true;
+        // Scan VK range for any key the user just pressed.
+        for (int k = 0x07; k <= 0xFE; ++k) {
+            // Skip mouse buttons and modifiers we don't want as binds.
+            if (k == VK_LBUTTON || k == VK_RBUTTON || k == VK_MBUTTON ||
+                k == VK_XBUTTON1 || k == VK_XBUTTON2) continue;
+            if (!(GetAsyncKeyState(k) & 1)) continue;
+
+            if (k == VK_ESCAPE) {
+                listening = false;          // cancel
+            } else {
+                *vk      = k;
+                listening = false;
+                changed   = true;
+            }
+            break;
+        }
+    }
+    storage->SetBool(id, listening);
+
+    // Label on the left.
+    ImVec2 labelSz = CalcTextSize(label, nullptr, true);
+    PushStyleColor(ImGuiCol_Text, GetColorU32(ImGuiCol_Text));
+    RenderText(ImVec2(bb.Min.x, bb.GetCenter().y - labelSz.y * 0.5f), label);
+    PopStyleColor();
+
+    // Pill background + text.
+    const ImU32 pillBg = listening
+        ? ColorConvertFloat4ToU32(FromHex(0x5865f2))
+        : (hovered ? GetColorU32(ImGuiCol_FrameBgHovered)
+                   : GetColorU32(ImGuiCol_FrameBg));
+    window->DrawList->AddRectFilled(pill.Min, pill.Max, pillBg, 4.0f);
+
+    const char* pillText = listening
+        ? "press a key..."
+        : (*vk ? GetKeyName(*vk) : "none");
+    ImVec2 textSz = CalcTextSize(pillText);
+    RenderText(ImVec2(pill.GetCenter().x - textSz.x * 0.5f,
+                      pill.GetCenter().y - textSz.y * 0.5f),
+               pillText);
+
+    return changed;
 }
 
 // Full-row int slider matching the reference: label top-left, value top-right,
@@ -581,6 +699,21 @@ static void ReleaseAllHeldInputs()
 
 static LRESULT CALLBACK HookedWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
+    // Eat ESC events even after s_visible flips off, until the user lets go
+    // of the key. Without this, the auto-repeat WM_KEYDOWN that arrives in
+    // the same frame as our close-via-ESC reaches MC and opens its pause
+    // menu over our (now-hidden) overlay.
+    if (s_eatEscUntilRelease && wParam == VK_ESCAPE)
+    {
+        switch (msg)
+        {
+        case WM_KEYDOWN: case WM_KEYUP:
+        case WM_SYSKEYDOWN: case WM_SYSKEYUP:
+        case WM_CHAR:    case WM_SYSCHAR: case WM_UNICHAR:
+            return 0;
+        }
+    }
+
     if (s_visible)
     {
         // Feed every input event to ImGui first so the menu remains usable.
@@ -695,17 +828,48 @@ static BOOL WINAPI hk_wglSwapBuffers(HDC hdc)
     }
 
     {
-        const bool insertEdge = (GetAsyncKeyState(VK_INSERT) & 1) != 0;
-        // ESC only closes — we don't want ESC to open the menu when the
-        // user is mid-game and just trying to pause MC normally.
-        const bool escEdge    = s_visible && ((GetAsyncKeyState(VK_ESCAPE) & 1) != 0);
+        // Snapshot the keybind-listening flag from the previous frame and
+        // reset it; this frame's RowKeybind will set it again if any
+        // picker is still listening.
+        const bool listeningSuppress = s_keybindListening;
+        s_keybindListening = false;
 
-        if (insertEdge || escEdge) {
+        // Menu key — falls back to INSERT if user cleared the binding so
+        // the menu can never become unreachable.
+        const int  menuVk   = g_settings.menuKey ? g_settings.menuKey : VK_INSERT;
+        const bool menuEdge = (GetAsyncKeyState(menuVk) & 1) != 0;
+
+        // ESC only closes the overlay (never opens). Suppress it while a
+        // keybind picker is active so ESC stays usable as "cancel pick".
+        const bool escEdge  = s_visible && !listeningSuppress &&
+                              ((GetAsyncKeyState(VK_ESCAPE) & 1) != 0);
+
+        if (menuEdge || escEdge) {
             const bool wasVisible = s_visible;
-            s_visible = insertEdge ? !s_visible : false;
+            s_visible = menuEdge ? !s_visible : false;
             ClipCursor(nullptr);
             ShowCursor(s_visible ? TRUE : FALSE);
             if (s_visible && !wasVisible) ReleaseAllHeldInputs();
+            // Persist settings every time the user closes the overlay.
+            if (!s_visible && wasVisible) g_settings.Save();
+            // Arm the ESC-eater so the residual key state can't reach MC.
+            if (escEdge) s_eatEscUntilRelease = true;
+        }
+
+        // Drop the eater the moment ESC is physically released.
+        if (s_eatEscUntilRelease && !(GetAsyncKeyState(VK_ESCAPE) & 0x8000))
+            s_eatEscUntilRelease = false;
+
+        // Module toggle keys. Skip when a keybind picker is listening so
+        // pressing the soon-to-be-bound key doesn't also toggle the module
+        // on the same frame.
+        if (!listeningSuppress) {
+            if (g_settings.espKey &&
+                (GetAsyncKeyState(g_settings.espKey) & 1))
+                g_settings.espEnabled = !g_settings.espEnabled;
+            if (g_settings.acKey &&
+                (GetAsyncKeyState(g_settings.acKey) & 1))
+                g_settings.acEnabled = !g_settings.acEnabled;
         }
     }
     if (GetAsyncKeyState(VK_CAPITAL) & 1) g_settings.espEnabled = !g_settings.espEnabled;
@@ -816,6 +980,8 @@ static BOOL WINAPI hk_wglSwapBuffers(HDC hdc)
                     RowCheckbox("Enabled",      &g_settings.acEnabled);
                     RowCheckbox("Break Blocks", &g_settings.breakBlocks);
                     RowSlider  ("CPS",          &g_settings.cps, 1, 50);
+                    if (RowKeybind("Toggle Key", &g_settings.acKey))
+                        g_settings.Save();
                 }
                 else if (s_currentTab == 1)
                 {
@@ -825,9 +991,14 @@ static BOOL WINAPI hk_wglSwapBuffers(HDC hdc)
                         RowCheckbox("Name",     &g_settings.drawName);
                         RowCheckbox("Distance", &g_settings.drawDistance);
                     }
+                    if (RowKeybind("Toggle Key", &g_settings.espKey))
+                        g_settings.Save();
                 }
                 else
                 {
+                    if (RowKeybind("Menu Key", &g_settings.menuKey))
+                        g_settings.Save();
+
                     EspModule::Snapshot snap;
                     {
                         std::lock_guard<std::mutex> lk(EspModule::snapMutex);
