@@ -106,10 +106,6 @@ static bool RowCheckbox(const char* label, bool* v)
     ImVec2 labelSz = CalcTextSize(label, nullptr, true);
     RenderText(ImVec2(bb.Min.x, bb.Max.y - labelSz.y - 13.0f), label);
 
-    window->DrawList->AddRectFilled(
-        ImVec2(bb.Min.x, bb.Max.y - 1.0f), bb.Max,
-        GetColorU32(ImGuiCol_Border));
-
     return pressed;
 }
 
@@ -173,10 +169,6 @@ static bool RowSlider(const char* label, int* v, int v_min, int v_max,
     window->DrawList->AddCircleFilled(
         ImVec2(frame.Min.x + fillW, frame.GetCenter().y), 8.0f,
         GetColorU32(ImGuiCol_SliderGrab));
-
-    window->DrawList->AddRectFilled(
-        ImVec2(total.Min.x, total.Max.y - 1.0f), total.Max,
-        GetColorU32(ImGuiCol_Border));
 
     return changed;
 }
@@ -507,8 +499,30 @@ static void DrawEsp(float dispW, float dispH)
 
 static LRESULT CALLBACK HookedWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
-    if (s_visible && ImGui_ImplWin32_WndProcHandler(hwnd, msg, wParam, lParam))
-        return true;
+    if (s_visible)
+    {
+        // Let ImGui process every input event so the menu remains usable.
+        ImGui_ImplWin32_WndProcHandler(hwnd, msg, wParam, lParam);
+
+        // Swallow input-bearing messages so MC's GLFW pump never sees them —
+        // effectively turning the overlay into a modal pause screen. We still
+        // forward non-input messages (paint, size, activate, etc.) so the
+        // window keeps behaving normally otherwise.
+        switch (msg)
+        {
+        case WM_KEYDOWN:    case WM_KEYUP:
+        case WM_SYSKEYDOWN: case WM_SYSKEYUP:
+        case WM_CHAR:       case WM_SYSCHAR:        case WM_UNICHAR:
+        case WM_MOUSEMOVE:
+        case WM_LBUTTONDOWN: case WM_LBUTTONUP: case WM_LBUTTONDBLCLK:
+        case WM_RBUTTONDOWN: case WM_RBUTTONUP: case WM_RBUTTONDBLCLK:
+        case WM_MBUTTONDOWN: case WM_MBUTTONUP: case WM_MBUTTONDBLCLK:
+        case WM_XBUTTONDOWN: case WM_XBUTTONUP: case WM_XBUTTONDBLCLK:
+        case WM_MOUSEWHEEL:  case WM_MOUSEHWHEEL:
+        case WM_INPUT:
+            return 0;
+        }
+    }
     return CallWindowProcW(s_origProc, hwnd, msg, wParam, lParam);
 }
 
@@ -616,16 +630,24 @@ static BOOL WINAPI hk_wglSwapBuffers(HDC hdc)
 
         if (s_visible)
         {
+            // Translucent black backdrop behind the menu — reads as a modal
+            // pause overlay (the game keeps rendering but is visibly dimmed).
+            ImGui::GetBackgroundDrawList()->AddRectFilled(
+                ImVec2(0, 0), display, IM_COL32(0, 0, 0, 140));
+
             // Sidebar + content layout (ported from the reference GUI in
             // .temp/...): WindowPadding 0 so the navbar can render flush to
             // the left edge with its own rounded corner.
             ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
+            ImGui::SetNextWindowPos (ImVec2(display.x * 0.5f, display.y * 0.5f),
+                                     ImGuiCond_Always, ImVec2(0.5f, 0.5f));
             ImGui::SetNextWindowSize(ImVec2(580, 380), ImGuiCond_Always);
             ImGui::Begin("manuclicker", nullptr,
                 ImGuiWindowFlags_NoCollapse |
                 ImGuiWindowFlags_NoResize   |
                 ImGuiWindowFlags_NoTitleBar |
-                ImGuiWindowFlags_NoScrollbar);
+                ImGuiWindowFlags_NoScrollbar |
+                ImGuiWindowFlags_NoMove);
             ImGui::PopStyleVar();
 
             const float   SIDEBAR_W = 150.0f;
