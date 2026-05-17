@@ -37,18 +37,148 @@ static ImVec4 FromHex(uint32_t hex, float alpha = 1.0f)
         alpha);
 }
 
-// Indigo title-case label + thin accent separator. Used to break each tab
-// into visually grouped sections.
-static void SectionHeader(const char* label)
+// Byte-wise lerp for ImU32 ABGR colors. Used to animate widget fill colors
+// between off / on the same way the reference GUI does via its `Scheme` color
+// + FastColorLerp.
+static ImU32 LerpU32(ImU32 a, ImU32 b, float t)
 {
-    ImGui::Dummy({0, 4});
-    ImGui::PushStyleColor(ImGuiCol_Text, FromHex(0x5c7cfa));
-    ImGui::TextUnformatted(label);
-    ImGui::PopStyleColor();
-    ImGui::PushStyleColor(ImGuiCol_Separator, FromHex(0x5c7cfa, 0.30f));
-    ImGui::Separator();
-    ImGui::PopStyleColor();
-    ImGui::Dummy({0, 2});
+    if (t <= 0.0f) return a;
+    if (t >= 1.0f) return b;
+    int ar = (a >> IM_COL32_R_SHIFT) & 0xFF;
+    int ag = (a >> IM_COL32_G_SHIFT) & 0xFF;
+    int ab = (a >> IM_COL32_B_SHIFT) & 0xFF;
+    int aa = (a >> IM_COL32_A_SHIFT) & 0xFF;
+    int br = (b >> IM_COL32_R_SHIFT) & 0xFF;
+    int bg = (b >> IM_COL32_G_SHIFT) & 0xFF;
+    int bb = (b >> IM_COL32_B_SHIFT) & 0xFF;
+    int ba = (b >> IM_COL32_A_SHIFT) & 0xFF;
+    int r = ar + (int)((br - ar) * t);
+    int g = ag + (int)((bg - ag) * t);
+    int B = ab + (int)((bb - ab) * t);
+    int A = aa + (int)((ba - aa) * t);
+    return IM_COL32(r, g, B, A);
+}
+
+// Full-row checkbox matching the reference GUI: label on the left, 20-px
+// square checkbox on the right, animated fill color + checkmark, bottom
+// 1-px border that visually chains adjacent rows into a continuous list.
+static bool RowCheckbox(const char* label, bool* v)
+{
+    using namespace ImGui;
+    ImGuiWindow* window = GetCurrentWindow();
+    if (window->SkipItems) return false;
+
+    const float w         = GetContentRegionAvail().x;
+    const float square_sz = 20.0f;
+    const ImVec2 pos      = window->DC.CursorPos;
+    const ImRect bb(pos, ImVec2(pos.x + w, pos.y + square_sz + 10.0f));
+
+    ImGuiID id = window->GetID(label);
+    ItemSize(bb);
+    if (!ItemAdd(bb, id)) return false;
+
+    bool hovered, held;
+    bool pressed = ButtonBehavior(bb, id, &hovered, &held);
+    if (pressed) { *v = !*v; MarkItemEdited(id); }
+
+    // Per-row animation toward 0/1, persisted in the window's storage so it
+    // survives across frames without a global map.
+    ImGuiStorage* storage = window->StateStorage;
+    float anim = storage->GetFloat(id, *v ? 1.0f : 0.0f);
+    anim = ImLerp(anim, *v ? 1.0f : 0.0f, 0.18f);
+    storage->SetFloat(id, anim);
+
+    const ImU32 colOff = GetColorU32(ImGuiCol_FrameBg);
+    const ImU32 colOn  = ColorConvertFloat4ToU32(FromHex(0x5865f2));
+    const ImU32 fill   = LerpU32(colOff, colOn, anim);
+
+    ImVec2 sqMin(bb.Max.x - square_sz, bb.Min.y);
+    ImVec2 sqMax(bb.Max.x,             bb.Min.y + square_sz);
+    window->DrawList->AddRectFilled(sqMin, sqMax, fill, 2.0f);
+
+    if (anim > 0.01f) {
+        ImU32 cm = IM_COL32(255, 255, 255, (int)(255.0f * anim));
+        RenderCheckMark(window->DrawList,
+            ImVec2(sqMax.x - square_sz * 0.5f - 3.5f, bb.Min.y + square_sz * 0.5f - 3.5f),
+            cm, 7.0f);
+    }
+
+    ImVec2 labelSz = CalcTextSize(label, nullptr, true);
+    RenderText(ImVec2(bb.Min.x, bb.Max.y - labelSz.y - 13.0f), label);
+
+    window->DrawList->AddRectFilled(
+        ImVec2(bb.Min.x, bb.Max.y - 1.0f), bb.Max,
+        GetColorU32(ImGuiCol_Border));
+
+    return pressed;
+}
+
+// Full-row int slider matching the reference: label top-left, value top-right,
+// thin track + circular grab below, animated fill width, bottom border.
+static bool RowSlider(const char* label, int* v, int v_min, int v_max,
+                      const char* fmt = "%d")
+{
+    using namespace ImGui;
+    ImGuiWindow* window = GetCurrentWindow();
+    if (window->SkipItems) return false;
+
+    ImGuiContext& g       = *GImGui;
+    const float w         = GetContentRegionAvail().x;
+    const ImVec2 labelSz  = CalcTextSize(label, nullptr, true);
+    const ImRect total(window->DC.CursorPos,
+                       ImVec2(window->DC.CursorPos.x + w,
+                              window->DC.CursorPos.y + labelSz.y + 30.0f));
+    const ImRect frame(ImVec2(total.Min.x, total.Min.y + labelSz.y + 12.0f),
+                       ImVec2(total.Max.x, total.Max.y - 13.0f));
+
+    ImGuiID id = window->GetID(label);
+    ItemSize(total, g.Style.FramePadding.y);
+    if (!ItemAdd(total, id, &frame)) return false;
+
+    // SliderBehavior only operates while ActiveID == id; without a click
+    // hook nothing would ever start dragging. Use ButtonBehavior on the
+    // track to set ActiveID on press and hold it while dragging.
+    bool hovered, held;
+    ButtonBehavior(frame, id, &hovered, &held);
+
+    ImRect grab_bb;
+    bool changed = SliderBehavior(frame, id, ImGuiDataType_S32, v,
+                                  &v_min, &v_max, fmt, ImGuiSliderFlags_None, &grab_bb);
+    if (changed) MarkItemEdited(id);
+
+    const float range = (float)(v_max - v_min);
+    float t = range > 0.0f ? (float)(*v - v_min) / range : 0.0f;
+    if (t < 0.0f) t = 0.0f;
+    if (t > 1.0f) t = 1.0f;
+
+    ImGuiStorage* storage = window->StateStorage;
+    float anim = storage->GetFloat(id, t);
+    anim = ImLerp(anim, t, 0.20f);
+    storage->SetFloat(id, anim);
+
+    char buf[32];
+    snprintf(buf, sizeof(buf), fmt, *v);
+
+    RenderText(total.Min, label);
+    ImVec2 valSz = CalcTextSize(buf);
+    RenderText(ImVec2(total.Max.x - valSz.x, total.Min.y), buf);
+
+    const float fillW = anim * frame.GetWidth();
+    const ImU32 accent = ColorConvertFloat4ToU32(FromHex(0x5865f2));
+
+    window->DrawList->AddRectFilled(frame.Min, frame.Max,
+        GetColorU32(ImGuiCol_FrameBg), 2.0f);
+    window->DrawList->AddRectFilled(frame.Min,
+        ImVec2(frame.Min.x + fillW, frame.Max.y), accent, 2.0f);
+    window->DrawList->AddCircleFilled(
+        ImVec2(frame.Min.x + fillW, frame.GetCenter().y), 8.0f,
+        GetColorU32(ImGuiCol_SliderGrab));
+
+    window->DrawList->AddRectFilled(
+        ImVec2(total.Min.x, total.Max.y - 1.0f), total.Max,
+        GetColorU32(ImGuiCol_Border));
+
+    return changed;
 }
 
 // Full-width clickable row used as a sidebar tab item: an icon glyph on the
@@ -108,25 +238,6 @@ static bool SidebarTab(const char* icon, const char* label, bool selected)
 
     PopStyleColor();
     return pressed;
-}
-
-// Checkbox where "checked" = the whole box filled with the accent color, not
-// a checkmark icon. ImGui's built-in Checkbox always uses FrameBg for the box
-// + CheckMark on top; we swap FrameBg based on state and hide the checkmark.
-static bool FilledCheckbox(const char* label, bool* v)
-{
-    const ImVec4 frameOff    = FromHex(0x161d2e);
-    const ImVec4 frameOffHov = FromHex(0x1d2438);
-    const ImVec4 frameOn     = FromHex(0x5865f2);
-    const ImVec4 frameOnHov  = FromHex(0x6b76f3);
-    const bool   on = *v;
-    ImGui::PushStyleColor(ImGuiCol_FrameBg,        on ? frameOn    : frameOff);
-    ImGui::PushStyleColor(ImGuiCol_FrameBgHovered, on ? frameOnHov : frameOffHov);
-    ImGui::PushStyleColor(ImGuiCol_FrameBgActive,  on ? frameOn    : frameOffHov);
-    ImGui::PushStyleColor(ImGuiCol_CheckMark,      ImVec4(0, 0, 0, 0)); // hidden
-    const bool changed = ImGui::Checkbox(label, v);
-    ImGui::PopStyleColor(4);
-    return changed;
 }
 
 static void ApplyStyle()
@@ -420,11 +531,13 @@ static BOOL WINAPI hk_wglSwapBuffers(HDC hdc)
         // memory in release builds silently corrupts the path and we end up
         // failing to load any font, leaving the slot missing and crashing
         // the first PushFont call.
-        char fontBold[MAX_PATH]    = {};
-        char fontRegular[MAX_PATH] = {};
-        char fontIcons[MAX_PATH]   = {};
+        char fontBold[MAX_PATH]      = {};
+        char fontSemibold[MAX_PATH]  = {};
+        char fontRegular[MAX_PATH]   = {};
+        char fontIcons[MAX_PATH]     = {};
         char fontIconsMDL2[MAX_PATH] = {};
         strcpy_s(fontBold,      sizeof(fontBold),      winDir); strcat_s(fontBold,      sizeof(fontBold),      "\\Fonts\\segoeuib.ttf");
+        strcpy_s(fontSemibold,  sizeof(fontSemibold),  winDir); strcat_s(fontSemibold,  sizeof(fontSemibold),  "\\Fonts\\seguisb.ttf");
         strcpy_s(fontRegular,   sizeof(fontRegular),   winDir); strcat_s(fontRegular,   sizeof(fontRegular),   "\\Fonts\\segoeui.ttf");
         strcpy_s(fontIcons,     sizeof(fontIcons),     winDir); strcat_s(fontIcons,     sizeof(fontIcons),     "\\Fonts\\SegoeIcons.ttf");  // Win11 Fluent Icons
         strcpy_s(fontIconsMDL2, sizeof(fontIconsMDL2), winDir); strcat_s(fontIconsMDL2, sizeof(fontIconsMDL2), "\\Fonts\\segmdl2.ttf");      // Win10 MDL2 Assets
@@ -440,9 +553,14 @@ static BOOL WINAPI hk_wglSwapBuffers(HDC hdc)
         //   1 — icons (Private Use Area glyphs from Segoe Fluent / MDL2)
         //   2 — bold (sidebar brand + content title)
 
-        // Slot 0 — body
-        ImFont* fReg = (GetFileAttributesA(fontRegular) != INVALID_FILE_ATTRIBUTES)
-            ? io.Fonts->AddFontFromFileTTF(fontRegular, 15.0f, &cfg) : nullptr;
+        // Slot 0 — body. Prefer Segoe UI Semibold (seguisb.ttf): cleaner
+        // mid-weight than full Bold, ships with Windows 7+. Falls back to
+        // regular if missing.
+        const char* bodyPath =
+            (GetFileAttributesA(fontSemibold) != INVALID_FILE_ATTRIBUTES) ? fontSemibold :
+            (GetFileAttributesA(fontRegular)  != INVALID_FILE_ATTRIBUTES) ? fontRegular  : nullptr;
+        ImFont* fReg = bodyPath
+            ? io.Fonts->AddFontFromFileTTF(bodyPath, 16.0f, &cfg) : nullptr;
         if (!fReg) io.Fonts->AddFontDefault();
 
         // Slot 1 — icons. The glyphs we use (target, people, gear) live in
@@ -559,9 +677,9 @@ static BOOL WINAPI hk_wglSwapBuffers(HDC hdc)
                 ImGui::SetCursorPos(ImVec2(22, 22));
                 ImGui::PushFont(ImGui::GetIO().Fonts->Fonts[2]);
                 ImGui::TextUnformatted(
-                    s_currentTab == 0 ? "Autoclicker" :
-                    s_currentTab == 1 ? "ESP" :
-                                        "Settings");
+                    s_currentTab == 0 ? "autoclicker" :
+                    s_currentTab == 1 ? "esp" :
+                                        "settings");
                 ImGui::PopFont();
 
                 // Body region — leaves room for the unload button anchored
@@ -573,68 +691,33 @@ static BOOL WINAPI hk_wglSwapBuffers(HDC hdc)
                     ImVec2(winSize.x - SIDEBAR_W - 44, winSize.y - bodyTop - bodyBottom),
                     false, ImGuiWindowFlags_NoBackground);
 
+                // Zero ItemSpacing so the rows' bottom borders chain into a
+                // single continuous separator list (the reference look).
+                ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0, 0));
+
                 if (s_currentTab == 0)
                 {
-                    SectionHeader("BEHAVIOR");
-                    ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(6.0f, 5.0f));
-                    FilledCheckbox("Enabled",      &g_settings.acEnabled);
-                    FilledCheckbox("Break Blocks", &g_settings.breakBlocks);
-                    ImGui::PopStyleVar();
-
-                    SectionHeader("CLICK RATE");
-                    ImGui::TextUnformatted("CPS");
-                    const float valueW = 28.0f;
-                    const float availW = ImGui::GetContentRegionAvail().x;
-                    ImGui::SetNextItemWidth(availW - valueW - 4.0f);
-                    ImGui::SliderInt("##cps", &g_settings.cps, 1, 50, "");
-                    ImGui::SameLine();
-                    ImGui::Text("%d", g_settings.cps);
+                    RowCheckbox("Enabled",      &g_settings.acEnabled);
+                    RowCheckbox("Break Blocks", &g_settings.breakBlocks);
+                    RowSlider  ("CPS",          &g_settings.cps, 1, 50);
                 }
                 else if (s_currentTab == 1)
                 {
-                    SectionHeader("VISIBILITY");
-                    ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(6.0f, 5.0f));
-                    FilledCheckbox("Enabled", &g_settings.espEnabled);
-                    ImGui::PopStyleVar();
-
-                    if (g_settings.espEnabled)
-                    {
-                        ImGui::Indent(16.0f);
-                        ImGui::PushStyleColor(ImGuiCol_Text, FromHex(0x8892a4));
-                        FilledCheckbox("Box",      &g_settings.drawBox);
-                        FilledCheckbox("Name",     &g_settings.drawName);
-                        FilledCheckbox("Distance", &g_settings.drawDistance);
-                        ImGui::PopStyleColor();
-                        ImGui::Unindent(16.0f);
+                    RowCheckbox("Enabled",  &g_settings.espEnabled);
+                    if (g_settings.espEnabled) {
+                        RowCheckbox("Box",      &g_settings.drawBox);
+                        RowCheckbox("Name",     &g_settings.drawName);
+                        RowCheckbox("Distance", &g_settings.drawDistance);
                     }
                 }
-                else // Settings
+                else
                 {
-                    // Diagnostics block — amber accent to distinguish it from
-                    // the indigo control sections in the other tabs.
-                    ImGui::Dummy({0, 4});
-                    ImGui::PushStyleColor(ImGuiCol_Text, FromHex(0xe8a020));
-                    ImGui::TextUnformatted("DEBUG INFO");
-                    ImGui::PopStyleColor();
-                    ImGui::PushStyleColor(ImGuiCol_Separator, FromHex(0xe8a020, 0.30f));
-                    ImGui::Separator();
-                    ImGui::PopStyleColor();
-                    ImGui::Dummy({0, 2});
-
                     EspModule::Snapshot snap;
                     {
                         std::lock_guard<std::mutex> lk(EspModule::snapMutex);
                         snap = EspModule::snapshot;
                     }
-
-                    ImGui::PushStyleColor(ImGuiCol_ChildBg, FromHex(0x0d1119));
-                    ImGui::PushStyleColor(ImGuiCol_Border,  FromHex(0x1e2535));
-                    ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(8.0f, 4.0f));
-                    ImGui::BeginChild("##diagblock",
-                        ImVec2(0, ImGui::GetTextLineHeightWithSpacing() * 3.6f),
-                        ImGuiChildFlags_Border);
-
-                    ImGui::PushStyleColor(ImGuiCol_Text, FromHex(0x5a8a6a));
+                    ImGui::PushStyleColor(ImGuiCol_Text, FromHex(0x707a8c));
                     ImGui::Text("valid=%d  mc=%d  lp=%d  lvl=%d  gr=%d  cam=%d",
                         snap.valid, snap.gotMinecraft, snap.gotLocalPlayer,
                         snap.gotLevel, snap.gotGameRenderer, snap.gotCamera);
@@ -644,11 +727,9 @@ static BOOL WINAPI hk_wglSwapBuffers(HDC hdc)
                         snap.cam.x, snap.cam.y, snap.cam.z,
                         snap.cam.yRot, snap.cam.xRot, snap.cam.fov);
                     ImGui::PopStyleColor();
-
-                    ImGui::EndChild();
-                    ImGui::PopStyleVar();
-                    ImGui::PopStyleColor(2);
                 }
+
+                ImGui::PopStyleVar(); // ItemSpacing
 
                 ImGui::EndChild(); // ##body
 
