@@ -22,9 +22,15 @@ static std::string ConfigPath()
 void Settings::Save()
 {
     const std::string path = ConfigPath();
-    if (path.empty()) return;
+    if (path.empty()) {
+        printf("[AC] Settings::Save: ConfigPath() returned empty — APPDATA unresolvable\n");
+        return;
+    }
     FILE* f = nullptr;
-    if (fopen_s(&f, path.c_str(), "w") != 0 || !f) return;
+    if (fopen_s(&f, path.c_str(), "w") != 0 || !f) {
+        printf("[AC] Settings::Save: fopen_s failed for %s\n", path.c_str());
+        return;
+    }
 
     fprintf(f, "acEnabled=%d\n",    acEnabled    ? 1 : 0);
     fprintf(f, "breakBlocks=%d\n",  breakBlocks  ? 1 : 0);
@@ -38,15 +44,24 @@ void Settings::Save()
     fprintf(f, "espKey=%d\n",       espKey);
     fprintf(f, "version=%d\n",      version);
 
+    fflush(f);
     fclose(f);
+    printf("[AC] Settings::Save wrote cps=%d to %s\n", cps, path.c_str());
 }
 
 void Settings::Load()
 {
     const std::string path = ConfigPath();
-    if (path.empty()) return;
+    if (path.empty()) {
+        printf("[AC] Settings::Load: ConfigPath() returned empty\n");
+        return;
+    }
     FILE* f = nullptr;
-    if (fopen_s(&f, path.c_str(), "r") != 0 || !f) return;
+    if (fopen_s(&f, path.c_str(), "r") != 0 || !f) {
+        printf("[AC] Settings::Load: no config at %s (fresh install or load failure)\n", path.c_str());
+        return;
+    }
+    printf("[AC] Settings::Load reading %s\n", path.c_str());
 
     // Assume legacy / pre-versioned until proven otherwise; a missing
     // `version=` line then triggers the migration block below.
@@ -74,11 +89,15 @@ void Settings::Load()
     }
 
     fclose(f);
+    printf("[AC] Settings::Load done — cps=%d  espKey=%d  acKey=%d  menuKey=%d  version=%d\n",
+        cps, espKey, acKey, menuKey, version);
 
     // Migration: any config older than the current schema gets its
     // keybinds force-cleared. Catches the historical CapsLock→ESP default
     // that users had previously committed to disk.
     if (version < CURRENT_VERSION) {
+        printf("[AC] Settings::Load migrating from v%d -> v%d (keybinds cleared)\n",
+            version, CURRENT_VERSION);
         menuKey = 0;
         acKey   = 0;
         espKey  = 0;

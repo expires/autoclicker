@@ -862,17 +862,27 @@ static BOOL WINAPI hk_wglSwapBuffers(HDC hdc)
         if (s_eatEscUntilRelease && !(GetAsyncKeyState(VK_ESCAPE) & 0x8000))
             s_eatEscUntilRelease = false;
 
-        // Module toggle keys. Skip when a keybind picker is listening so
-        // pressing the soon-to-be-bound key doesn't also toggle the module
-        // on the same frame.
+        // Module toggle keys. We edge-detect off the held bit (& 0x8000)
+        // rather than the documented-as-unreliable "pressed since last call"
+        // low bit. CapsLock in particular is queried constantly by other
+        // system components for its lock-state indicator, which consumed
+        // our edge before we could see it — the GUI checkbox followed any
+        // toggle that did fire, but most key presses produced zero toggles
+        // so the actual ESP draw state appeared "stuck".
+        static bool s_espKeyHeldPrev = false;
+        static bool s_acKeyHeldPrev  = false;
+
+        const bool espHeld = g_settings.espKey &&
+            (GetAsyncKeyState(g_settings.espKey) & 0x8000);
+        const bool acHeld  = g_settings.acKey &&
+            (GetAsyncKeyState(g_settings.acKey)  & 0x8000);
+
         if (!listeningSuppress) {
-            if (g_settings.espKey &&
-                (GetAsyncKeyState(g_settings.espKey) & 1))
-                g_settings.espEnabled = !g_settings.espEnabled;
-            if (g_settings.acKey &&
-                (GetAsyncKeyState(g_settings.acKey) & 1))
-                g_settings.acEnabled = !g_settings.acEnabled;
+            if (espHeld && !s_espKeyHeldPrev) g_settings.espEnabled = !g_settings.espEnabled;
+            if (acHeld  && !s_acKeyHeldPrev)  g_settings.acEnabled  = !g_settings.acEnabled;
         }
+        s_espKeyHeldPrev = espHeld;
+        s_acKeyHeldPrev  = acHeld;
     }
 
     const bool needFrame = s_visible || g_settings.espEnabled;
