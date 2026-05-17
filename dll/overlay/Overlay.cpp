@@ -83,7 +83,7 @@ static bool RowCheckbox(const char* label, bool* v)
 
     // Per-row animation toward 0/1, persisted in the window's storage so it
     // survives across frames without a global map.
-    ImGuiStorage* storage = window->StateStorage;
+    ImGuiStorage* storage = &window->StateStorage;
     float anim = storage->GetFloat(id, *v ? 1.0f : 0.0f);
     anim = ImLerp(anim, *v ? 1.0f : 0.0f, 0.18f);
     storage->SetFloat(id, anim);
@@ -151,7 +151,7 @@ static bool RowSlider(const char* label, int* v, int v_min, int v_max,
     if (t < 0.0f) t = 0.0f;
     if (t > 1.0f) t = 1.0f;
 
-    ImGuiStorage* storage = window->StateStorage;
+    ImGuiStorage* storage = &window->StateStorage;
     float anim = storage->GetFloat(id, t);
     anim = ImLerp(anim, t, 0.20f);
     storage->SetFloat(id, anim);
