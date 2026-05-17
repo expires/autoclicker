@@ -10,7 +10,6 @@
 #include "imgui_impl_opengl3.h"
 #include "../Settings.h"
 #include "../modules/esp/EspModule.h"
-#include "../SDK/Minecraft.h"
 #include <MinHook.h>
 
 #ifndef M_PI
@@ -23,16 +22,19 @@ extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg
 typedef BOOL(WINAPI* fn_wglSwapBuffers)(HDC);
 static fn_wglSwapBuffers o_wglSwapBuffers = nullptr;
 
+// While the overlay is up we no-op these two so GLFW's cursor-disabled mode
+// can't keep snapping the OS cursor back to center each frame — that snap is
+// what causes the "mouse fights you" jitter visible when the menu is open.
+typedef BOOL(WINAPI* fn_SetCursorPos)(int, int);
+typedef BOOL(WINAPI* fn_ClipCursor)(const RECT*);
+static fn_SetCursorPos o_SetCursorPos = nullptr;
+static fn_ClipCursor   o_ClipCursor   = nullptr;
+
 static bool    s_initialized = false;
 static bool    s_visible     = false;
 static int     s_currentTab  = 0; // 0=Autoclicker, 1=ESP, 2=Settings
 static HWND    s_hwnd        = nullptr;
 static WNDPROC s_origProc    = nullptr;
-
-// Global ref to the PauseScreen we installed when the overlay opened. Lets us
-// recognize "our" screen on close and avoid clobbering one the user opened
-// themselves (chat, inventory, MC's own ESC pause, etc).
-static jobject s_ourPauseScreen = nullptr;
 
 static ImVec4 FromHex(uint32_t hex, float alpha = 1.0f)
 {
@@ -503,88 +505,86 @@ static void DrawEsp(float dispW, float dispH)
     }
 }
 
+static BOOL WINAPI hk_SetCursorPos(int x, int y)
+{
+    // Lie to GLFW: it thinks the recenter succeeded, but the cursor stays
+    // where the user moved it. No jitter, no fight.
+    if (s_visible) return TRUE;
+    return o_SetCursorPos(x, y);
+}
+
+static BOOL WINAPI hk_ClipCursor(const RECT* r)
+{
+    // Same idea — GLFW re-clips every frame in cursor-disabled mode.
+    if (s_visible) return TRUE;
+    return o_ClipCursor(r);
+}
+
+// Synthesize key-up / button-up messages for everything currently pressed so
+// MC's input pump sees them as released. Without this, holding W when you
+// press INSERT keeps the player walking forward forever — we swallow the
+// real WM_KEYUP later, so MC never sees a release otherwise. We bypass our
+// own WndProc hook by calling s_origProc directly.
+static void ReleaseAllHeldInputs()
+{
+    if (!s_hwnd || !s_origProc) return;
+
+    for (int vk = 0x01; vk <= 0xFE; ++vk) {
+        // Skip our toggle keys — they're transient and the swallow logic
+        // doesn't care about their up edge.
+        if (vk == VK_INSERT || vk == VK_CAPITAL) continue;
+        // Skip mouse buttons; handled with their own messages below.
+        if (vk == VK_LBUTTON || vk == VK_RBUTTON || vk == VK_MBUTTON ||
+            vk == VK_XBUTTON1 || vk == VK_XBUTTON2) continue;
+
+        if (GetAsyncKeyState(vk) & 0x8000) {
+            const UINT scan = MapVirtualKeyW((UINT)vk, MAPVK_VK_TO_VSC);
+            // lParam bits: repeat=1, scan, prev-state=1, transition=1 (= up)
+            const LPARAM lParam =
+                1 | (LPARAM(scan) << 16) | (LPARAM(1) << 30) | (LPARAM(1) << 31);
+            CallWindowProcW(s_origProc, s_hwnd, WM_KEYUP, (WPARAM)vk, lParam);
+        }
+    }
+
+    if (GetAsyncKeyState(VK_LBUTTON) & 0x8000)
+        CallWindowProcW(s_origProc, s_hwnd, WM_LBUTTONUP, 0, 0);
+    if (GetAsyncKeyState(VK_RBUTTON) & 0x8000)
+        CallWindowProcW(s_origProc, s_hwnd, WM_RBUTTONUP, 0, 0);
+    if (GetAsyncKeyState(VK_MBUTTON) & 0x8000)
+        CallWindowProcW(s_origProc, s_hwnd, WM_MBUTTONUP, 0, 0);
+}
+
 static LRESULT CALLBACK HookedWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
-    if (s_visible && ImGui_ImplWin32_WndProcHandler(hwnd, msg, wParam, lParam))
-        return true;
+    if (s_visible)
+    {
+        // Feed every input event to ImGui first so the menu remains usable.
+        ImGui_ImplWin32_WndProcHandler(hwnd, msg, wParam, lParam);
+
+        // Swallow input-bearing messages so MC's GLFW pump never sees them.
+        // Tried routing through MC's own pauseGame()/setScreen() to engage a
+        // real pause — that crashed the JVM because the call chain
+        // (setScreen → Screen.init → KeyMapping.releaseAll → MouseHandler
+        // .releaseMouse) hits state that's only safe at specific points in
+        // MC's tick, not from inside wglSwapBuffers. WndProc swallow is what
+        // every external overlay does (Discord, Steam, RTSS) — it's the
+        // standard pattern, not a workaround.
+        switch (msg)
+        {
+        case WM_KEYDOWN:    case WM_KEYUP:
+        case WM_SYSKEYDOWN: case WM_SYSKEYUP:
+        case WM_CHAR:       case WM_SYSCHAR:        case WM_UNICHAR:
+        case WM_MOUSEMOVE:
+        case WM_LBUTTONDOWN: case WM_LBUTTONUP: case WM_LBUTTONDBLCLK:
+        case WM_RBUTTONDOWN: case WM_RBUTTONUP: case WM_RBUTTONDBLCLK:
+        case WM_MBUTTONDOWN: case WM_MBUTTONUP: case WM_MBUTTONDBLCLK:
+        case WM_XBUTTONDOWN: case WM_XBUTTONUP: case WM_XBUTTONDBLCLK:
+        case WM_MOUSEWHEEL:  case WM_MOUSEHWHEEL:
+        case WM_INPUT:
+            return 0;
+        }
+    }
     return CallWindowProcW(s_origProc, hwnd, msg, wParam, lParam);
-}
-
-// Engage / release MC's pause state by toggling Minecraft.screen. Called once
-// per overlay open/close — much cleaner than swallowing WndProc messages
-// because MC's own input handlers (LocalPlayer.aiStep, MouseHandler.turn,
-// etc.) already gate on `mc.screen == null`. We track the screen we installed
-// so we don't blow away one the user opened themselves.
-static void EngagePauseScreen()
-{
-    if (!lc || !lc->vm || !lc->classesLoaded.load(std::memory_order_acquire)) {
-        printf("[AC] EngagePauseScreen: classes not loaded yet, skipping\n");
-        return;
-    }
-
-    // The render thread (this one — wglSwapBuffers caller) is MC's main JVM
-    // thread, so an env already exists; GetEnv hands it back without an
-    // Attach. lc->env is thread_local, so writing it here only affects us.
-    JNIEnv* env = nullptr;
-    if (lc->vm->GetEnv(reinterpret_cast<void**>(&env), JNI_VERSION_1_6) != JNI_OK || !env) {
-        printf("[AC] EngagePauseScreen: GetEnv failed\n");
-        return;
-    }
-    lc->env = env;
-
-    Minecraft mc;
-    if (mc.GetInstance() == nullptr) {
-        printf("[AC] EngagePauseScreen: no Minecraft instance\n");
-        return;
-    }
-
-    // Only pause if nothing else is up; otherwise let the user's existing
-    // screen (chat, inventory, ESC menu, etc.) stand.
-    if (mc.GetScreen().GetInstance() != nullptr) {
-        printf("[AC] EngagePauseScreen: a screen is already open, skipping\n");
-        return;
-    }
-
-    // Use MC's own pauseGame() — it constructs PauseScreen inside Java with
-    // MC's classloader, sidestepping the "PauseScreen not in our JVMTI
-    // snapshot" failure mode we hit when calling NewObject from C. Passing
-    // `true` means pause-only (blank background, no menu UI behind ours).
-    mc.pauseGame(true);
-
-    // Grab the screen MC just installed so we can recognize it on close and
-    // not stomp a screen the user might open in the meantime.
-    jobject installed = mc.GetScreen().GetInstance();
-    if (installed) {
-        s_ourPauseScreen = env->NewGlobalRef(installed);
-        printf("[AC] EngagePauseScreen: pause engaged\n");
-    } else {
-        printf("[AC] EngagePauseScreen: pauseGame returned but mc.screen is still null\n");
-    }
-}
-
-static void ReleasePauseScreen()
-{
-    if (!s_ourPauseScreen) return;
-    if (!lc || !lc->vm) { s_ourPauseScreen = nullptr; return; }
-
-    JNIEnv* env = nullptr;
-    if (lc->vm->GetEnv(reinterpret_cast<void**>(&env), JNI_VERSION_1_6) != JNI_OK || !env) {
-        s_ourPauseScreen = nullptr;
-        return;
-    }
-    lc->env = env;
-
-    Minecraft mc;
-    if (mc.GetInstance() != nullptr) {
-        jobject current = mc.GetScreen().GetInstance();
-        // Only clear if our screen is still up — user might have replaced it
-        // (e.g. opened chat) and we don't want to nuke that.
-        if (current && env->IsSameObject(current, s_ourPauseScreen))
-            mc.setScreen(nullptr);
-    }
-
-    env->DeleteGlobalRef(s_ourPauseScreen);
-    s_ourPauseScreen = nullptr;
 }
 
 static BOOL WINAPI hk_wglSwapBuffers(HDC hdc)
@@ -674,8 +674,7 @@ static BOOL WINAPI hk_wglSwapBuffers(HDC hdc)
         s_visible = !s_visible;
         ClipCursor(nullptr);
         ShowCursor(s_visible ? TRUE : FALSE);
-        if (s_visible) EngagePauseScreen();
-        else           ReleasePauseScreen();
+        if (s_visible) ReleaseAllHeldInputs();
     }
     if (GetAsyncKeyState(VK_CAPITAL) & 1) g_settings.espEnabled = !g_settings.espEnabled;
 
@@ -848,11 +847,31 @@ namespace Overlay
     void Init()
     {
         MH_Initialize();
-        void* target = reinterpret_cast<void*>(
+
+        void* tgtSwap = reinterpret_cast<void*>(
             GetProcAddress(GetModuleHandleA("opengl32.dll"), "wglSwapBuffers"));
-        MH_CreateHook(target, reinterpret_cast<void*>(hk_wglSwapBuffers),
+        MH_CreateHook(tgtSwap, reinterpret_cast<void*>(hk_wglSwapBuffers),
                       reinterpret_cast<void**>(&o_wglSwapBuffers));
-        MH_EnableHook(target);
+        MH_EnableHook(tgtSwap);
+
+        // Hook the two user32 calls GLFW uses to keep the cursor centered
+        // in disabled-cursor mode. While the overlay is up, both no-op —
+        // killing the cursor-snap-back jitter.
+        HMODULE u32 = GetModuleHandleA("user32.dll");
+        if (u32) {
+            void* tgtScp = reinterpret_cast<void*>(GetProcAddress(u32, "SetCursorPos"));
+            void* tgtClp = reinterpret_cast<void*>(GetProcAddress(u32, "ClipCursor"));
+            if (tgtScp) {
+                MH_CreateHook(tgtScp, reinterpret_cast<void*>(hk_SetCursorPos),
+                              reinterpret_cast<void**>(&o_SetCursorPos));
+                MH_EnableHook(tgtScp);
+            }
+            if (tgtClp) {
+                MH_CreateHook(tgtClp, reinterpret_cast<void*>(hk_ClipCursor),
+                              reinterpret_cast<void**>(&o_ClipCursor));
+                MH_EnableHook(tgtClp);
+            }
+        }
     }
 
     void Shutdown()
