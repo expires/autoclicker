@@ -5,3 +5,4 @@
 build
 dll/Config.h
 .claude
+.temp

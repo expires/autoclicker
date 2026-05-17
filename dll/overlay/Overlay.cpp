@@ -4,6 +4,8 @@
 #include <cmath>
 #include <mutex>
 #include "imgui.h"
+#define IMGUI_DEFINE_MATH_OPERATORS
+#include "imgui_internal.h"
 #include "imgui_impl_win32.h"
 #include "imgui_impl_opengl3.h"
 #include "../Settings.h"
@@ -20,11 +22,11 @@ extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg
 typedef BOOL(WINAPI* fn_wglSwapBuffers)(HDC);
 static fn_wglSwapBuffers o_wglSwapBuffers = nullptr;
 
-static bool    s_initialized     = false;
-static bool    s_visible         = false;
-static bool    s_debugTabVisible = false;
-static HWND    s_hwnd            = nullptr;
-static WNDPROC s_origProc        = nullptr;
+static bool    s_initialized = false;
+static bool    s_visible     = false;
+static int     s_currentTab  = 0; // 0=Autoclicker, 1=ESP, 2=Settings
+static HWND    s_hwnd        = nullptr;
+static WNDPROC s_origProc    = nullptr;
 
 static ImVec4 FromHex(uint32_t hex, float alpha = 1.0f)
 {
@@ -47,6 +49,58 @@ static void SectionHeader(const char* label)
     ImGui::Separator();
     ImGui::PopStyleColor();
     ImGui::Dummy({0, 2});
+}
+
+// Full-width clickable row used as a sidebar tab item: an icon glyph on the
+// left, a label to its right, and a 2-px accent stripe along the right edge
+// when selected. Uses ImGui internals (ItemAdd / ButtonBehavior) so the row
+// participates in ImGui's standard hit-testing instead of polling mouse rects.
+static bool SidebarTab(const char* icon, const char* label, bool selected)
+{
+    using namespace ImGui;
+    ImGuiWindow* window = GetCurrentWindow();
+    if (window->SkipItems) return false;
+
+    ImVec2 p = window->DC.CursorPos;
+    ImVec2 size(window->Size.x, 38.0f);
+    ImRect bb(p, ImVec2(p.x + size.x, p.y + size.y));
+
+    ImGuiID id = window->GetID(label);
+    ItemSize(bb);
+    if (!ItemAdd(bb, id)) return false;
+
+    bool hovered, held;
+    bool pressed = ButtonBehavior(bb, id, &hovered, &held);
+
+    ImDrawList* dl = window->DrawList;
+    if (hovered && !selected)
+        dl->AddRectFilled(bb.Min, bb.Max,
+            ColorConvertFloat4ToU32(FromHex(0x161d2e, 0.5f)));
+
+    if (selected) {
+        // Right-edge accent stripe — the visual "you are here" indicator.
+        dl->AddRectFilled(
+            ImVec2(bb.Max.x - 2.5f, bb.Min.y + 8.0f),
+            ImVec2(bb.Max.x,        bb.Max.y - 8.0f),
+            ColorConvertFloat4ToU32(FromHex(0x5865f2)));
+    }
+
+    const ImU32 textCol = ColorConvertFloat4ToU32(
+        selected ? FromHex(0xffffff) : FromHex(0x707a8c));
+
+    PushStyleColor(ImGuiCol_Text, textCol);
+
+    // Icon glyph centered in a ~32-px left column.
+    ImVec2 iconSz = CalcTextSize(icon);
+    RenderText(ImVec2(bb.Min.x + 18.0f - iconSz.x * 0.5f,
+                      bb.GetCenter().y - iconSz.y * 0.5f), icon);
+
+    ImVec2 labelSz = CalcTextSize(label);
+    RenderText(ImVec2(bb.Min.x + 38.0f,
+                      bb.GetCenter().y - labelSz.y * 0.5f), label);
+
+    PopStyleColor();
+    return pressed;
 }
 
 // Checkbox where "checked" = the whole box filled with the accent color, not
@@ -315,7 +369,7 @@ static void DrawEsp(float dispW, float dispH)
             const float bgRight  = tagPos.x + contentW * 0.5f + padX;
             const float bgTop    = anchorY - contentH * 0.5f - padY;
             const float bgBottom = anchorY + contentH * 0.5f + padY;
-            const float rounding = (bgBottom - bgTop) * 0.5f;
+            const float rounding = 4.0f;
 
             const ImU32 bgCol     = IM_COL32(12,  14, 20, 200);
             const ImU32 borderCol = IM_COL32(80,  90, 110, 180);
@@ -365,9 +419,11 @@ static BOOL WINAPI hk_wglSwapBuffers(HDC hdc)
         cfg.OversampleV = 3;
         cfg.PixelSnapH  = false;
 
-        const char* fontPath = (GetFileAttributesA(fontBold) != INVALID_FILE_ATTRIBUTES)
-            ? fontBold : fontRegular;
-        io.Fonts->AddFontFromFileTTF(fontPath, 16.0f, &cfg);
+        const bool boldOk = (GetFileAttributesA(fontBold) != INVALID_FILE_ATTRIBUTES);
+        const char* regPath  = boldOk ? fontRegular : fontBold;
+        const char* boldPath = boldOk ? fontBold    : fontRegular;
+        io.Fonts->AddFontFromFileTTF(regPath,  15.0f, &cfg);  // Fonts[0] body
+        io.Fonts->AddFontFromFileTTF(boldPath, 19.0f, &cfg);  // Fonts[1] title / icons
 
         ApplyStyle();
 
@@ -386,7 +442,6 @@ static BOOL WINAPI hk_wglSwapBuffers(HDC hdc)
         ClipCursor(nullptr);
         ShowCursor(s_visible ? TRUE : FALSE);
     }
-    if (GetAsyncKeyState(VK_PRIOR)   & 1) s_debugTabVisible    = !s_debugTabVisible;
     if (GetAsyncKeyState(VK_CAPITAL) & 1) g_settings.espEnabled = !g_settings.espEnabled;
 
     const bool needFrame = s_visible || g_settings.espEnabled;
@@ -403,15 +458,79 @@ static BOOL WINAPI hk_wglSwapBuffers(HDC hdc)
 
         if (s_visible)
         {
-            ImGui::SetNextWindowSize({display.x * 0.30f, 0}, ImGuiCond_Always);
+            // Sidebar + content layout (ported from the reference GUI in
+            // .temp/...): WindowPadding 0 so the navbar can render flush to
+            // the left edge with its own rounded corner.
+            ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
+            ImGui::SetNextWindowSize(ImVec2(580, 380), ImGuiCond_Always);
             ImGui::Begin("manuclicker", nullptr,
-                ImGuiWindowFlags_NoScrollbar |
-                ImGuiWindowFlags_NoCollapse  |
-                ImGuiWindowFlags_NoResize);
+                ImGuiWindowFlags_NoCollapse |
+                ImGuiWindowFlags_NoResize   |
+                ImGuiWindowFlags_NoTitleBar |
+                ImGuiWindowFlags_NoScrollbar);
+            ImGui::PopStyleVar();
 
-            if (ImGui::BeginTabBar("##tabs", ImGuiTabBarFlags_NoTooltip))
+            const float   SIDEBAR_W = 150.0f;
+            const ImVec2  winSize   = ImGui::GetWindowSize();
+            const ImVec2  winPos    = ImGui::GetWindowPos();
+
+            // ── Sidebar ──────────────────────────────────────────────────
+            ImGui::BeginChild("##sidebar", ImVec2(SIDEBAR_W, winSize.y),
+                false, ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoScrollbar);
             {
-                if (ImGui::BeginTabItem("Autoclicker"))
+                // Sidebar background + right divider drawn manually so the
+                // rounded-left corner sits flush against the window's own
+                // rounding.
+                ImDrawList* dl = ImGui::GetWindowDrawList();
+                dl->AddRectFilled(winPos,
+                    ImVec2(winPos.x + SIDEBAR_W, winPos.y + winSize.y),
+                    ImGui::GetColorU32(ImGuiCol_ChildBg),
+                    ImGui::GetStyle().WindowRounding,
+                    ImDrawFlags_RoundCornersLeft);
+                dl->AddRectFilled(
+                    ImVec2(winPos.x + SIDEBAR_W - 1, winPos.y),
+                    ImVec2(winPos.x + SIDEBAR_W,     winPos.y + winSize.y),
+                    ImGui::GetColorU32(ImGuiCol_Border));
+
+                ImGui::SetCursorPos(ImVec2(20, 22));
+                ImGui::PushFont(ImGui::GetIO().Fonts->Fonts[1]);
+                ImGui::TextUnformatted("manuclicker");
+                ImGui::PopFont();
+
+                ImGui::SetCursorPos(ImVec2(0, 76));
+                ImGui::PushFont(ImGui::GetIO().Fonts->Fonts[1]);
+                if (SidebarTab("+", "Autoclicker", s_currentTab == 0)) s_currentTab = 0;
+                if (SidebarTab("P", "ESP",         s_currentTab == 1)) s_currentTab = 1;
+                if (SidebarTab("S", "Settings",    s_currentTab == 2)) s_currentTab = 2;
+                ImGui::PopFont();
+            }
+            ImGui::EndChild();
+
+            ImGui::SameLine(0, 0);
+
+            // ── Content ──────────────────────────────────────────────────
+            ImGui::BeginChild("##content", ImVec2(winSize.x - SIDEBAR_W, winSize.y),
+                false, ImGuiWindowFlags_NoBackground);
+            {
+                // Big bold title in the top-left of the content area.
+                ImGui::SetCursorPos(ImVec2(22, 22));
+                ImGui::PushFont(ImGui::GetIO().Fonts->Fonts[1]);
+                ImGui::TextUnformatted(
+                    s_currentTab == 0 ? "Autoclicker" :
+                    s_currentTab == 1 ? "ESP" :
+                                        "Settings");
+                ImGui::PopFont();
+
+                // Body region — leaves room for the unload button anchored
+                // at the bottom (height ≈ 32 + padding).
+                const float bodyTop    = 64.0f;
+                const float bodyBottom = 60.0f;
+                ImGui::SetCursorPos(ImVec2(22, bodyTop));
+                ImGui::BeginChild("##body",
+                    ImVec2(winSize.x - SIDEBAR_W - 44, winSize.y - bodyTop - bodyBottom),
+                    false, ImGuiWindowFlags_NoBackground);
+
+                if (s_currentTab == 0)
                 {
                     SectionHeader("BEHAVIOR");
                     ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(6.0f, 5.0f));
@@ -421,19 +540,14 @@ static BOOL WINAPI hk_wglSwapBuffers(HDC hdc)
 
                     SectionHeader("CLICK RATE");
                     ImGui::TextUnformatted("CPS");
-                    {
-                        const float valueW = 28.0f;
-                        const float availW = ImGui::GetContentRegionAvail().x;
-                        ImGui::SetNextItemWidth(availW - valueW - 4.0f);
-                        ImGui::SliderInt("##cps", &g_settings.cps, 1, 50, "");
-                        ImGui::SameLine();
-                        ImGui::Text("%d", g_settings.cps);
-                    }
-
-                    ImGui::EndTabItem();
+                    const float valueW = 28.0f;
+                    const float availW = ImGui::GetContentRegionAvail().x;
+                    ImGui::SetNextItemWidth(availW - valueW - 4.0f);
+                    ImGui::SliderInt("##cps", &g_settings.cps, 1, 50, "");
+                    ImGui::SameLine();
+                    ImGui::Text("%d", g_settings.cps);
                 }
-
-                if (ImGui::BeginTabItem("ESP"))
+                else if (s_currentTab == 1)
                 {
                     SectionHeader("VISIBILITY");
                     ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(6.0f, 5.0f));
@@ -450,17 +564,14 @@ static BOOL WINAPI hk_wglSwapBuffers(HDC hdc)
                         ImGui::PopStyleColor();
                         ImGui::Unindent(16.0f);
                     }
-
-                    ImGui::EndTabItem();
                 }
-
-                if (s_debugTabVisible && ImGui::BeginTabItem("Debug"))
+                else // Settings
                 {
-                    // Amber section label (per design) instead of the indigo
-                    // accent — diagnostics are a different visual register.
+                    // Diagnostics block — amber accent to distinguish it from
+                    // the indigo control sections in the other tabs.
                     ImGui::Dummy({0, 4});
                     ImGui::PushStyleColor(ImGuiCol_Text, FromHex(0xe8a020));
-                    ImGui::TextUnformatted("DIAGNOSTICS");
+                    ImGui::TextUnformatted("DEBUG INFO");
                     ImGui::PopStyleColor();
                     ImGui::PushStyleColor(ImGuiCol_Separator, FromHex(0xe8a020, 0.30f));
                     ImGui::Separator();
@@ -494,28 +605,25 @@ static BOOL WINAPI hk_wglSwapBuffers(HDC hdc)
                     ImGui::EndChild();
                     ImGui::PopStyleVar();
                     ImGui::PopStyleColor(2);
-
-                    ImGui::EndTabItem();
                 }
 
-                ImGui::EndTabBar();
+                ImGui::EndChild(); // ##body
+
+                // Unload button anchored to the bottom-right of content.
+                ImGui::SetCursorPos(ImVec2(22, winSize.y - 48));
+                ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 4.0f);
+                ImGui::PushStyleColor(ImGuiCol_Button,        FromHex(0x9b1c1c));
+                ImGui::PushStyleColor(ImGuiCol_ButtonHovered, FromHex(0xb91c1c));
+                ImGui::PushStyleColor(ImGuiCol_ButtonActive,  FromHex(0x7a1414));
+                ImGui::PushStyleColor(ImGuiCol_Text,          FromHex(0xffffff));
+                if (ImGui::Button("UNLOAD",
+                        ImVec2(winSize.x - SIDEBAR_W - 44, 32)))
+                    g_settings.selfDestruct = true;
+                ImGui::PopStyleColor(4);
+                ImGui::PopStyleVar();
             }
+            ImGui::EndChild(); // ##content
 
-            // Always-visible unload button at the bottom of the panel.
-            ImGui::Spacing();
-            ImGui::Separator();
-            ImGui::Spacing();
-            ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 3.0f);
-            ImGui::PushStyleColor(ImGuiCol_Button,        FromHex(0x9b1c1c));
-            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, FromHex(0xb91c1c));
-            ImGui::PushStyleColor(ImGuiCol_ButtonActive,  FromHex(0x7a1414));
-            ImGui::PushStyleColor(ImGuiCol_Text,          FromHex(0xffffff));
-            if (ImGui::Button("UNLOAD", {-1, 32}))
-                g_settings.selfDestruct = true;
-            ImGui::PopStyleColor(4);
-            ImGui::PopStyleVar();
-
-            ImGui::Spacing();
             ImGui::End();
         }
 
