@@ -22,13 +22,20 @@ extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg
 typedef BOOL(WINAPI* fn_wglSwapBuffers)(HDC);
 static fn_wglSwapBuffers o_wglSwapBuffers = nullptr;
 
-// While the overlay is up we no-op these two so GLFW's cursor-disabled mode
-// can't keep snapping the OS cursor back to center each frame — that snap is
-// what causes the "mouse fights you" jitter visible when the menu is open.
-typedef BOOL(WINAPI* fn_SetCursorPos)(int, int);
-typedef BOOL(WINAPI* fn_ClipCursor)(const RECT*);
+// While the overlay is up we no-op all four of these so GLFW's cursor-
+// disabled mode can't (a) snap the cursor to center, (b) re-clip it to the
+// window, (c) hide it via ShowCursor refcount, or (d) blank the cursor
+// image via SetCursor(NULL). Together those four make up the "jitter and
+// loss of control" symptom — GLFW fights every frame to reapply its
+// disabled-cursor invariant.
+typedef BOOL    (WINAPI* fn_SetCursorPos)(int, int);
+typedef BOOL    (WINAPI* fn_ClipCursor)(const RECT*);
+typedef int     (WINAPI* fn_ShowCursor)(BOOL);
+typedef HCURSOR (WINAPI* fn_SetCursor)(HCURSOR);
 static fn_SetCursorPos o_SetCursorPos = nullptr;
 static fn_ClipCursor   o_ClipCursor   = nullptr;
+static fn_ShowCursor   o_ShowCursor   = nullptr;
+static fn_SetCursor    o_SetCursor    = nullptr;
 
 static bool    s_initialized = false;
 static bool    s_visible     = false;
@@ -520,6 +527,24 @@ static BOOL WINAPI hk_ClipCursor(const RECT* r)
     return o_ClipCursor(r);
 }
 
+static int WINAPI hk_ShowCursor(BOOL show)
+{
+    // Refuse to hide. GLFW calls ShowCursor(FALSE) once per frame in
+    // disabled-cursor mode; without this, the global show-counter oscillates
+    // around -1 every frame and the cursor flickers in and out of visibility,
+    // which reads as "jitter".
+    if (s_visible && !show) return 0;
+    return o_ShowCursor(show);
+}
+
+static HCURSOR WINAPI hk_SetCursor(HCURSOR cursor)
+{
+    // GLFW also calls SetCursor(NULL) to blank the cursor image. Refuse —
+    // keep whatever cursor is currently set so the arrow stays visible.
+    if (s_visible && cursor == nullptr) return ::GetCursor();
+    return o_SetCursor(cursor);
+}
+
 // Synthesize key-up / button-up messages for everything currently pressed so
 // MC's input pump sees them as released. Without this, holding W when you
 // press INSERT keeps the player walking forward forever — we swallow the
@@ -669,12 +694,19 @@ static BOOL WINAPI hk_wglSwapBuffers(HDC hdc)
         s_initialized = true;
     }
 
-    if (GetAsyncKeyState(VK_INSERT) & 1)
     {
-        s_visible = !s_visible;
-        ClipCursor(nullptr);
-        ShowCursor(s_visible ? TRUE : FALSE);
-        if (s_visible) ReleaseAllHeldInputs();
+        const bool insertEdge = (GetAsyncKeyState(VK_INSERT) & 1) != 0;
+        // ESC only closes — we don't want ESC to open the menu when the
+        // user is mid-game and just trying to pause MC normally.
+        const bool escEdge    = s_visible && ((GetAsyncKeyState(VK_ESCAPE) & 1) != 0);
+
+        if (insertEdge || escEdge) {
+            const bool wasVisible = s_visible;
+            s_visible = insertEdge ? !s_visible : false;
+            ClipCursor(nullptr);
+            ShowCursor(s_visible ? TRUE : FALSE);
+            if (s_visible && !wasVisible) ReleaseAllHeldInputs();
+        }
     }
     if (GetAsyncKeyState(VK_CAPITAL) & 1) g_settings.espEnabled = !g_settings.espEnabled;
 
@@ -859,17 +891,16 @@ namespace Overlay
         // killing the cursor-snap-back jitter.
         HMODULE u32 = GetModuleHandleA("user32.dll");
         if (u32) {
-            void* tgtScp = reinterpret_cast<void*>(GetProcAddress(u32, "SetCursorPos"));
-            void* tgtClp = reinterpret_cast<void*>(GetProcAddress(u32, "ClipCursor"));
-            if (tgtScp) {
-                MH_CreateHook(tgtScp, reinterpret_cast<void*>(hk_SetCursorPos),
-                              reinterpret_cast<void**>(&o_SetCursorPos));
-                MH_EnableHook(tgtScp);
-            }
-            if (tgtClp) {
-                MH_CreateHook(tgtClp, reinterpret_cast<void*>(hk_ClipCursor),
-                              reinterpret_cast<void**>(&o_ClipCursor));
-                MH_EnableHook(tgtClp);
+            struct { const char* name; void* hook; void** orig; } hooks[] = {
+                { "SetCursorPos", reinterpret_cast<void*>(hk_SetCursorPos), reinterpret_cast<void**>(&o_SetCursorPos) },
+                { "ClipCursor",   reinterpret_cast<void*>(hk_ClipCursor),   reinterpret_cast<void**>(&o_ClipCursor)   },
+                { "ShowCursor",   reinterpret_cast<void*>(hk_ShowCursor),   reinterpret_cast<void**>(&o_ShowCursor)   },
+                { "SetCursor",    reinterpret_cast<void*>(hk_SetCursor),    reinterpret_cast<void**>(&o_SetCursor)    },
+            };
+            for (auto& h : hooks) {
+                void* target = reinterpret_cast<void*>(GetProcAddress(u32, h.name));
+                if (target && MH_CreateHook(target, h.hook, h.orig) == MH_OK)
+                    MH_EnableHook(target);
             }
         }
     }
