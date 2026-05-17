@@ -121,3 +121,12 @@ jobject Minecraft::newPauseScreen(bool showMenu)
 	if (lc->env->ExceptionCheck()) { lc->env->ExceptionClear(); return nullptr; }
 	return obj;
 }
+
+void Minecraft::pauseGame(bool pauseOnly)
+{
+	jmethodID m = lc->env->GetMethodID(this->GetClass(),
+		MTD_Minecraft_pauseGame, DESC_Minecraft_pauseGame);
+	if (!m) { lc->env->ExceptionClear(); return; }
+	lc->env->CallVoidMethod(this->GetInstance(), m, (jboolean)pauseOnly);
+	if (lc->env->ExceptionCheck()) lc->env->ExceptionClear();
+}

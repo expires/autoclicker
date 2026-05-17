@@ -80,6 +80,7 @@ foreach(KEY
     mtd_ClientLevel_players     desc_ClientLevel_players
     class_PauseScreen
     mtd_Minecraft_setScreen     desc_Minecraft_setScreen
+    mtd_Minecraft_pauseGame     desc_Minecraft_pauseGame
 )
     string(JSON ${KEY} GET "${MAPPING_JSON}" "${KEY}")
 endforeach()

@@ -44,4 +44,11 @@ public:
 	// Returns a local ref; promote to global if you need to retain it across
 	// JNI frames. Returns nullptr if anything in the construction chain fails.
 	jobject newPauseScreen(bool showMenu);
+
+	// Call Minecraft.pauseGame(boolean pauseOnly). MC's own pause API —
+	// constructs PauseScreen inside Java so class loading goes through MC's
+	// classloader (avoiding the "class not in our JVMTI snapshot" problem
+	// we hit when constructing via NewObject ourselves). `pauseOnly=true`
+	// opens a blank pause screen with no menu UI behind it.
+	void pauseGame(bool pauseOnly);
 };

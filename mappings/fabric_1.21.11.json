@@ -131,5 +131,7 @@
 
   "class_PauseScreen":             "net.minecraft.class_433",
   "mtd_Minecraft_setScreen":       "method_1507",
-  "desc_Minecraft_setScreen":      "(Lnet/minecraft/class_437;)V"
+  "desc_Minecraft_setScreen":      "(Lnet/minecraft/class_437;)V",
+  "mtd_Minecraft_pauseGame":       "method_20539",
+  "desc_Minecraft_pauseGame":      "(Z)V"
 }

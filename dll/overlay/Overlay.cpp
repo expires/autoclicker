@@ -517,30 +517,49 @@ static LRESULT CALLBACK HookedWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM
 // so we don't blow away one the user opened themselves.
 static void EngagePauseScreen()
 {
-    if (!lc || !lc->vm || !lc->classesLoaded.load(std::memory_order_acquire))
+    if (!lc || !lc->vm || !lc->classesLoaded.load(std::memory_order_acquire)) {
+        printf("[AC] EngagePauseScreen: classes not loaded yet, skipping\n");
         return;
+    }
 
     // The render thread (this one — wglSwapBuffers caller) is MC's main JVM
     // thread, so an env already exists; GetEnv hands it back without an
     // Attach. lc->env is thread_local, so writing it here only affects us.
     JNIEnv* env = nullptr;
-    if (lc->vm->GetEnv(reinterpret_cast<void**>(&env), JNI_VERSION_1_6) != JNI_OK || !env)
+    if (lc->vm->GetEnv(reinterpret_cast<void**>(&env), JNI_VERSION_1_6) != JNI_OK || !env) {
+        printf("[AC] EngagePauseScreen: GetEnv failed\n");
         return;
+    }
     lc->env = env;
 
     Minecraft mc;
-    if (mc.GetInstance() == nullptr) return;
+    if (mc.GetInstance() == nullptr) {
+        printf("[AC] EngagePauseScreen: no Minecraft instance\n");
+        return;
+    }
 
     // Only pause if nothing else is up; otherwise let the user's existing
     // screen (chat, inventory, ESC menu, etc.) stand.
-    if (mc.GetScreen().GetInstance() != nullptr) return;
+    if (mc.GetScreen().GetInstance() != nullptr) {
+        printf("[AC] EngagePauseScreen: a screen is already open, skipping\n");
+        return;
+    }
 
-    jobject pauseLocal = mc.newPauseScreen(false);
-    if (!pauseLocal) return;
+    // Use MC's own pauseGame() — it constructs PauseScreen inside Java with
+    // MC's classloader, sidestepping the "PauseScreen not in our JVMTI
+    // snapshot" failure mode we hit when calling NewObject from C. Passing
+    // `true` means pause-only (blank background, no menu UI behind ours).
+    mc.pauseGame(true);
 
-    mc.setScreen(pauseLocal);
-    s_ourPauseScreen = env->NewGlobalRef(pauseLocal);
-    env->DeleteLocalRef(pauseLocal);
+    // Grab the screen MC just installed so we can recognize it on close and
+    // not stomp a screen the user might open in the meantime.
+    jobject installed = mc.GetScreen().GetInstance();
+    if (installed) {
+        s_ourPauseScreen = env->NewGlobalRef(installed);
+        printf("[AC] EngagePauseScreen: pause engaged\n");
+    } else {
+        printf("[AC] EngagePauseScreen: pauseGame returned but mc.screen is still null\n");
+    }
 }
 
 static void ReleasePauseScreen()
