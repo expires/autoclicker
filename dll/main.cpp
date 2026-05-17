@@ -20,6 +20,9 @@ BOOL APIENTRY DllMain(const HINSTANCE instance, const DWORD reason, LPVOID reser
     }
     else if (reason == DLL_PROCESS_DETACH)
     {
+        // Flush before teardown — covers paths that skip the menu-close
+        // save (UNLOAD button, game closed with overlay still open, etc.).
+        g_settings.Save();
         Overlay::Shutdown();
     }
     return TRUE;

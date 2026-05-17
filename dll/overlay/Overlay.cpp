@@ -207,7 +207,9 @@ static bool RowKeybind(const char* label, int* vk)
             if (!(GetAsyncKeyState(k) & 1)) continue;
 
             if (k == VK_ESCAPE) {
-                listening = false;          // cancel
+                // ESC clears the binding back to none.
+                if (*vk != 0) { *vk = 0; changed = true; }
+                listening = false;
             } else {
                 *vk      = k;
                 listening = false;
@@ -974,29 +976,33 @@ static BOOL WINAPI hk_wglSwapBuffers(HDC hdc)
                 // single continuous separator list (the reference look).
                 ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0, 0));
 
+                // Any Row* widget returning true means a setting changed
+                // this frame; flush to disk once at the end of the tab so
+                // the persisted state survives any subsequent path that
+                // doesn't get to call Save (DLL force-unload, game crash
+                // with menu open, UNLOAD button, etc.).
+                bool dirty = false;
+
                 if (s_currentTab == 0)
                 {
-                    RowCheckbox("Enabled",      &g_settings.acEnabled);
-                    RowCheckbox("Break Blocks", &g_settings.breakBlocks);
-                    RowSlider  ("CPS",          &g_settings.cps, 1, 50);
-                    if (RowKeybind("Toggle Key", &g_settings.acKey))
-                        g_settings.Save();
+                    dirty |= RowCheckbox("Enabled",      &g_settings.acEnabled);
+                    dirty |= RowCheckbox("Break Blocks", &g_settings.breakBlocks);
+                    dirty |= RowSlider  ("CPS",          &g_settings.cps, 1, 50);
+                    dirty |= RowKeybind ("Toggle Key",   &g_settings.acKey);
                 }
                 else if (s_currentTab == 1)
                 {
-                    RowCheckbox("Enabled",  &g_settings.espEnabled);
+                    dirty |= RowCheckbox("Enabled",  &g_settings.espEnabled);
                     if (g_settings.espEnabled) {
-                        RowCheckbox("Box",      &g_settings.drawBox);
-                        RowCheckbox("Name",     &g_settings.drawName);
-                        RowCheckbox("Distance", &g_settings.drawDistance);
+                        dirty |= RowCheckbox("Box",      &g_settings.drawBox);
+                        dirty |= RowCheckbox("Name",     &g_settings.drawName);
+                        dirty |= RowCheckbox("Distance", &g_settings.drawDistance);
                     }
-                    if (RowKeybind("Toggle Key", &g_settings.espKey))
-                        g_settings.Save();
+                    dirty |= RowKeybind("Toggle Key", &g_settings.espKey);
                 }
                 else
                 {
-                    if (RowKeybind("Menu Key", &g_settings.menuKey))
-                        g_settings.Save();
+                    dirty |= RowKeybind("Menu Key", &g_settings.menuKey);
 
                     EspModule::Snapshot snap;
                     {
@@ -1014,6 +1020,8 @@ static BOOL WINAPI hk_wglSwapBuffers(HDC hdc)
                         snap.cam.yRot, snap.cam.xRot, snap.cam.fov);
                     ImGui::PopStyleColor();
                 }
+
+                if (dirty) g_settings.Save();
 
                 ImGui::PopStyleVar(); // ItemSpacing
 
