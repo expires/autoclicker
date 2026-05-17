@@ -406,24 +406,35 @@ static BOOL WINAPI hk_wglSwapBuffers(HDC hdc)
         ImGuiIO& io = ImGui::GetIO();
         io.IniFilename = nullptr;
 
-        char winDir[MAX_PATH];
+        char winDir[MAX_PATH] = {};
         GetWindowsDirectoryA(winDir, MAX_PATH);
 
-        char fontBold[MAX_PATH];
-        char fontRegular[MAX_PATH];
-        strcat_s(fontBold,    sizeof(fontBold),    winDir); strcat_s(fontBold,    sizeof(fontBold),    "\\Fonts\\segoeuib.ttf");
-        strcat_s(fontRegular, sizeof(fontRegular), winDir); strcat_s(fontRegular, sizeof(fontRegular), "\\Fonts\\segoeui.ttf");
+        // Properly null-init the path buffers — strcat_s on uninitialized
+        // memory in release builds silently corrupts the path and we end up
+        // failing to load any font, leaving Fonts[1] missing and crashing
+        // the first PushFont call.
+        char fontBold[MAX_PATH]    = {};
+        char fontRegular[MAX_PATH] = {};
+        strcpy_s(fontBold,    sizeof(fontBold),    winDir);
+        strcat_s(fontBold,    sizeof(fontBold),    "\\Fonts\\segoeuib.ttf");
+        strcpy_s(fontRegular, sizeof(fontRegular), winDir);
+        strcat_s(fontRegular, sizeof(fontRegular), "\\Fonts\\segoeui.ttf");
 
         ImFontConfig cfg;
         cfg.OversampleH = 3;
         cfg.OversampleV = 3;
         cfg.PixelSnapH  = false;
 
-        const bool boldOk = (GetFileAttributesA(fontBold) != INVALID_FILE_ATTRIBUTES);
-        const char* regPath  = boldOk ? fontRegular : fontBold;
-        const char* boldPath = boldOk ? fontBold    : fontRegular;
-        io.Fonts->AddFontFromFileTTF(regPath,  15.0f, &cfg);  // Fonts[0] body
-        io.Fonts->AddFontFromFileTTF(boldPath, 19.0f, &cfg);  // Fonts[1] title / icons
+        // Always populate Fonts[0] (body) and Fonts[1] (bold / icons) — fall
+        // back to the built-in default if either system font fails to load,
+        // so PushFont(Fonts[1]) is always safe.
+        ImFont* fReg = (GetFileAttributesA(fontRegular) != INVALID_FILE_ATTRIBUTES)
+            ? io.Fonts->AddFontFromFileTTF(fontRegular, 15.0f, &cfg) : nullptr;
+        if (!fReg) io.Fonts->AddFontDefault();
+
+        ImFont* fBold = (GetFileAttributesA(fontBold) != INVALID_FILE_ATTRIBUTES)
+            ? io.Fonts->AddFontFromFileTTF(fontBold, 19.0f, &cfg) : nullptr;
+        if (!fBold) io.Fonts->AddFontDefault();
 
         ApplyStyle();
 
