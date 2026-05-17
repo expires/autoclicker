@@ -10,6 +10,7 @@
 #include "imgui_impl_opengl3.h"
 #include "../Settings.h"
 #include "../modules/esp/EspModule.h"
+#include "../SDK/Minecraft.h"
 #include <MinHook.h>
 
 #ifndef M_PI
@@ -27,6 +28,11 @@ static bool    s_visible     = false;
 static int     s_currentTab  = 0; // 0=Autoclicker, 1=ESP, 2=Settings
 static HWND    s_hwnd        = nullptr;
 static WNDPROC s_origProc    = nullptr;
+
+// Global ref to the PauseScreen we installed when the overlay opened. Lets us
+// recognize "our" screen on close and avoid clobbering one the user opened
+// themselves (chat, inventory, MC's own ESC pause, etc).
+static jobject s_ourPauseScreen = nullptr;
 
 static ImVec4 FromHex(uint32_t hex, float alpha = 1.0f)
 {
@@ -499,31 +505,67 @@ static void DrawEsp(float dispW, float dispH)
 
 static LRESULT CALLBACK HookedWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
-    if (s_visible)
-    {
-        // Let ImGui process every input event so the menu remains usable.
-        ImGui_ImplWin32_WndProcHandler(hwnd, msg, wParam, lParam);
-
-        // Swallow input-bearing messages so MC's GLFW pump never sees them —
-        // effectively turning the overlay into a modal pause screen. We still
-        // forward non-input messages (paint, size, activate, etc.) so the
-        // window keeps behaving normally otherwise.
-        switch (msg)
-        {
-        case WM_KEYDOWN:    case WM_KEYUP:
-        case WM_SYSKEYDOWN: case WM_SYSKEYUP:
-        case WM_CHAR:       case WM_SYSCHAR:        case WM_UNICHAR:
-        case WM_MOUSEMOVE:
-        case WM_LBUTTONDOWN: case WM_LBUTTONUP: case WM_LBUTTONDBLCLK:
-        case WM_RBUTTONDOWN: case WM_RBUTTONUP: case WM_RBUTTONDBLCLK:
-        case WM_MBUTTONDOWN: case WM_MBUTTONUP: case WM_MBUTTONDBLCLK:
-        case WM_XBUTTONDOWN: case WM_XBUTTONUP: case WM_XBUTTONDBLCLK:
-        case WM_MOUSEWHEEL:  case WM_MOUSEHWHEEL:
-        case WM_INPUT:
-            return 0;
-        }
-    }
+    if (s_visible && ImGui_ImplWin32_WndProcHandler(hwnd, msg, wParam, lParam))
+        return true;
     return CallWindowProcW(s_origProc, hwnd, msg, wParam, lParam);
+}
+
+// Engage / release MC's pause state by toggling Minecraft.screen. Called once
+// per overlay open/close — much cleaner than swallowing WndProc messages
+// because MC's own input handlers (LocalPlayer.aiStep, MouseHandler.turn,
+// etc.) already gate on `mc.screen == null`. We track the screen we installed
+// so we don't blow away one the user opened themselves.
+static void EngagePauseScreen()
+{
+    if (!lc || !lc->vm || !lc->classesLoaded.load(std::memory_order_acquire))
+        return;
+
+    // The render thread (this one — wglSwapBuffers caller) is MC's main JVM
+    // thread, so an env already exists; GetEnv hands it back without an
+    // Attach. lc->env is thread_local, so writing it here only affects us.
+    JNIEnv* env = nullptr;
+    if (lc->vm->GetEnv(reinterpret_cast<void**>(&env), JNI_VERSION_1_6) != JNI_OK || !env)
+        return;
+    lc->env = env;
+
+    Minecraft mc;
+    if (mc.GetInstance() == nullptr) return;
+
+    // Only pause if nothing else is up; otherwise let the user's existing
+    // screen (chat, inventory, ESC menu, etc.) stand.
+    if (mc.GetScreen().GetInstance() != nullptr) return;
+
+    jobject pauseLocal = mc.newPauseScreen(false);
+    if (!pauseLocal) return;
+
+    mc.setScreen(pauseLocal);
+    s_ourPauseScreen = env->NewGlobalRef(pauseLocal);
+    env->DeleteLocalRef(pauseLocal);
+}
+
+static void ReleasePauseScreen()
+{
+    if (!s_ourPauseScreen) return;
+    if (!lc || !lc->vm) { s_ourPauseScreen = nullptr; return; }
+
+    JNIEnv* env = nullptr;
+    if (lc->vm->GetEnv(reinterpret_cast<void**>(&env), JNI_VERSION_1_6) != JNI_OK || !env) {
+        s_ourPauseScreen = nullptr;
+        return;
+    }
+    lc->env = env;
+
+    Minecraft mc;
+    if (mc.GetInstance() != nullptr) {
+        jobject current = mc.GetScreen().GetInstance();
+        // Only clear if our screen is still up — user might have replaced it
+        // (e.g. opened chat) and we don't want to nuke that.
+        if (current && env->IsSameObject(current, s_ourPauseScreen))
+            mc.setScreen(nullptr);
+    }
+
+    env->DeleteGlobalRef(s_ourPauseScreen);
+    s_ourPauseScreen = nullptr;
 }
 
 static BOOL WINAPI hk_wglSwapBuffers(HDC hdc)
@@ -613,6 +655,8 @@ static BOOL WINAPI hk_wglSwapBuffers(HDC hdc)
         s_visible = !s_visible;
         ClipCursor(nullptr);
         ShowCursor(s_visible ? TRUE : FALSE);
+        if (s_visible) EngagePauseScreen();
+        else           ReleasePauseScreen();
     }
     if (GetAsyncKeyState(VK_CAPITAL) & 1) g_settings.espEnabled = !g_settings.espEnabled;
 

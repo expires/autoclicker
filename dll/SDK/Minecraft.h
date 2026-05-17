@@ -33,4 +33,15 @@ public:
 	GameRenderer GetGameRenderer();
 
 	DeltaTracker GetDeltaTracker();
+
+	// Call Minecraft.setScreen(screen). Passing a null jobject closes the
+	// current screen. Used by the overlay to pause input via MC's own
+	// screen mechanism (LocalPlayer.aiStep skips movement when
+	// Minecraft.screen != null) instead of swallowing WndProc messages.
+	void setScreen(jobject screen);
+
+	// Construct a new net.minecraft.client.gui.screens.PauseScreen(showMenu).
+	// Returns a local ref; promote to global if you need to retain it across
+	// JNI frames. Returns nullptr if anything in the construction chain fails.
+	jobject newPauseScreen(bool showMenu);
 };

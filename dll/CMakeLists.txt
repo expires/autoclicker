@@ -78,6 +78,8 @@ foreach(KEY
     fld_GameRenderer_mainCamera desc_GameRenderer_mainCamera
     mtd_GameRenderer_getFov     desc_GameRenderer_getFov
     mtd_ClientLevel_players     desc_ClientLevel_players
+    class_PauseScreen
+    mtd_Minecraft_setScreen     desc_Minecraft_setScreen
 )
     string(JSON ${KEY} GET "${MAPPING_JSON}" "${KEY}")
 endforeach()

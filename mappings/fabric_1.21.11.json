@@ -127,5 +127,9 @@
   "desc_GameRenderer_getFov":      "(Lnet/minecraft/class_4184;FZ)F",
 
   "mtd_ClientLevel_players":       "method_18456",
-  "desc_ClientLevel_players":      "()Ljava/util/List;"
+  "desc_ClientLevel_players":      "()Ljava/util/List;",
+
+  "class_PauseScreen":             "net.minecraft.class_433",
+  "mtd_Minecraft_setScreen":       "method_1507",
+  "desc_Minecraft_setScreen":      "(Lnet/minecraft/class_437;)V"
 }

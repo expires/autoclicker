@@ -134,3 +134,7 @@
 
 #define MTD_ClientLevel_players       "@mtd_ClientLevel_players@"
 #define DESC_ClientLevel_players      "@desc_ClientLevel_players@"
+
+#define MC_PauseScreen                "@class_PauseScreen@"
+#define MTD_Minecraft_setScreen       "@mtd_Minecraft_setScreen@"
+#define DESC_Minecraft_setScreen      "@desc_Minecraft_setScreen@"

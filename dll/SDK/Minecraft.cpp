@@ -101,3 +101,23 @@ DeltaTracker Minecraft::GetDeltaTracker()
 	if (lc->env->ExceptionCheck()) { lc->env->ExceptionClear(); return DeltaTracker(nullptr); }
 	return DeltaTracker(rtn);
 }
+
+void Minecraft::setScreen(jobject screen)
+{
+	jmethodID m = lc->env->GetMethodID(this->GetClass(),
+		MTD_Minecraft_setScreen, DESC_Minecraft_setScreen);
+	if (!m) { lc->env->ExceptionClear(); return; }
+	lc->env->CallVoidMethod(this->GetInstance(), m, screen);
+	if (lc->env->ExceptionCheck()) lc->env->ExceptionClear();
+}
+
+jobject Minecraft::newPauseScreen(bool showMenu)
+{
+	jclass cls = lc->GetClass(MC_PauseScreen);
+	if (!cls) return nullptr;
+	jmethodID ctor = lc->env->GetMethodID(cls, "<init>", "(Z)V");
+	if (!ctor) { lc->env->ExceptionClear(); return nullptr; }
+	jobject obj = lc->env->NewObject(cls, ctor, (jboolean)showMenu);
+	if (lc->env->ExceptionCheck()) { lc->env->ExceptionClear(); return nullptr; }
+	return obj;
+}
