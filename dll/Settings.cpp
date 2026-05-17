@@ -36,6 +36,7 @@ void Settings::Save()
     fprintf(f, "menuKey=%d\n",      menuKey);
     fprintf(f, "acKey=%d\n",        acKey);
     fprintf(f, "espKey=%d\n",       espKey);
+    fprintf(f, "version=%d\n",      version);
 
     fclose(f);
 }
@@ -46,6 +47,10 @@ void Settings::Load()
     if (path.empty()) return;
     FILE* f = nullptr;
     if (fopen_s(&f, path.c_str(), "r") != 0 || !f) return;
+
+    // Assume legacy / pre-versioned until proven otherwise; a missing
+    // `version=` line then triggers the migration block below.
+    version = 0;
 
     char line[256];
     while (fgets(line, sizeof(line), f)) {
@@ -65,7 +70,19 @@ void Settings::Load()
         else if (k == "menuKey")      menuKey      = val;
         else if (k == "acKey")        acKey        = val;
         else if (k == "espKey")       espKey       = val;
+        else if (k == "version")      version      = val;
     }
 
     fclose(f);
+
+    // Migration: any config older than the current schema gets its
+    // keybinds force-cleared. Catches the historical CapsLock→ESP default
+    // that users had previously committed to disk.
+    if (version < CURRENT_VERSION) {
+        menuKey = 0;
+        acKey   = 0;
+        espKey  = 0;
+        version = CURRENT_VERSION;
+        Save();
+    }
 }

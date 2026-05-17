@@ -23,6 +23,13 @@ struct Settings
     int acKey   = 0;
     int espKey  = 0;
 
+    // Bump when defaults change. Load() force-resets the keybinds when it
+    // reads an older version so legacy bindings (e.g. the historical
+    // CapsLock→ESP that users had baked into their config) don't survive
+    // the migration to "unbound by default".
+    static constexpr int CURRENT_VERSION = 2;
+    int version = CURRENT_VERSION;
+
     void Load();
     void Save();
 };
