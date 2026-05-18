@@ -1,4 +1,4 @@
-# manuclicker
+# JNI Minecraft Client
 
 A native DLL + ImGui overlay for Lunar Client, built as a **hands-on exploration of how JNI and JVMTI interact with a running JVM**. Targets Lunar Client 1.21.11 (Fabric intermediary mappings).
 
@@ -71,7 +71,7 @@ Each JVM-touching thread calls `AttachCurrentThread` independently. `lc->env` is
 
 ### Shared state
 
-`g_settings` is a header-defined singleton (`inline Settings g_settings`). Written by the overlay, read by the modules. Persisted to `%APPDATA%\manuclicker\config.cfg`; loaded on attach, saved on every settings dirty + on detach.
+`g_settings` is a header-defined singleton (`inline Settings g_settings`). Written by the overlay, read by the modules; loaded on attach, saved on every settings dirty + on detach.
 
 ### Overlay input model
 
@@ -101,7 +101,7 @@ To add a new MC version, copy `mappings/fabric_1.21.11.json`, update the interme
 - **Autoclicker** — randomized Gaussian-jittered LMB while held; respects block-breaking hold behavior; toggleable via keybind. Demonstrates synthesizing input events through the JNI layer.
 - **ESP** — team-colored boxes + nametag chunks + distance, projected from a JNI entity snapshot with partial-tick interpolation. Demonstrates reading live world state from a native thread.
 - **Macros** — dynamic list of up to 10 hotbar macros. Each matches an item by display-name substring (case-insensitive, includes anvil renames), switches to that slot, right-clicks once, and restores the previously held slot. Demonstrates calling into `Inventory` and `ItemStack` via JNI from outside the game thread.
-- **Persistent config** — all settings + keybinds + macros saved to `%APPDATA%\manuclicker\config.cfg` with schema versioning.
+- **Persistent config** — all settings + keybinds + macros saved to `%APPDATA%` with schema versioning.
 - **Self-destruct** — UNLOAD button or `END` key triggers clean DLL unload via `FreeLibraryAndExitThread`. Demonstrates orderly JNI teardown.
 
 ---
