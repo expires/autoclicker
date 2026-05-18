@@ -197,28 +197,58 @@ static bool RowKeybind(const char* label, int* vk)
         listening = false;
     }
 
+    // "Armed" gate: after the user clicks the pill, we wait one frame with no
+    // keys currently held before we'll accept a press. Without this, the key
+    // that was already down when the click landed (e.g. the user was holding
+    // a modifier, or chat was open and GetAsyncKeyState picked up its press
+    // history) immediately wins and the pill auto-binds. The transition bit
+    // (& 1) we used to use here is racy across threads — another process
+    // consuming it before our frame runs means we never see new presses;
+    // stray history means we see fake ones. Held-bit (& 0x8000) + an explicit
+    // "released since arming" handshake is the reliable pattern.
+    const ImGuiID armedId = id + 1;
+    bool armed = storage->GetBool(armedId, false);
+    if (pressed) armed = false; // Just clicked → must release everything first.
+
+    auto isFilteredVk = [](int k) {
+        return k == VK_LBUTTON || k == VK_RBUTTON || k == VK_MBUTTON ||
+               k == VK_XBUTTON1 || k == VK_XBUTTON2;
+    };
+
     if (listening) {
         s_keybindListening = true;
-        // Scan VK range for any key the user just pressed.
-        for (int k = 0x07; k <= 0xFE; ++k) {
-            // Skip mouse buttons and modifiers we don't want as binds.
-            if (k == VK_LBUTTON || k == VK_RBUTTON || k == VK_MBUTTON ||
-                k == VK_XBUTTON1 || k == VK_XBUTTON2) continue;
-            if (!(GetAsyncKeyState(k) & 1)) continue;
 
-            if (k == VK_ESCAPE) {
-                // ESC clears the binding back to none.
-                if (*vk != 0) { *vk = 0; changed = true; }
+        bool anyHeld = false;
+        for (int k = 0x07; k <= 0xFE; ++k) {
+            if (isFilteredVk(k)) continue;
+            if (GetAsyncKeyState(k) & 0x8000) { anyHeld = true; break; }
+        }
+
+        if (!armed) {
+            // Waiting for the user to fully let go of whatever was down when
+            // they entered listening mode.
+            if (!anyHeld) armed = true;
+        } else {
+            // Now ready — first key the user presses wins.
+            for (int k = 0x07; k <= 0xFE; ++k) {
+                if (isFilteredVk(k)) continue;
+                if (!(GetAsyncKeyState(k) & 0x8000)) continue;
+
+                if (k == VK_ESCAPE) {
+                    // ESC clears the binding back to none.
+                    if (*vk != 0) { *vk = 0; changed = true; }
+                } else {
+                    *vk     = k;
+                    changed = true;
+                }
                 listening = false;
-            } else {
-                *vk      = k;
-                listening = false;
-                changed   = true;
+                armed     = false;
+                break;
             }
-            break;
         }
     }
-    storage->SetBool(id, listening);
+    storage->SetBool(id,      listening);
+    storage->SetBool(armedId, armed);
 
     // Label on the left.
     ImVec2 labelSz = CalcTextSize(label, nullptr, true);
@@ -1038,16 +1068,24 @@ static BOOL WINAPI hk_wglSwapBuffers(HDC hdc)
                     for (int i = 0; i < g_settings.macroCount; ++i) {
                         ImGui::PushID(i);
 
-                        char hdr[16];
-                        snprintf(hdr, sizeof(hdr), "Macro %d", i + 1);
+                        // Header is the macro's item name so the user can
+                        // scan the list visually instead of mapping "Macro 3"
+                        // → "Golden Apple" in their head. Falls back until
+                        // they type a name.
+                        const char* hdr = g_settings.macros[i].name[0]
+                            ? g_settings.macros[i].name
+                            : "Unnamed Macro";
                         ImGui::PushFont(ImGui::GetIO().Fonts->Fonts[2]);
                         ImGui::TextUnformatted(hdr);
                         ImGui::PopFont();
 
                         // Trash icon on the right side of the header row.
-                        // U+E74D = Delete (Segoe Fluent / MDL2 Assets).
+                        // U+E74D = Delete (Segoe Fluent / MDL2 Assets). The
+                        // 32px offset accounts for the 24px button + a small
+                        // margin so it never clips the scrollbar when the
+                        // list overflows.
                         const float availX = ImGui::GetContentRegionAvail().x;
-                        ImGui::SameLine(availX - 16.0f);
+                        ImGui::SameLine(availX - 32.0f);
                         ImGui::PushFont(ImGui::GetIO().Fonts->Fonts[1]);
                         ImGui::PushStyleColor(ImGuiCol_Button,        FromHex(0x161d2e, 0.0f));
                         ImGui::PushStyleColor(ImGuiCol_ButtonHovered, FromHex(0x9b1c1c, 0.6f));
