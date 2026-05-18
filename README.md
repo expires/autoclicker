@@ -89,7 +89,7 @@ flowchart LR
     TPL["dll/SDK/Mappings.h.in"]
     OUT["build/dll/Mappings.h"]
     JSON -->|"-DMAPPING_VERSION"| TPL
-    TPL  -->|"configure_file()"|  OUT
+    TPL -->|"configure_file()"| OUT
 ```
 
 To add a new MC version, copy `mappings/fabric_1.21.11.json`, update the intermediary names, and build with `-DMAPPING_VERSION=<name>`.
@@ -129,18 +129,6 @@ CI builds every push to `main` and uploads an artifact. Tag `v*` to publish a re
 2. Launch Lunar Client, join a world or server.
 3. Run `injector.exe`.
 4. `INSERT` opens the overlay. `END` unloads.
-
----
-
-## What each module demonstrates
-
-| Module        | JNI/JVMTI concept explored                                                                      |
-|---------------|-------------------------------------------------------------------------------------------------|
-| Autoclicker   | Input synthesis via JNI; calling Java methods from a native thread; timing across the boundary  |
-| ESP           | Reading entity state via JVMTI class enumeration; world→screen projection from native code      |
-| Macros        | Calling into `Inventory`/`ItemStack`; resolving obfuscated Fabric intermediary names at runtime |
-| Overlay       | Hooking `wglSwapBuffers` to drive ImGui; WndProc/cursor interop with GLFW                       |
-| Self-destruct | Clean `DetachCurrentThread` + `FreeLibraryAndExitThread` teardown sequence                      |
 
 ---
 
