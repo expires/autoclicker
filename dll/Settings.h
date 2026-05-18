@@ -37,10 +37,11 @@ struct Settings
     int espKey  = 0;
 
     // Hotbar macros — match an item by display name in slots 0-8, switch +
-    // right-click, restore previous slot. Persisted alongside the rest of
-    // the settings; a Macro with key=0 OR an empty name is treated as unset
-    // by the macros thread.
-    static constexpr int MAX_MACROS = 8;
+    // right-click, restore previous slot. Dynamic list: only entries
+    // [0, macroCount) are active. The UI manages add/remove; the macros
+    // thread only ever scans the active prefix.
+    static constexpr int MAX_MACROS = 10;
+    int   macroCount = 0;
     Macro macros[MAX_MACROS];
 
     // Bump when defaults change. Load() force-resets the keybinds when it

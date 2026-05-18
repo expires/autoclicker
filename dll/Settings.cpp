@@ -40,7 +40,8 @@ void Settings::Save()
     fprintf(f, "espKey=%d\n",       espKey);
     fprintf(f, "version=%d\n",      version);
 
-    for (int i = 0; i < MAX_MACROS; ++i) {
+    fprintf(f, "macroCount=%d\n", macroCount);
+    for (int i = 0; i < macroCount; ++i) {
         fprintf(f, "macro%d_name=%s\n",  i, macros[i].name);
         fprintf(f, "macro%d_delay=%d\n", i, macros[i].delay);
         fprintf(f, "macro%d_key=%d\n",   i, macros[i].key);
@@ -89,6 +90,7 @@ void Settings::Load()
         else if (k == "acKey")        acKey        = val;
         else if (k == "espKey")       espKey       = val;
         else if (k == "version")      version      = val;
+        else if (k == "macroCount")   macroCount   = val;
         else if (k.rfind("macro", 0) == 0) {
             // macro<i>_{name,delay,key}
             for (int i = 0; i < MAX_MACROS; ++i) {
@@ -117,6 +119,8 @@ void Settings::Load()
     if (cps < 1)  cps = 1;
     if (cps > 50) cps = 50;
 
+    if (macroCount < 0)          macroCount = 0;
+    if (macroCount > MAX_MACROS) macroCount = MAX_MACROS;
     for (int i = 0; i < MAX_MACROS; ++i) {
         macros[i].key = clampVK(macros[i].key);
         if (macros[i].delay < 0)    macros[i].delay = 0;

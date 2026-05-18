@@ -1031,13 +1031,30 @@ static BOOL WINAPI hk_wglSwapBuffers(HDC hdc)
                     // with breathing room between them.
                     ImGui::PopStyleVar();
 
-                    for (int i = 0; i < Settings::MAX_MACROS; ++i) {
+                    // Defer the destructive ops until after the loop so the
+                    // active iteration index isn't shifted under our feet.
+                    int toDelete = -1;
+
+                    for (int i = 0; i < g_settings.macroCount; ++i) {
                         ImGui::PushID(i);
 
                         char hdr[16];
                         snprintf(hdr, sizeof(hdr), "Macro %d", i + 1);
                         ImGui::PushFont(ImGui::GetIO().Fonts->Fonts[2]);
                         ImGui::TextUnformatted(hdr);
+                        ImGui::PopFont();
+
+                        // Trash icon on the right side of the header row.
+                        // U+E74D = Delete (Segoe Fluent / MDL2 Assets).
+                        const float availX = ImGui::GetContentRegionAvail().x;
+                        ImGui::SameLine(availX - 16.0f);
+                        ImGui::PushFont(ImGui::GetIO().Fonts->Fonts[1]);
+                        ImGui::PushStyleColor(ImGuiCol_Button,        FromHex(0x161d2e, 0.0f));
+                        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, FromHex(0x9b1c1c, 0.6f));
+                        ImGui::PushStyleColor(ImGuiCol_ButtonActive,  FromHex(0x7a1414, 0.8f));
+                        if (ImGui::Button("\xEE\x9D\x8D##del", ImVec2(24, 24)))
+                            toDelete = i;
+                        ImGui::PopStyleColor(3);
                         ImGui::PopFont();
 
                         // Full-width name input. Saves on every keystroke so
@@ -1050,11 +1067,47 @@ static BOOL WINAPI hk_wglSwapBuffers(HDC hdc)
                                 sizeof(g_settings.macros[i].name)))
                             dirty = true;
 
-                        dirty |= RowSlider ("Delay (ms)", &g_settings.macros[i].delay, 0, 2000);
-                        dirty |= RowKeybind("Key",        &g_settings.macros[i].key);
+                        // Delay as a plain numeric input with +/- step buttons.
+                        // Clamp on commit so a hand-typed 99999 can't reach
+                        // the macros thread.
+                        ImGui::SetNextItemWidth(140.0f);
+                        if (ImGui::InputInt("Delay (ms)",
+                                &g_settings.macros[i].delay, 10, 100,
+                                ImGuiInputTextFlags_CharsDecimal)) {
+                            if (g_settings.macros[i].delay < 0)    g_settings.macros[i].delay = 0;
+                            if (g_settings.macros[i].delay > 5000) g_settings.macros[i].delay = 5000;
+                            dirty = true;
+                        }
+
+                        dirty |= RowKeybind("Key", &g_settings.macros[i].key);
 
                         ImGui::Dummy(ImVec2(0, 6));
                         ImGui::PopID();
+                    }
+
+                    // Apply pending delete: shift down and clear the tail
+                    // so a future re-add doesn't inherit stale state.
+                    if (toDelete >= 0 && toDelete < g_settings.macroCount) {
+                        for (int j = toDelete; j < g_settings.macroCount - 1; ++j)
+                            g_settings.macros[j] = g_settings.macros[j + 1];
+                        g_settings.macros[g_settings.macroCount - 1] = Macro{};
+                        g_settings.macroCount--;
+                        dirty = true;
+                    }
+
+                    // "+ Add Macro" button — only shown if there's room. The
+                    // glyph is U+E710 (Segoe Fluent / MDL2 "Add").
+                    if (g_settings.macroCount < Settings::MAX_MACROS) {
+                        ImGui::PushStyleColor(ImGuiCol_Button,        FromHex(0x5865f2, 0.18f));
+                        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, FromHex(0x5865f2, 0.35f));
+                        ImGui::PushStyleColor(ImGuiCol_ButtonActive,  FromHex(0x5865f2, 0.55f));
+                        if (ImGui::Button("+ Add Macro",
+                                ImVec2(ImGui::GetContentRegionAvail().x, 32))) {
+                            g_settings.macros[g_settings.macroCount] = Macro{};
+                            g_settings.macroCount++;
+                            dirty = true;
+                        }
+                        ImGui::PopStyleColor(3);
                     }
 
                     ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0, 0));

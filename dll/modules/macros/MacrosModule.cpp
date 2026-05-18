@@ -156,7 +156,14 @@ namespace MacrosModule
             if (GetForegroundWindow() != mcWindow) continue;
             if (Overlay::IsMenuVisible()) continue;
 
-            for (int i = 0; i < Settings::MAX_MACROS; ++i) {
+            // Only walk the active prefix. macroCount is written from the
+            // overlay thread when the user adds/removes; reading it racily
+            // is fine — a one-frame mismatch just means we skip a brand-new
+            // empty macro (no key set yet anyway) or fire one extra time on
+            // an entry whose row was just deleted (worst case: switches to a
+            // slot the user no longer wants once).
+            const int count = g_settings.macroCount;
+            for (int i = 0; i < count && i < Settings::MAX_MACROS; ++i) {
                 // Snapshot once so any concurrent edit in the overlay can't
                 // change the key mid-evaluation.
                 const Macro m = g_settings.macros[i];
