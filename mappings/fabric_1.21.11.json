@@ -133,5 +133,15 @@
   "mtd_Minecraft_setScreen":       "method_1507",
   "desc_Minecraft_setScreen":      "(Lnet/minecraft/class_437;)V",
   "mtd_Minecraft_pauseGame":       "method_20539",
-  "desc_Minecraft_pauseGame":      "(Z)V"
+  "desc_Minecraft_pauseGame":      "(Z)V",
+
+  "class_Inventory":               "net.minecraft.class_1661",
+  "mtd_Player_getInventory":       "method_31548",
+  "desc_Player_getInventory":      "()Lnet/minecraft/class_1661;",
+  "fld_Inventory_selected":        "field_7545",
+  "mtd_Inventory_getItem":         "method_5438",
+  "desc_Inventory_getItem":        "(I)Lnet/minecraft/class_1799;",
+  "mtd_ItemStack_getHoverName":    "method_7964",
+  "desc_ItemStack_getHoverName":   "()Lnet/minecraft/class_2561;",
+  "mtd_ItemStack_isEmpty":         "method_7960"
 }

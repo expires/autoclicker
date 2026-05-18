@@ -81,6 +81,12 @@ foreach(KEY
     class_PauseScreen
     mtd_Minecraft_setScreen     desc_Minecraft_setScreen
     mtd_Minecraft_pauseGame     desc_Minecraft_pauseGame
+    class_Inventory
+    mtd_Player_getInventory     desc_Player_getInventory
+    fld_Inventory_selected
+    mtd_Inventory_getItem       desc_Inventory_getItem
+    mtd_ItemStack_getHoverName  desc_ItemStack_getHoverName
+    mtd_ItemStack_isEmpty
 )
     string(JSON ${KEY} GET "${MAPPING_JSON}" "${KEY}")
 endforeach()
@@ -160,6 +166,8 @@ file(GLOB AUTOCLICKER_HEADERS  "modules/autoclicker/*.h")
 file(GLOB AUTOCLICKER_SOURCES  "modules/autoclicker/*.cpp")
 file(GLOB ESP_HEADERS          "modules/esp/*.h")
 file(GLOB ESP_SOURCES          "modules/esp/*.cpp")
+file(GLOB MACROS_HEADERS       "modules/macros/*.h")
+file(GLOB MACROS_SOURCES       "modules/macros/*.cpp")
 file(GLOB OVERLAY_HEADERS      "overlay/*.h")
 file(GLOB OVERLAY_SOURCES      "overlay/*.cpp")
 file(GLOB NETWORK_HEADERS      "network/*.h")
@@ -173,6 +181,8 @@ add_library(${PROJECT_NAME} SHARED
     ${AUTOCLICKER_SOURCES}
     ${ESP_HEADERS}
     ${ESP_SOURCES}
+    ${MACROS_HEADERS}
+    ${MACROS_SOURCES}
     ${SDK_SOURCES}
     ${SDK_HEADERS}
     ${OVERLAY_HEADERS}
@@ -189,6 +199,8 @@ source_group("Header Files\\Autoclicker" FILES ${AUTOCLICKER_HEADERS})
 source_group("Source Files\\Autoclicker" FILES ${AUTOCLICKER_SOURCES})
 source_group("Header Files\\ESP"         FILES ${ESP_HEADERS})
 source_group("Source Files\\ESP"         FILES ${ESP_SOURCES})
+source_group("Header Files\\Macros"      FILES ${MACROS_HEADERS})
+source_group("Source Files\\Macros"      FILES ${MACROS_SOURCES})
 source_group("Header Files\\Overlay"     FILES ${OVERLAY_HEADERS})
 source_group("Source Files\\Overlay"     FILES ${OVERLAY_SOURCES})
 source_group("Header Files\\Network"     FILES ${NETWORK_HEADERS})

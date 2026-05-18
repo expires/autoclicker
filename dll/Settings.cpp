@@ -40,6 +40,12 @@ void Settings::Save()
     fprintf(f, "espKey=%d\n",       espKey);
     fprintf(f, "version=%d\n",      version);
 
+    for (int i = 0; i < MAX_MACROS; ++i) {
+        fprintf(f, "macro%d_name=%s\n",  i, macros[i].name);
+        fprintf(f, "macro%d_delay=%d\n", i, macros[i].delay);
+        fprintf(f, "macro%d_key=%d\n",   i, macros[i].key);
+    }
+
     fclose(f);
 }
 
@@ -64,7 +70,12 @@ void Settings::Load()
         if (!eq) continue;
         *eq = '\0';
         const char* keyStr = line;
-        const int   val    = atoi(eq + 1);
+        char*       valStr = eq + 1;
+        // Strip trailing CR/LF so macro names don't pick them up.
+        size_t vlen = strlen(valStr);
+        while (vlen > 0 && (valStr[vlen-1] == '\n' || valStr[vlen-1] == '\r'))
+            valStr[--vlen] = '\0';
+        const int val = atoi(valStr);
 
         const std::string k = keyStr;
         if      (k == "acEnabled")    acEnabled    = (val != 0);
@@ -78,6 +89,18 @@ void Settings::Load()
         else if (k == "acKey")        acKey        = val;
         else if (k == "espKey")       espKey       = val;
         else if (k == "version")      version      = val;
+        else if (k.rfind("macro", 0) == 0) {
+            // macro<i>_{name,delay,key}
+            for (int i = 0; i < MAX_MACROS; ++i) {
+                char buf[24];
+                snprintf(buf, sizeof(buf), "macro%d_name", i);
+                if (k == buf) { strncpy_s(macros[i].name, valStr, _TRUNCATE); break; }
+                snprintf(buf, sizeof(buf), "macro%d_delay", i);
+                if (k == buf) { macros[i].delay = val; break; }
+                snprintf(buf, sizeof(buf), "macro%d_key", i);
+                if (k == buf) { macros[i].key   = val; break; }
+            }
+        }
     }
 
     fclose(f);
@@ -93,6 +116,12 @@ void Settings::Load()
     // Sanity-clamp CPS and bools.
     if (cps < 1)  cps = 1;
     if (cps > 50) cps = 50;
+
+    for (int i = 0; i < MAX_MACROS; ++i) {
+        macros[i].key = clampVK(macros[i].key);
+        if (macros[i].delay < 0)    macros[i].delay = 0;
+        if (macros[i].delay > 2000) macros[i].delay = 2000;
+    }
 
     // Migration: any config older than the current schema gets its
     // keybinds force-cleared. Catches the historical CapsLock→ESP default

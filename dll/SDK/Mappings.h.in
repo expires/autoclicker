@@ -140,3 +140,14 @@
 #define DESC_Minecraft_setScreen      "@desc_Minecraft_setScreen@"
 #define MTD_Minecraft_pauseGame       "@mtd_Minecraft_pauseGame@"
 #define DESC_Minecraft_pauseGame      "@desc_Minecraft_pauseGame@"
+
+// Macros: read hotbar contents + held slot, switch by simulated key press
+#define MC_Inventory                  "@class_Inventory@"
+#define MTD_Player_getInventory       "@mtd_Player_getInventory@"
+#define DESC_Player_getInventory      "@desc_Player_getInventory@"
+#define FLD_Inventory_selected        "@fld_Inventory_selected@"
+#define MTD_Inventory_getItem         "@mtd_Inventory_getItem@"
+#define DESC_Inventory_getItem        "@desc_Inventory_getItem@"
+#define MTD_ItemStack_getHoverName    "@mtd_ItemStack_getHoverName@"
+#define DESC_ItemStack_getHoverName   "@desc_ItemStack_getHoverName@"
+#define MTD_ItemStack_isEmpty         "@mtd_ItemStack_isEmpty@"

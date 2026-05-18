@@ -39,7 +39,7 @@ static fn_SetCursor    o_SetCursor    = nullptr;
 
 static bool    s_initialized        = false;
 static bool    s_visible            = false;
-static int     s_currentTab         = 0; // 0=Autoclicker, 1=ESP, 2=Settings
+static int     s_currentTab         = 0; // 0=Autoclicker, 1=ESP, 2=Macros, 3=Settings
 static HWND    s_hwnd               = nullptr;
 static WNDPROC s_origProc           = nullptr;
 // Set when ESC is used to close the menu. Keeps the WndProc swallowing ESC
@@ -955,10 +955,17 @@ static BOOL WINAPI hk_wglSwapBuffers(HDC hdc)
                 //   U+E1F5  Target (crosshair-ish)
                 //   U+E716  People
                 //   U+E713  Settings (gear)
+                // Glyphs from Segoe Fluent Icons / MDL2 Assets — UTF-8 byte
+                // escapes for codepoints in the Private Use Area:
+                //   U+E1F5  Target (crosshair-ish)
+                //   U+E716  People
+                //   U+E945  LightningBolt (macros)
+                //   U+E713  Settings (gear)
                 ImGui::SetCursorPos(ImVec2(0, 76));
                 if (SidebarTab("\xEE\x87\xB5", "Autoclicker", s_currentTab == 0)) s_currentTab = 0;
                 if (SidebarTab("\xEE\x9C\x96", "ESP",         s_currentTab == 1)) s_currentTab = 1;
-                if (SidebarTab("\xEE\x9C\x93", "Settings",    s_currentTab == 2)) s_currentTab = 2;
+                if (SidebarTab("\xEE\xA5\x85", "Macros",      s_currentTab == 2)) s_currentTab = 2;
+                if (SidebarTab("\xEE\x9C\x93", "Settings",    s_currentTab == 3)) s_currentTab = 3;
             }
             ImGui::EndChild();
 
@@ -973,7 +980,8 @@ static BOOL WINAPI hk_wglSwapBuffers(HDC hdc)
                 ImGui::PushFont(ImGui::GetIO().Fonts->Fonts[2]);
                 ImGui::TextUnformatted(
                     s_currentTab == 0 ? "autoclicker" :
-                    s_currentTab == 1 ? "esp" :
+                    s_currentTab == 1 ? "esp"         :
+                    s_currentTab == 2 ? "macros"      :
                                         "settings");
                 ImGui::PopFont();
 
@@ -1013,6 +1021,43 @@ static BOOL WINAPI hk_wglSwapBuffers(HDC hdc)
                         dirty |= RowCheckbox("Distance", &g_settings.drawDistance);
                     }
                     dirty |= RowKeybind("Toggle Key", &g_settings.espKey);
+                }
+                else if (s_currentTab == 2)
+                {
+                    // Macros — flip back to default ItemSpacing for this tab.
+                    // The other tabs intentionally use zero spacing so adjacent
+                    // rows chain into a continuous separator list (reference
+                    // look); a list of free-form macro entries reads better
+                    // with breathing room between them.
+                    ImGui::PopStyleVar();
+
+                    for (int i = 0; i < Settings::MAX_MACROS; ++i) {
+                        ImGui::PushID(i);
+
+                        char hdr[16];
+                        snprintf(hdr, sizeof(hdr), "Macro %d", i + 1);
+                        ImGui::PushFont(ImGui::GetIO().Fonts->Fonts[2]);
+                        ImGui::TextUnformatted(hdr);
+                        ImGui::PopFont();
+
+                        // Full-width name input. Saves on every keystroke so
+                        // an in-progress edit isn't lost if the user closes
+                        // the menu via UNLOAD / game crash.
+                        ImGui::SetNextItemWidth(-FLT_MIN);
+                        if (ImGui::InputTextWithHint("##name",
+                                "item name (e.g. golden apple)",
+                                g_settings.macros[i].name,
+                                sizeof(g_settings.macros[i].name)))
+                            dirty = true;
+
+                        dirty |= RowSlider ("Delay (ms)", &g_settings.macros[i].delay, 0, 2000);
+                        dirty |= RowKeybind("Key",        &g_settings.macros[i].key);
+
+                        ImGui::Dummy(ImVec2(0, 6));
+                        ImGui::PopID();
+                    }
+
+                    ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0, 0));
                 }
                 else
                 {
@@ -1068,6 +1113,8 @@ static BOOL WINAPI hk_wglSwapBuffers(HDC hdc)
 
 namespace Overlay
 {
+    bool IsMenuVisible() { return s_visible; }
+
     void Init()
     {
         MH_Initialize();

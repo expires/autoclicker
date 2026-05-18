@@ -1,5 +1,18 @@
 #pragma once
 
+// One hotbar macro: when `key` is pressed (edge), the macros thread looks for
+// an item whose display name contains `name` (case-insensitive substring) in
+// slots 0-8, switches to that slot, right-clicks once, then restores the
+// previously-held slot. `delay` is the millisecond pause between the slot
+// switch and the right-click — gives MC time to register the new selection
+// and sync with the server before the use-item fires.
+struct Macro
+{
+    char name[64] = {};
+    int  delay    = 100;
+    int  key      = 0;
+};
+
 struct Settings
 {
     bool acEnabled    = true;
@@ -22,6 +35,13 @@ struct Settings
     int menuKey = 0;
     int acKey   = 0;
     int espKey  = 0;
+
+    // Hotbar macros — match an item by display name in slots 0-8, switch +
+    // right-click, restore previous slot. Persisted alongside the rest of
+    // the settings; a Macro with key=0 OR an empty name is treated as unset
+    // by the macros thread.
+    static constexpr int MAX_MACROS = 8;
+    Macro macros[MAX_MACROS];
 
     // Bump when defaults change. Load() force-resets the keybinds when it
     // reads an older version so legacy bindings (e.g. the historical
