@@ -1,136 +1,114 @@
-# Lunar Autoclicker
+# manuclicker
 
-A DLL-based autoclicker for Lunar Client, designed for private server anticheat testing. Targets Lunar Client 1.21.11 (Fabric intermediary mappings).
+A native DLL + ImGui overlay for Lunar Client, built as a **hands-on exploration of how JNI and JVMTI interact with a running JVM**. Targets Lunar Client 1.21.11 (Fabric intermediary mappings).
 
----
-
-## Table of Contents
-
-- [Architecture](#architecture)
-- [Mapping System](#mapping-system)
-- [Building](#building)
-- [Usage](#usage)
-- [Overlay](#overlay)
+The point of this project is the seam between native code and the JVM. The modules here exist to exercise specific aspects of that boundary: enumerating loaded classes via JVMTI, resolving obfuscated names through Fabric intermediary mappings, calling into `Minecraft`/`Player`/`Inventory`/`ItemStack` from a non-MC thread, walking entity snapshots, projecting world → screen without touching MC's renderer, and surviving the cursor/window-message contortions GLFW expects.
 
 ---
 
 ## Architecture
 
-The project is split into two binaries: an injector executable and the payload DLL.
+Two binaries: an injector and the payload DLL. The injector locates `javaw.exe`, allocates remote memory, writes the DLL path, and calls `LoadLibraryA` via a remote thread. Once loaded inside the JVM, the DLL stands up its own threads alongside MC's render loop.
 
 ```mermaid
-flowchart TD
-    subgraph INJ["injector.exe"]
-        direction TB
-        i1["1. Find javaw.exe via CreateToolhelp32Snapshot"] --> i2["2. Allocate memory in target process"] --> i3["3. Write ac.dll path into memory"] --> i4["4. Spawn remote thread → LoadLibraryA(ac.dll)"]
-    end
-
-    INJ -->|"injects into"| JVM
+flowchart LR
+    INJ["injector.exe"] -->|"CreateRemoteThread → LoadLibraryA"| JVM
 
     subgraph JVM["javaw.exe · Lunar Client"]
         subgraph DLL["ac.dll"]
             DllMain(["DllMain"])
 
-            subgraph OVL["Overlay · ImGui"]
-                o1["Hook opengl32!wglSwapBuffers via MinHook"]
-                o2["Render ImGui panel each frame"]
-                o3["Write g_settings"]
+            subgraph OVL["Overlay"]
+                o1["wglSwapBuffers hook"]
+                o2["ImGui render"]
+                o3["WndProc + cursor hooks"]
             end
 
-            subgraph ACM["AutoclickerModule"]
-                a1["Attach to JVM via JNI_GetCreatedJavaVMs"]
-                a2["Enumerate loaded classes via JVMTI"]
-                a3["Run click loop · read g_settings"]
+            subgraph ACM["Autoclicker"]
+                a1["Attach JVM (JNI)"]
+                a2["Enumerate classes (JVMTI)"]
+                a3["LMB-held click loop"]
+            end
+
+            subgraph ESP["ESP"]
+                e1["Snapshot world entities"]
+                e2["Project to screen"]
+                e3["Team-colored boxes + nametags"]
+            end
+
+            subgraph MAC["Macros"]
+                m1["Edge-detect bound keys"]
+                m2["Match item by hover name"]
+                m3["Switch + right-click + restore"]
             end
 
             subgraph SDK["SDK · JNI wrappers"]
-                s1["Minecraft · player, gui, screen, gameMode, hitResult"]
-                s2["LivingEntity · isUsingItem, getItemInHand"]
-                s3["HitResult · getType, getEntityHitResult"]
-            end
-
-            subgraph CLK["Clicker"]
-                c1["randomDelay() · Gaussian timing per CPS"]
-                c2["lclick() · down 30% + up 70% of cycle"]
-                c3["getClicksPerSecond() · sliding window"]
+                s1["Minecraft, Player, Inventory"]
+                s2["ItemStack, Component, AABB, Vec3"]
             end
 
             DllMain --> OVL
             DllMain --> ACM
+            DllMain --> ESP
+            DllMain --> MAC
             ACM --> SDK
-            ACM --> CLK
+            ESP --> SDK
+            MAC --> SDK
         end
     end
 ```
 
+### Threads
+
+| Thread       | Started by      | Role                                                        |
+|--------------|-----------------|-------------------------------------------------------------|
+| Render       | MC (hooked)     | ImGui draw + input swallow when overlay visible             |
+| Autoclicker  | `DllMain`       | Enumerates classes, attaches JVM, runs click loop           |
+| ESP          | `DllMain`       | Reads entity snapshot each frame, publishes for overlay     |
+| Macros       | `DllMain`       | Polls bound keys, fires hotbar switch + right-click         |
+
+Each JVM-touching thread calls `AttachCurrentThread` independently. `lc->env` is `thread_local` so the per-thread JNIEnv routes correctly without cross-thread sharing.
+
 ### Shared state
 
-`g_settings` is a plain struct read/written by both the overlay (render thread) and the autoclicker (game thread):
+`g_settings` is a header-defined singleton (`inline Settings g_settings`). Written by the overlay, read by the modules. Persisted to `%APPDATA%\manuclicker\config.cfg`; loaded on attach, saved on every settings dirty + on detach.
 
-| Field         | Default | Description                          |
-|---------------|---------|--------------------------------------|
-| `acEnabled`   | true    | Master on/off for clicking           |
-| `breakBlocks` | true    | Enable block-breaking hold behaviour |
-| `cps`         | 10      | Target clicks per second (1–50)      |
+### Overlay input model
 
-### Click loop logic
-
-```mermaid
-flowchart TD
-    T["Every 50ms tick"] --> A{"Active window AND\nLMB held AND acEnabled?"}
-    A -->|"END key pressed"| U["Unload DLL"]
-    A -->|"Pause / ESC screen open"| S["Skip tick"]
-    A -->|"breakBlocks AND block hit\nAND not creative"| H["Hold mouse down\nrandomDelay per iteration"]
-    A -->|"Entity hit AND\nnot using item"| C["lclick()"]
-    H --> T
-    C --> T
-    S --> T
-```
-
-### Timing model
-
-Each click cycle targets `1000 / CPS` ms total, split into:
-
-```mermaid
-xychart-beta
-    title "Click cycle @ 12 CPS (~83ms total)"
-    x-axis ["hold (30%)", "gap (70%)"]
-    y-axis "Duration (ms)" 0 --> 65
-    bar [25, 58]
-```
-
-Both segments are sampled from a Gaussian distribution (stddev = 20% of mean) with a 1% chance of an extended pause to simulate natural human variance.
+While the menu is open, all keyboard/mouse messages are swallowed in the WndProc hook so MC's GLFW pump never sees them. `SetCursorPos`, `ClipCursor`, `ShowCursor`, and `SetCursor` are hooked to no-op so GLFW's cursor-disabled mode can't fight the visible cursor. Held inputs are released on open via synthesized `WM_KEYUP` so the player doesn't keep walking forward.
 
 ---
 
-## Mapping System
+## Mapping system
 
-Lunar Client obfuscates Minecraft class names. The mapping version is selected at compile time via `-DMAPPING_VERSION` and injected into `Mappings.h` from a JSON file.
+Lunar uses Fabric intermediary names. Mappings live in JSON per game version; CMake reads them at configure time and configures `Mappings.h` from a template.
 
 ```mermaid
 flowchart LR
-    FA["fabric_1.21.11.json\nFabric intermediary"]
-    HIN["dll/SDK/Mappings.h.in\nCMake template"]
-    GEN["build/dll/Mappings.h\ngenerated #defines"]
-
-    FA -->|"-DMAPPING_VERSION"| HIN
-    HIN -->|"configure_file() at build time"| GEN
+    JSON["mappings/fabric_1.21.11.json"]
+    TPL["dll/SDK/Mappings.h.in"]
+    OUT["build/dll/Mappings.h"]
+    JSON -->|"-DMAPPING_VERSION"| TPL
+    TPL  -->|"configure_file()"|  OUT
 ```
 
-To add a new version, create `mappings/<version>.json` matching the schema of an existing file, then build with `-DMAPPING_VERSION=<version>`.
+To add a new MC version, copy `mappings/fabric_1.21.11.json`, update the intermediary names, and build with `-DMAPPING_VERSION=<name>`.
+
+---
+
+## Features
+
+- **Autoclicker** — randomized Gaussian-jittered LMB while held; respects block-breaking hold behavior; toggleable via keybind. Demonstrates synthesizing input events through the JNI layer.
+- **ESP** — team-colored boxes + nametag chunks + distance, projected from a JNI entity snapshot with partial-tick interpolation. Demonstrates reading live world state from a native thread.
+- **Macros** — dynamic list of up to 10 hotbar macros. Each matches an item by display-name substring (case-insensitive, includes anvil renames), switches to that slot, right-clicks once, and restores the previously held slot. Demonstrates calling into `Inventory` and `ItemStack` via JNI from outside the game thread.
+- **Persistent config** — all settings + keybinds + macros saved to `%APPDATA%\manuclicker\config.cfg` with schema versioning.
+- **Self-destruct** — UNLOAD button or `END` key triggers clean DLL unload via `FreeLibraryAndExitThread`. Demonstrates orderly JNI teardown.
 
 ---
 
 ## Building
 
-### Requirements
-
-- Windows, Visual Studio 2022+
-- CMake 3.30+
-- Java JDK 21 (`JAVA_HOME` must be set)
-- Internet access at configure time (ImGui and MinHook are fetched via FetchContent)
-
-### Local build
+Requirements: Windows, Visual Studio 2022+, CMake 3.30+, JDK 21 (`JAVA_HOME` set). ImGui and MinHook are fetched at configure time.
 
 ```bat
 cmake -S . -B build -DMAPPING_VERSION=fabric_1.21.11
@@ -138,46 +116,34 @@ cmake --build build --config Release
 ```
 
 Outputs:
-- `build/DLL/Release/DLL.dll`
-- `build/INJECTOR/Release/INJECTOR.exe`
+- `build/dll/Release/DLL.dll`
+- `build/injector/Release/INJECTOR.exe`
 
-### GitHub Actions
-
-Every push to `main` triggers a build. Artifact is uploaded as `autoclicker-fabric_1.21.11`. Tag a commit `v*` to create a GitHub Release with all files attached.
+CI builds every push to `main` and uploads an artifact. Tag `v*` to publish a release.
 
 ---
 
 ## Usage
 
-1. Download the artifact for your Lunar Client version from the Actions tab or Releases.
-2. Place `ac_<version>.dll` (rename to `ac.dll`) and `injector.exe` in the same folder.
-3. Launch Lunar Client and join a world or server.
-4. Run `injector.exe`. It will locate `javaw.exe` and inject the DLL automatically.
-5. Hold left click in-game to activate. Press `END` to unload.
+1. Download `ac.dll` + `injector.exe` from the latest Actions run or release.
+2. Launch Lunar Client, join a world or server.
+3. Run `injector.exe`.
+4. `INSERT` opens the overlay. `END` unloads.
 
 ---
 
-## Overlay
+## What each module demonstrates
 
-An in-game ImGui panel is rendered directly into the game's OpenGL context via a `wglSwapBuffers` hook.
-
-**Toggle:** `INSERT`
-
-```
-┌─ AutoClicker ──────────────────┐
-│ [x] Enabled                    │
-│ [x] Break Blocks               │
-│ ─────────────────────────────  │
-│ CPS [────●─────────────] 10    │
-└────────────────────────────────┘
-```
-
-Changes made in the overlay take effect immediately — no re-injection required.
+| Module        | JNI/JVMTI concept explored                                                                      |
+|---------------|-------------------------------------------------------------------------------------------------|
+| Autoclicker   | Input synthesis via JNI; calling Java methods from a native thread; timing across the boundary  |
+| ESP           | Reading entity state via JVMTI class enumeration; world→screen projection from native code      |
+| Macros        | Calling into `Inventory`/`ItemStack`; resolving obfuscated Fabric intermediary names at runtime |
+| Overlay       | Hooking `wglSwapBuffers` to drive ImGui; WndProc/cursor interop with GLFW                       |
+| Self-destruct | Clean `DetachCurrentThread` + `FreeLibraryAndExitThread` teardown sequence                      |
 
 ---
 
 ## Notes
 
-- Intended for use on private servers for anticheat development and testing only.
-- Public servers with anticheat will likely detect or flag this.
-- Intended for research with JNI
+This project targets a local Lunar Client instance for learning purposes. Do not use on public servers.
