@@ -68,32 +68,6 @@ namespace AutoclickerModule
         }).detach();
     }
 
-    static int loadCPS(HMODULE hModule)
-    {
-        char path[MAX_PATH];
-        GetModuleFileNameA(hModule, path, MAX_PATH);
-        char *slash = strrchr(path, '\\');
-        if (slash) *slash = '\0';
-        strcat_s(path, "\\ac_config.json");
-
-        FILE *f;
-        fopen_s(&f, path, "r");
-        if (!f) return 12;
-
-        char buf[256] = {};
-        fread(buf, 1, sizeof(buf) - 1, f);
-        fclose(f);
-
-        const char *key = strstr(buf, "\"CPS\"");
-        if (!key) return 12;
-        const char *colon = strchr(key, ':');
-        if (!colon) return 12;
-
-        int cps = 12;
-        sscanf_s(colon + 1, " %d", &cps);
-        return max(1, min(cps, 50));
-    }
-
     DWORD WINAPI init(const LPVOID lpParam)
     {
         const auto instance = static_cast<HMODULE>(lpParam);
@@ -108,9 +82,13 @@ namespace AutoclickerModule
 
         if (lc->env != nullptr)
         {
-            const int cps = loadCPS(instance);
-            g_settings.cps = cps;
-            clicker.setCPS(cps);
+            // CPS comes from g_settings (loaded in DllMain). The legacy
+            // ac_config.json sidecar file used to live here and would
+            // overwrite g_settings.cps with a default of 12 on every inject,
+            // wiping whatever the user had set in the menu the previous
+            // session. Removed — the Settings save/load path is the single
+            // source of truth now.
+            clicker.setCPS(g_settings.cps);
 
             lc->GetLoadedClasses();
 
