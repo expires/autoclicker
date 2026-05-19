@@ -291,6 +291,16 @@ AABB Entity::getBoundingBox()
     return AABB(b);
 }
 
+jobject Entity::getTeamRaw()
+{
+    jmethodID m = lc->env->GetMethodID(this->GetClass(),
+        MTD_Entity_getTeam, DESC_Entity_getTeam);
+    if (!m) { lc->env->ExceptionClear(); return nullptr; }
+    jobject t = lc->env->CallObjectMethod(this->instance, m);
+    if (lc->env->ExceptionCheck()) { lc->env->ExceptionClear(); return nullptr; }
+    return t;
+}
+
 bool Entity::setGlowingTag(bool glowing)
 {
     // Direct field write to Entity.hasGlowingTag (a local-only boolean). Avoids

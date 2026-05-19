@@ -44,6 +44,21 @@ struct Settings
     int   macroCount = 0;
     Macro macros[MAX_MACROS];
 
+    // Aim assist — pushes raw mouse deltas (SendInput WM_INPUT) on top of the
+    // user's own input each tick, nudging the crosshair toward the nearest
+    // player within FOV+range. Skips same-team teammates (scoreboard team
+    // ref-equality). Speeds are 0-10 ints; the module squares them so the
+    // low end stays gentle. TargetPart picks where on the AABB to aim:
+    // 0=feet, 1=body center, 2=head.
+    bool aimEnabled    = false;
+    bool aimClickOnly  = true;
+    int  aimSpeedH     = 5;
+    int  aimSpeedV     = 5;
+    int  aimFov        = 30;
+    int  aimRange      = 6;
+    int  aimTargetPart = 1;
+    int  aimKey        = 0;
+
     // Bump when defaults change. Load() force-resets the keybinds when it
     // reads an older version so legacy bindings (e.g. the historical
     // CapsLock→ESP that users had baked into their config) don't survive

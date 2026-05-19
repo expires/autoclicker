@@ -51,6 +51,12 @@ public:
 
     AABB getBoundingBox();
 
+    // Raw Entity.getTeam() jobject (or nullptr). PlayerTeams are scoreboard
+    // singletons per name, so JNIEnv::IsSameObject is enough to test "same
+    // team" — no need to read the team's name out. Caller owns the local ref;
+    // a PushLocalFrame around the loop is the simplest cleanup.
+    jobject getTeamRaw();
+
     // Client-side only: flips Entity.hasGlowingTag. isCurrentlyGlowing() reads
     // this and the engine renders the outline. Not synced to server.
     // Returns true if the JNI lookup found the method and the call dispatched.

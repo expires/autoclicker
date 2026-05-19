@@ -39,7 +39,7 @@ static fn_SetCursor    o_SetCursor    = nullptr;
 
 static bool    s_initialized        = false;
 static bool    s_visible            = false;
-static int     s_currentTab         = 0; // 0=Autoclicker, 1=ESP, 2=Macros, 3=Settings
+static int     s_currentTab         = 0; // 0=Autoclicker, 1=ESP, 2=Macros, 3=Aim, 4=Settings
 static HWND    s_hwnd               = nullptr;
 static WNDPROC s_origProc           = nullptr;
 // Set when ESC is used to close the menu. Keeps the WndProc swallowing ESC
@@ -185,51 +185,59 @@ static bool RowKeybind(const char* label, int* vk)
     bool pressed = ButtonBehavior(pill, id, &hovered, &held);
 
     ImGuiStorage* storage = &window->StateStorage;
-    bool listening = storage->GetBool(id, false);
-    bool changed   = false;
+    bool changed = false;
 
-    if (pressed) listening = true;
+    // Single state int instead of the two-bool coordination we had before.
+    // The old version stored `listening` at `id` and `armed` at `id+1`; if
+    // one half lagged or the storage at `id+1` collided with anything, the
+    // picker could enter listening mode but never advance to the accepting
+    // state (the symptom the user hit: pill stuck on "press a key").
+    // One int, three states, no coordination problem.
+    enum { IDLE = 0, ARMING = 1, ACCEPTING = 2 };
+    int state = storage->GetInt(id, IDLE);
+
+    if (pressed) state = ARMING;
 
     // Right-click on the pill clears the binding.
     if (IsMouseHoveringRect(pill.Min, pill.Max) &&
         IsMouseClicked(ImGuiMouseButton_Right)) {
         if (*vk != 0) { *vk = 0; changed = true; }
-        listening = false;
+        state = IDLE;
     }
 
-    // "Armed" gate: after the user clicks the pill, we wait one frame with no
-    // keys currently held before we'll accept a press. Without this, the key
-    // that was already down when the click landed (e.g. the user was holding
-    // a modifier, or chat was open and GetAsyncKeyState picked up its press
-    // history) immediately wins and the pill auto-binds. The transition bit
-    // (& 1) we used to use here is racy across threads — another process
-    // consuming it before our frame runs means we never see new presses;
-    // stray history means we see fake ones. Held-bit (& 0x8000) + an explicit
-    // "released since arming" handshake is the reliable pattern.
-    const ImGuiID armedId = id + 1;
-    bool armed = storage->GetBool(armedId, false);
-    if (pressed) armed = false; // Just clicked → must release everything first.
-
     auto isFilteredVk = [](int k) {
+        // Mouse buttons aren't bindable here (they'd conflict with clicking
+        // around the menu). Menu key is also filtered while arming so opening
+        // the overlay via e.g. INSERT can't leave the arming scan thinking a
+        // key is still held forever.
         return k == VK_LBUTTON || k == VK_RBUTTON || k == VK_MBUTTON ||
                k == VK_XBUTTON1 || k == VK_XBUTTON2;
     };
 
-    if (listening) {
+    if (state != IDLE) {
         s_keybindListening = true;
 
-        bool anyHeld = false;
-        for (int k = 0x07; k <= 0xFE; ++k) {
-            if (isFilteredVk(k)) continue;
-            if (GetAsyncKeyState(k) & 0x8000) { anyHeld = true; break; }
-        }
+        const int menuVk = (g_settings.menuKey > 0 && g_settings.menuKey <= 0xFE)
+            ? g_settings.menuKey : VK_INSERT;
 
-        if (!armed) {
-            // Waiting for the user to fully let go of whatever was down when
-            // they entered listening mode.
-            if (!anyHeld) armed = true;
-        } else {
-            // Now ready — first key the user presses wins.
+        if (state == ARMING) {
+            // Wait for everything to be released. We skip the menu key
+            // explicitly — if the user opened the overlay via INSERT and
+            // still has it physically held, that's not a key they're trying
+            // to bind here. Without the skip the picker would stall until
+            // they release INSERT, which they may not realize they're holding.
+            bool anyHeld = false;
+            for (int k = 0x07; k <= 0xFE; ++k) {
+                if (isFilteredVk(k)) continue;
+                if (k == menuVk)     continue;
+                if (GetAsyncKeyState(k) & 0x8000) { anyHeld = true; break; }
+            }
+            if (!anyHeld) state = ACCEPTING;
+        }
+        else if (state == ACCEPTING) {
+            // First held key wins. We don't skip the menu key here — once
+            // armed, the user is actively trying to bind something, and if
+            // they want to re-bind to the menu key that should work.
             for (int k = 0x07; k <= 0xFE; ++k) {
                 if (isFilteredVk(k)) continue;
                 if (!(GetAsyncKeyState(k) & 0x8000)) continue;
@@ -241,14 +249,14 @@ static bool RowKeybind(const char* label, int* vk)
                     *vk     = k;
                     changed = true;
                 }
-                listening = false;
-                armed     = false;
+                state = IDLE;
                 break;
             }
         }
     }
-    storage->SetBool(id,      listening);
-    storage->SetBool(armedId, armed);
+
+    storage->SetInt(id, state);
+    const bool listening = (state != IDLE);
 
     // Label on the left.
     ImVec2 labelSz = CalcTextSize(label, nullptr, true);
@@ -292,18 +300,26 @@ static bool RowSlider(const char* label, int* v, int v_min, int v_max,
     const ImRect frame(ImVec2(total.Min.x, total.Min.y + labelSz.y + 12.0f),
                        ImVec2(total.Max.x, total.Max.y - 13.0f));
 
+    // Hit area is intentionally larger than the visual track. The 5-px-tall
+    // track stays for the look, but landing a click on 5 pixels is fiddly —
+    // miss by one above/below and the press hits empty space. Expand the
+    // hit rect to cover the whole row below the label so the user can grab
+    // the slider anywhere near the track, not just on the dot.
+    const ImRect hitFrame(ImVec2(total.Min.x, total.Min.y + labelSz.y + 4.0f),
+                          ImVec2(total.Max.x, total.Max.y - 4.0f));
+
     ImGuiID id = window->GetID(label);
     ItemSize(total, g.Style.FramePadding.y);
-    if (!ItemAdd(total, id, &frame)) return false;
+    if (!ItemAdd(total, id, &hitFrame)) return false;
 
     // SliderBehavior only operates while ActiveID == id; without a click
     // hook nothing would ever start dragging. Use ButtonBehavior on the
-    // track to set ActiveID on press and hold it while dragging.
+    // expanded hit rect to set ActiveID on press and hold it while dragging.
     bool hovered, held;
-    ButtonBehavior(frame, id, &hovered, &held);
+    ButtonBehavior(hitFrame, id, &hovered, &held);
 
     ImRect grab_bb;
-    bool changed = SliderBehavior(frame, id, ImGuiDataType_S32, v,
+    bool changed = SliderBehavior(hitFrame, id, ImGuiDataType_S32, v,
                                   &v_min, &v_max, fmt, ImGuiSliderFlags_None, &grab_bb);
     if (changed) MarkItemEdited(id);
 
@@ -903,6 +919,7 @@ static BOOL WINAPI hk_wglSwapBuffers(HDC hdc)
         // so the actual ESP draw state appeared "stuck".
         static bool s_espKeyHeldPrev = false;
         static bool s_acKeyHeldPrev  = false;
+        static bool s_aimKeyHeldPrev = false;
 
         const bool espHeld =
             (g_settings.espKey > 0 && g_settings.espKey <= 0xFE) &&
@@ -910,13 +927,18 @@ static BOOL WINAPI hk_wglSwapBuffers(HDC hdc)
         const bool acHeld  =
             (g_settings.acKey > 0 && g_settings.acKey <= 0xFE) &&
             (GetAsyncKeyState(g_settings.acKey)  & 0x8000);
+        const bool aimHeld =
+            (g_settings.aimKey > 0 && g_settings.aimKey <= 0xFE) &&
+            (GetAsyncKeyState(g_settings.aimKey) & 0x8000);
 
         if (!listeningSuppress) {
             if (espHeld && !s_espKeyHeldPrev) g_settings.espEnabled = !g_settings.espEnabled;
             if (acHeld  && !s_acKeyHeldPrev)  g_settings.acEnabled  = !g_settings.acEnabled;
+            if (aimHeld && !s_aimKeyHeldPrev) g_settings.aimEnabled = !g_settings.aimEnabled;
         }
         s_espKeyHeldPrev = espHeld;
         s_acKeyHeldPrev  = acHeld;
+        s_aimKeyHeldPrev = aimHeld;
     }
 
     const bool needFrame = s_visible || g_settings.espEnabled;
@@ -987,15 +1009,17 @@ static BOOL WINAPI hk_wglSwapBuffers(HDC hdc)
                 //   U+E713  Settings (gear)
                 // Glyphs from Segoe Fluent Icons / MDL2 Assets — UTF-8 byte
                 // escapes for codepoints in the Private Use Area:
-                //   U+E1F5  Target (crosshair-ish)
-                //   U+E716  People
+                //   U+E1F5  Target (crosshair-ish, autoclicker)
+                //   U+E716  People (ESP)
                 //   U+E945  LightningBolt (macros)
+                //   U+E18B  Bullseye (aim assist)
                 //   U+E713  Settings (gear)
                 ImGui::SetCursorPos(ImVec2(0, 76));
                 if (SidebarTab("\xEE\x87\xB5", "Autoclicker", s_currentTab == 0)) s_currentTab = 0;
                 if (SidebarTab("\xEE\x9C\x96", "ESP",         s_currentTab == 1)) s_currentTab = 1;
                 if (SidebarTab("\xEE\xA5\x85", "Macros",      s_currentTab == 2)) s_currentTab = 2;
-                if (SidebarTab("\xEE\x9C\x93", "Settings",    s_currentTab == 3)) s_currentTab = 3;
+                if (SidebarTab("\xEE\x86\x8B", "Aim",         s_currentTab == 3)) s_currentTab = 3;
+                if (SidebarTab("\xEE\x9C\x93", "Settings",    s_currentTab == 4)) s_currentTab = 4;
             }
             ImGui::EndChild();
 
@@ -1012,6 +1036,7 @@ static BOOL WINAPI hk_wglSwapBuffers(HDC hdc)
                     s_currentTab == 0 ? "autoclicker" :
                     s_currentTab == 1 ? "esp"         :
                     s_currentTab == 2 ? "macros"      :
+                    s_currentTab == 3 ? "aim assist"  :
                                         "settings");
                 ImGui::PopFont();
 
@@ -1149,6 +1174,29 @@ static BOOL WINAPI hk_wglSwapBuffers(HDC hdc)
                     }
 
                     ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0, 0));
+                }
+                else if (s_currentTab == 3)
+                {
+                    dirty |= RowCheckbox("Enabled",      &g_settings.aimEnabled);
+                    dirty |= RowCheckbox("Click Assist", &g_settings.aimClickOnly);
+                    dirty |= RowSlider  ("Horizontal Speed", &g_settings.aimSpeedH, 0, 10);
+                    dirty |= RowSlider  ("Vertical Speed",   &g_settings.aimSpeedV, 0, 10);
+                    dirty |= RowSlider  ("FOV (deg)",        &g_settings.aimFov,    1, 180);
+                    dirty |= RowSlider  ("Range (blocks)",   &g_settings.aimRange,  1, 64);
+
+                    // Target part: feet / body center / head. Default Combo
+                    // suffices — three options, no need for a styled widget.
+                    // Pop spacing so the combo doesn't collapse against the
+                    // neighbouring rows' bottom borders.
+                    ImGui::PopStyleVar();
+                    static const char* parts[] = { "Feet", "Body", "Head" };
+                    if (ImGui::Combo("Target Part", &g_settings.aimTargetPart,
+                                     parts, IM_ARRAYSIZE(parts)))
+                        dirty = true;
+                    ImGui::Dummy(ImVec2(0, 4));
+                    ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0, 0));
+
+                    dirty |= RowKeybind("Toggle Key", &g_settings.aimKey);
                 }
                 else
                 {

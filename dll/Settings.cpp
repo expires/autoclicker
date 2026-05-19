@@ -47,6 +47,15 @@ void Settings::Save()
         fprintf(f, "macro%d_key=%d\n",   i, macros[i].key);
     }
 
+    fprintf(f, "aimEnabled=%d\n",    aimEnabled    ? 1 : 0);
+    fprintf(f, "aimClickOnly=%d\n",  aimClickOnly  ? 1 : 0);
+    fprintf(f, "aimSpeedH=%d\n",     aimSpeedH);
+    fprintf(f, "aimSpeedV=%d\n",     aimSpeedV);
+    fprintf(f, "aimFov=%d\n",        aimFov);
+    fprintf(f, "aimRange=%d\n",      aimRange);
+    fprintf(f, "aimTargetPart=%d\n", aimTargetPart);
+    fprintf(f, "aimKey=%d\n",        aimKey);
+
     fclose(f);
 }
 
@@ -91,6 +100,14 @@ void Settings::Load()
         else if (k == "espKey")       espKey       = val;
         else if (k == "version")      version      = val;
         else if (k == "macroCount")   macroCount   = val;
+        else if (k == "aimEnabled")    aimEnabled    = (val != 0);
+        else if (k == "aimClickOnly")  aimClickOnly  = (val != 0);
+        else if (k == "aimSpeedH")     aimSpeedH     = val;
+        else if (k == "aimSpeedV")     aimSpeedV     = val;
+        else if (k == "aimFov")        aimFov        = val;
+        else if (k == "aimRange")      aimRange      = val;
+        else if (k == "aimTargetPart") aimTargetPart = val;
+        else if (k == "aimKey")        aimKey        = val;
         else if (k.rfind("macro", 0) == 0) {
             // macro<i>_{name,delay,key}
             for (int i = 0; i < MAX_MACROS; ++i) {
@@ -126,6 +143,17 @@ void Settings::Load()
         if (macros[i].delay < 0)    macros[i].delay = 0;
         if (macros[i].delay > 2000) macros[i].delay = 2000;
     }
+
+    // Aim-assist clamps. Sliders pin their own range in the UI, but a
+    // hand-edited config can poke arbitrary integers in here — clamp before
+    // they reach the aim thread (out-of-range speed → pixel overflow on the
+    // SendInput delta, out-of-range FOV → wraparound on the cone check).
+    if (aimSpeedH < 0)  aimSpeedH = 0;  if (aimSpeedH > 10) aimSpeedH = 10;
+    if (aimSpeedV < 0)  aimSpeedV = 0;  if (aimSpeedV > 10) aimSpeedV = 10;
+    if (aimFov    < 1)  aimFov    = 1;  if (aimFov    > 180) aimFov   = 180;
+    if (aimRange  < 1)  aimRange  = 1;  if (aimRange  > 64)  aimRange = 64;
+    if (aimTargetPart < 0 || aimTargetPart > 2) aimTargetPart = 1;
+    aimKey = clampVK(aimKey);
 
     // Migration: any config older than the current schema gets its
     // keybinds force-cleared. Catches the historical CapsLock→ESP default

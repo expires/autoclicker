@@ -168,6 +168,8 @@ file(GLOB ESP_HEADERS          "modules/esp/*.h")
 file(GLOB ESP_SOURCES          "modules/esp/*.cpp")
 file(GLOB MACROS_HEADERS       "modules/macros/*.h")
 file(GLOB MACROS_SOURCES       "modules/macros/*.cpp")
+file(GLOB AIM_HEADERS          "modules/aim/*.h")
+file(GLOB AIM_SOURCES          "modules/aim/*.cpp")
 file(GLOB OVERLAY_HEADERS      "overlay/*.h")
 file(GLOB OVERLAY_SOURCES      "overlay/*.cpp")
 file(GLOB NETWORK_HEADERS      "network/*.h")
@@ -183,6 +185,8 @@ add_library(${PROJECT_NAME} SHARED
     ${ESP_SOURCES}
     ${MACROS_HEADERS}
     ${MACROS_SOURCES}
+    ${AIM_HEADERS}
+    ${AIM_SOURCES}
     ${SDK_SOURCES}
     ${SDK_HEADERS}
     ${OVERLAY_HEADERS}
@@ -201,6 +205,8 @@ source_group("Header Files\\ESP"         FILES ${ESP_HEADERS})
 source_group("Source Files\\ESP"         FILES ${ESP_SOURCES})
 source_group("Header Files\\Macros"      FILES ${MACROS_HEADERS})
 source_group("Source Files\\Macros"      FILES ${MACROS_SOURCES})
+source_group("Header Files\\Aim"         FILES ${AIM_HEADERS})
+source_group("Source Files\\Aim"         FILES ${AIM_SOURCES})
 source_group("Header Files\\Overlay"     FILES ${OVERLAY_HEADERS})
 source_group("Source Files\\Overlay"     FILES ${OVERLAY_SOURCES})
 source_group("Header Files\\Network"     FILES ${NETWORK_HEADERS})
