@@ -3,6 +3,7 @@
 #include "../../SDK/Minecraft.h"
 #include "../autoclicker/AutoclickerModule.h"
 #include "../../overlay/Overlay.h"
+#include <cfloat>
 #include <chrono>
 #include <cmath>
 #include <thread>
@@ -116,9 +117,12 @@ namespace AimAssistModule
             const float   halfFov   = g_settings.aimFov * 0.5f;
 
             // Pick the target by smallest angular distance to crosshair within
-            // the FOV cone. Ranks by combined yaw² + pitch² since aim assist
-            // should follow where you're looking, not which player is closest
-            // in world distance.
+            // the FOV cone. The aim point isn't a fixed body offset — it's
+            // the closest point on the target's AABB to the current view
+            // ray, computed by projecting the 8 AABB corners into angular
+            // space and clamping the cursor's (yaw, pitch) to that region.
+            // When the cursor is already inside that region (i.e. the ray
+            // pierces the hitbox), both deltas are 0 — assist stops nudging.
             float bestAng2       = halfFov * halfFov;
             float bestYawDelta   = 0.f;
             float bestPitchDelta = 0.f;
@@ -142,26 +146,44 @@ namespace AimAssistModule
                 Vec3 ppos = p.getPosition();
                 if (ppos.GetInstance() == nullptr) continue;
                 const double tx = ppos.getX();
-                const double ty_feet = ppos.getY();
                 const double tz = ppos.getZ();
 
-                const double ddx = tx - ex;
-                const double ddz = tz - ez;
-                const double horizSq = ddx * ddx + ddz * ddz;
-                if (horizSq > maxDistSq) continue;
+                const double ddx0 = tx - ex;
+                const double ddz0 = tz - ez;
+                if (ddx0 * ddx0 + ddz0 * ddz0 > maxDistSq) continue;
 
-                // Where on the target to aim. 0.9 is roughly the AABB center
-                // for a standing player (1.8m tall), 1.62 is head/eye height.
-                double ty = ty_feet;
-                if      (g_settings.aimTargetPart == 1) ty += 0.9;
-                else if (g_settings.aimTargetPart == 2) ty += 1.62;
+                AABB box = p.getBoundingBox();
+                if (box.GetInstance() == nullptr) continue;
+                const double minX = box.minX(), maxX = box.maxX();
+                const double minY = box.minY(), maxY = box.maxY();
+                const double minZ = box.minZ(), maxZ = box.maxZ();
 
-                float wantYaw, wantPitch;
-                anglesTo(ddx, ty - ey, ddz, wantYaw, wantPitch);
+                // Walk the 8 AABB corners, build the angular bounding box
+                // around the cursor. Yaw is unwrapped to be near curYaw so
+                // the ±180 seam can't make the min/max collapse.
+                float ymin = +FLT_MAX, ymax = -FLT_MAX;
+                float pmin = +FLT_MAX, pmax = -FLT_MAX;
+                for (int i = 0; i < 8; ++i) {
+                    const double cx = (i & 1) ? maxX : minX;
+                    const double cy = (i & 2) ? maxY : minY;
+                    const double cz = (i & 4) ? maxZ : minZ;
+                    float cy_ang, cp_ang;
+                    anglesTo(cx - ex, cy - ey, cz - ez, cy_ang, cp_ang);
+                    const float yawRel = curYaw + wrapDeg(cy_ang - curYaw);
+                    if (yawRel < ymin) ymin = yawRel;
+                    if (yawRel > ymax) ymax = yawRel;
+                    if (cp_ang < pmin) pmin = cp_ang;
+                    if (cp_ang > pmax) pmax = cp_ang;
+                }
 
-                const float dy_ang = wrapDeg(wantYaw   - curYaw);
-                const float dp_ang =          wantPitch - curPitch;
-                const float ang2   = dy_ang * dy_ang + dp_ang * dp_ang;
+                // Clamp cursor angles into the box. Inside → delta 0 → stop.
+                float dy_ang = 0.f, dp_ang = 0.f;
+                if      (curYaw   < ymin) dy_ang = ymin - curYaw;
+                else if (curYaw   > ymax) dy_ang = ymax - curYaw;
+                if      (curPitch < pmin) dp_ang = pmin - curPitch;
+                else if (curPitch > pmax) dp_ang = pmax - curPitch;
+
+                const float ang2 = dy_ang * dy_ang + dp_ang * dp_ang;
                 if (ang2 > bestAng2) continue;
 
                 bestAng2       = ang2;

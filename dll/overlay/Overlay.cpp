@@ -39,7 +39,7 @@ static fn_SetCursor    o_SetCursor    = nullptr;
 
 static bool    s_initialized        = false;
 static bool    s_visible            = false;
-static int     s_currentTab         = 0; // 0=Autoclicker, 1=ESP, 2=Macros, 3=Aim, 4=Settings
+static int     s_currentTab         = 0; // 0=Autoclicker, 1=Aim, 2=ESP, 3=Macros, 4=Settings
 static HWND    s_hwnd               = nullptr;
 static WNDPROC s_origProc           = nullptr;
 // Set when ESC is used to close the menu. Keeps the WndProc swallowing ESC
@@ -161,6 +161,13 @@ static const char* GetKeyName(int vk)
 // mode (the next non-mouse key press wins; ESC cancels). Right-click the
 // pill to clear back to "none". Returns true on the frame the binding
 // changes so the caller can persist immediately.
+//
+// Active state is a single static — only one picker can listen at a time,
+// across all tabs. No per-widget storage means there's no way for a picker
+// to be "stuck listening" after the menu closes, switches tabs, or fails
+// the arming gate; ESC and a second pill-click both always bail.
+static ImGuiID s_kbActiveId   = 0;
+static bool    s_kbArmed      = false;
 static bool RowKeybind(const char* label, int* vk)
 {
     using namespace ImGui;
@@ -184,79 +191,74 @@ static bool RowKeybind(const char* label, int* vk)
     bool hovered, held;
     bool pressed = ButtonBehavior(pill, id, &hovered, &held);
 
-    ImGuiStorage* storage = &window->StateStorage;
     bool changed = false;
-
-    // Single state int instead of the two-bool coordination we had before.
-    // The old version stored `listening` at `id` and `armed` at `id+1`; if
-    // one half lagged or the storage at `id+1` collided with anything, the
-    // picker could enter listening mode but never advance to the accepting
-    // state (the symptom the user hit: pill stuck on "press a key").
-    // One int, three states, no coordination problem.
-    enum { IDLE = 0, ARMING = 1, ACCEPTING = 2 };
-    int state = storage->GetInt(id, IDLE);
-
-    if (pressed) state = ARMING;
-
-    // Right-click on the pill clears the binding.
-    if (IsMouseHoveringRect(pill.Min, pill.Max) &&
-        IsMouseClicked(ImGuiMouseButton_Right)) {
-        if (*vk != 0) { *vk = 0; changed = true; }
-        state = IDLE;
-    }
 
     auto isFilteredVk = [](int k) {
         // Mouse buttons aren't bindable here (they'd conflict with clicking
-        // around the menu). Menu key is also filtered while arming so opening
-        // the overlay via e.g. INSERT can't leave the arming scan thinking a
-        // key is still held forever.
+        // around the menu).
         return k == VK_LBUTTON || k == VK_RBUTTON || k == VK_MBUTTON ||
                k == VK_XBUTTON1 || k == VK_XBUTTON2;
     };
 
-    if (state != IDLE) {
+    // Click handling: clicking the pill activates this picker. Clicking it
+    // again while already active cancels — gives the user an escape hatch
+    // that doesn't depend on any key being readable.
+    if (pressed) {
+        if (s_kbActiveId == id) {
+            s_kbActiveId = 0;
+        } else {
+            s_kbActiveId = id;
+            s_kbArmed    = false;
+        }
+    }
+
+    // Right-click on the pill always clears the binding back to none.
+    if (IsMouseHoveringRect(pill.Min, pill.Max) &&
+        IsMouseClicked(ImGuiMouseButton_Right)) {
+        if (*vk != 0) { *vk = 0; changed = true; }
+        if (s_kbActiveId == id) s_kbActiveId = 0;
+    }
+
+    const bool listening = (s_kbActiveId == id);
+
+    if (listening) {
         s_keybindListening = true;
 
-        const int menuVk = (g_settings.menuKey > 0 && g_settings.menuKey <= 0xFE)
-            ? g_settings.menuKey : VK_INSERT;
-
-        if (state == ARMING) {
-            // Wait for everything to be released. We skip the menu key
-            // explicitly — if the user opened the overlay via INSERT and
-            // still has it physically held, that's not a key they're trying
-            // to bind here. Without the skip the picker would stall until
-            // they release INSERT, which they may not realize they're holding.
+        // ESC bails the picker at any stage. The user's primary "get me out
+        // of here" key — works whether we're still arming or already accepting.
+        // Doesn't clear the existing binding (they're cancelling, not asking
+        // to unbind); right-click is the explicit unbind gesture.
+        if (GetAsyncKeyState(VK_ESCAPE) & 0x8000) {
+            s_kbActiveId = 0;
+        }
+        else if (!s_kbArmed) {
+            // Arming: wait for everything to be released before accepting a
+            // press. Skip the menu key (so opening the overlay via INSERT
+            // doesn't keep us stuck) and ESC (handled above) so neither can
+            // block the gate forever.
+            const int menuVk = (g_settings.menuKey > 0 && g_settings.menuKey <= 0xFE)
+                ? g_settings.menuKey : VK_INSERT;
             bool anyHeld = false;
             for (int k = 0x07; k <= 0xFE; ++k) {
                 if (isFilteredVk(k)) continue;
                 if (k == menuVk)     continue;
+                if (k == VK_ESCAPE)  continue;
                 if (GetAsyncKeyState(k) & 0x8000) { anyHeld = true; break; }
             }
-            if (!anyHeld) state = ACCEPTING;
+            if (!anyHeld) s_kbArmed = true;
         }
-        else if (state == ACCEPTING) {
-            // First held key wins. We don't skip the menu key here — once
-            // armed, the user is actively trying to bind something, and if
-            // they want to re-bind to the menu key that should work.
+        else {
+            // Accepting: first held key wins.
             for (int k = 0x07; k <= 0xFE; ++k) {
                 if (isFilteredVk(k)) continue;
                 if (!(GetAsyncKeyState(k) & 0x8000)) continue;
-
-                if (k == VK_ESCAPE) {
-                    // ESC clears the binding back to none.
-                    if (*vk != 0) { *vk = 0; changed = true; }
-                } else {
-                    *vk     = k;
-                    changed = true;
-                }
-                state = IDLE;
+                *vk     = k;
+                changed = true;
+                s_kbActiveId = 0;
                 break;
             }
         }
     }
-
-    storage->SetInt(id, state);
-    const bool listening = (state != IDLE);
 
     // Label on the left.
     ImVec2 labelSz = CalcTextSize(label, nullptr, true);
@@ -431,6 +433,10 @@ static void ApplyStyle()
     s.TabBarBorderSize   = 0.0f;
     s.TabBorderSize      = 0.0f;
     s.ScrollbarRounding  = 4.0f;
+    // Slimmer than the ImGui default (~14). Keeps the visual weight of the
+    // scrollbar low so it can sit close to the panel edge without dominating
+    // the rounded corner.
+    s.ScrollbarSize      = 10.0f;
     s.ChildRounding      = 6.0f;
     s.PopupRounding      = 4.0f;
     s.WindowBorderSize   = 1.0f;
@@ -1016,9 +1022,9 @@ static BOOL WINAPI hk_wglSwapBuffers(HDC hdc)
                 //   U+E713  Settings (gear)
                 ImGui::SetCursorPos(ImVec2(0, 76));
                 if (SidebarTab("\xEE\x87\xB5", "Autoclicker", s_currentTab == 0)) s_currentTab = 0;
-                if (SidebarTab("\xEE\x9C\x96", "ESP",         s_currentTab == 1)) s_currentTab = 1;
-                if (SidebarTab("\xEE\xA5\x85", "Macros",      s_currentTab == 2)) s_currentTab = 2;
-                if (SidebarTab("\xEE\x86\x8B", "Aim",         s_currentTab == 3)) s_currentTab = 3;
+                if (SidebarTab("\xEE\x86\x8B", "Aim",         s_currentTab == 1)) s_currentTab = 1;
+                if (SidebarTab("\xEE\x9C\x96", "ESP",         s_currentTab == 2)) s_currentTab = 2;
+                if (SidebarTab("\xEE\xA5\x85", "Macros",      s_currentTab == 3)) s_currentTab = 3;
                 if (SidebarTab("\xEE\x9C\x93", "Settings",    s_currentTab == 4)) s_currentTab = 4;
             }
             ImGui::EndChild();
@@ -1034,19 +1040,25 @@ static BOOL WINAPI hk_wglSwapBuffers(HDC hdc)
                 ImGui::PushFont(ImGui::GetIO().Fonts->Fonts[2]);
                 ImGui::TextUnformatted(
                     s_currentTab == 0 ? "autoclicker" :
-                    s_currentTab == 1 ? "esp"         :
-                    s_currentTab == 2 ? "macros"      :
-                    s_currentTab == 3 ? "aim assist"  :
+                    s_currentTab == 1 ? "aim assist"  :
+                    s_currentTab == 2 ? "esp"         :
+                    s_currentTab == 3 ? "macros"      :
                                         "settings");
                 ImGui::PopFont();
 
                 // Body region — leaves room for the unload button anchored
-                // at the bottom (height ≈ 32 + padding).
-                const float bodyTop    = 64.0f;
-                const float bodyBottom = 60.0f;
+                // at the bottom (height ≈ 32 + padding). The body extends
+                // closer to the right edge of the content panel than the
+                // 22px left margin so the scrollbar (when one appears) sits
+                // ~4px from the window border instead of buried 22px inside
+                // it, with content past the scrollbar visually clipped.
+                const float bodyTop          = 64.0f;
+                const float bodyBottom       = 60.0f;
+                const float bodyRightMargin  = 4.0f;
                 ImGui::SetCursorPos(ImVec2(22, bodyTop));
                 ImGui::BeginChild("##body",
-                    ImVec2(winSize.x - SIDEBAR_W - 44, winSize.y - bodyTop - bodyBottom),
+                    ImVec2(winSize.x - SIDEBAR_W - 22 - bodyRightMargin,
+                           winSize.y - bodyTop - bodyBottom),
                     false, ImGuiWindowFlags_NoBackground);
 
                 // Zero ItemSpacing so the rows' bottom borders chain into a
@@ -1069,6 +1081,16 @@ static BOOL WINAPI hk_wglSwapBuffers(HDC hdc)
                 }
                 else if (s_currentTab == 1)
                 {
+                    dirty |= RowCheckbox("Enabled",      &g_settings.aimEnabled);
+                    dirty |= RowCheckbox("Click Assist", &g_settings.aimClickOnly);
+                    dirty |= RowSlider  ("Horizontal Speed", &g_settings.aimSpeedH, 0, 10);
+                    dirty |= RowSlider  ("Vertical Speed",   &g_settings.aimSpeedV, 0, 10);
+                    dirty |= RowSlider  ("FOV (deg)",        &g_settings.aimFov,    1, 180);
+                    dirty |= RowSlider  ("Range (blocks)",   &g_settings.aimRange,  1, 64);
+                    dirty |= RowKeybind ("Toggle Key",       &g_settings.aimKey);
+                }
+                else if (s_currentTab == 2)
+                {
                     dirty |= RowCheckbox("Enabled",  &g_settings.espEnabled);
                     if (g_settings.espEnabled) {
                         dirty |= RowCheckbox("Box",      &g_settings.drawBox);
@@ -1077,7 +1099,7 @@ static BOOL WINAPI hk_wglSwapBuffers(HDC hdc)
                     }
                     dirty |= RowKeybind("Toggle Key", &g_settings.espKey);
                 }
-                else if (s_currentTab == 2)
+                else if (s_currentTab == 3)
                 {
                     // Macros — flip back to default ItemSpacing for this tab.
                     // The other tabs intentionally use zero spacing so adjacent
@@ -1174,29 +1196,6 @@ static BOOL WINAPI hk_wglSwapBuffers(HDC hdc)
                     }
 
                     ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0, 0));
-                }
-                else if (s_currentTab == 3)
-                {
-                    dirty |= RowCheckbox("Enabled",      &g_settings.aimEnabled);
-                    dirty |= RowCheckbox("Click Assist", &g_settings.aimClickOnly);
-                    dirty |= RowSlider  ("Horizontal Speed", &g_settings.aimSpeedH, 0, 10);
-                    dirty |= RowSlider  ("Vertical Speed",   &g_settings.aimSpeedV, 0, 10);
-                    dirty |= RowSlider  ("FOV (deg)",        &g_settings.aimFov,    1, 180);
-                    dirty |= RowSlider  ("Range (blocks)",   &g_settings.aimRange,  1, 64);
-
-                    // Target part: feet / body center / head. Default Combo
-                    // suffices — three options, no need for a styled widget.
-                    // Pop spacing so the combo doesn't collapse against the
-                    // neighbouring rows' bottom borders.
-                    ImGui::PopStyleVar();
-                    static const char* parts[] = { "Feet", "Body", "Head" };
-                    if (ImGui::Combo("Target Part", &g_settings.aimTargetPart,
-                                     parts, IM_ARRAYSIZE(parts)))
-                        dirty = true;
-                    ImGui::Dummy(ImVec2(0, 4));
-                    ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0, 0));
-
-                    dirty |= RowKeybind("Toggle Key", &g_settings.aimKey);
                 }
                 else
                 {

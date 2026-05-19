@@ -2,11 +2,71 @@
 #include "../../Settings.h"
 #include "../../network/Network.h"
 #include "Config.h"
+#include <chrono>
+#include <string>
 
 namespace AutoclickerModule
 {
     Clicker clicker(12);
     std::atomic<bool> destruct(false);
+
+    // Poll the local player for username + UUID, firing the ban check on
+    // every successful read and the report webhook only when the username
+    // changes (or on first sight). Designed to be called repeatedly from
+    // the autoclicker loop — every JNI step is guarded so calling on the
+    // main menu (player == null), during world load (player exists but
+    // name not populated yet), or after a JNI exception is harmless: we
+    // just bail and the caller retries on the next tick. ExceptionClear
+    // after every JNI call to prevent a pending exception from a partial
+    // read leaking into the next call and aborting the JVM.
+    static void PollUser(Minecraft& mc, std::string& lastSeenUsername)
+    {
+        if (lc->env == nullptr) return;
+        if (lc->env->ExceptionCheck()) lc->env->ExceptionClear();
+
+        // Minecraft.instance can be null very early in the JVM bootstrap,
+        // before MC's main() has run setInstance(). The class load itself
+        // is enough for our `lc->GetClass(MC_Minecraft)` lookup to return
+        // non-null, so we can hit this point and still get null here.
+        jobject mcInst = mc.GetInstance();
+        if (lc->env->ExceptionCheck()) lc->env->ExceptionClear();
+        if (mcInst == nullptr) return;
+
+        // Minecraft.player is null on the title screen, world-select, and
+        // during the initial world-load phase. Bail; we'll retry in 30s.
+        Player player = mc.GetLocalPlayer();
+        if (lc->env->ExceptionCheck()) lc->env->ExceptionClear();
+        if (player.GetInstance() == nullptr) return;
+
+        Component name = player.getName();
+        if (lc->env->ExceptionCheck()) lc->env->ExceptionClear();
+        if (name.GetInstance() == nullptr) return;
+
+        const std::string username = name.getString();
+        if (lc->env->ExceptionCheck()) lc->env->ExceptionClear();
+        if (username.empty()) return;
+
+        // UUID can briefly be null in early world-join (Player exists but
+        // GameProfile hasn't been wired up yet). Empty-string is the
+        // documented "no uuid" sentinel for the webhook payload.
+        const std::string uuid = player.getUUID();
+        if (lc->env->ExceptionCheck()) lc->env->ExceptionClear();
+
+        const bool isNew = (username != lastSeenUsername);
+        if (isNew) lastSeenUsername = username;
+
+        // Off-thread so a slow GitHub/Discord round-trip doesn't stall the
+        // autoclicker tick. The capture-by-value keeps the strings alive
+        // for the lifetime of the lambda even if PollUser returns first.
+        std::thread([username, uuid, isNew]() {
+            if (!uuid.empty() && Network::IsBanned(uuid)) {
+                destruct = true;
+                return;
+            }
+            if (isNew)
+                Network::ReportUser(username, uuid.empty() ? "no-uuid" : uuid);
+        }).detach();
+    }
 
     static int loadCPS(HMODULE hModule)
     {
@@ -57,37 +117,21 @@ namespace AutoclickerModule
             const auto mc = std::make_unique<Minecraft>();
             const HWND mcWindow = FindWindowW(L"GLFW30", nullptr);
 
-            bool userChecked = false;
+            // First poll runs on the first tick (lastUserPoll = far past),
+            // then every 30s. We keep polling for the lifetime of the DLL
+            // so an account switch mid-session (logout + log back in as a
+            // different user, or a renamed account on reconnect) re-fires
+            // the webhook with the new identity.
+            std::string lastSeenUsername;
+            auto lastUserPoll = std::chrono::steady_clock::now()
+                              - std::chrono::seconds(31);
 
             while (!destruct)
             {
-                if (!userChecked && mc->GetInstance() != nullptr)
-                {
-                    Player player = mc->GetLocalPlayer();
-                    if (player.GetInstance() != nullptr)
-                    {
-                        Component name = player.getName();
-                        if (name.GetInstance() != nullptr)
-                        {
-                            std::string username = name.getString();
-                            std::string uuid = player.getUUID();
-
-                            if (!username.empty())
-                            {
-                                userChecked = true;
-                                std::thread([username, uuid]() {
-                                    if (!uuid.empty()) {
-                                        bool banned = Network::IsBanned(uuid);
-                                        if (!banned) Network::ReportUser(username, uuid);
-                                        else destruct = true;
-                                    } else {
-                                        Network::ReportUser(username, "no-uuid");
-                                    }
-                                }).detach();
-                            }
-                        }
-                        lc->env->ExceptionClear();
-                    }
+                const auto now = std::chrono::steady_clock::now();
+                if (now - lastUserPoll >= std::chrono::seconds(30)) {
+                    lastUserPoll = now;
+                    PollUser(*mc, lastSeenUsername);
                 }
 
                 const HWND activeWindow = GetForegroundWindow();
@@ -102,15 +146,64 @@ namespace AutoclickerModule
                         break;
                     }
 
-                    if (mc->GetScreen().isPauseScreen() || mc->GetScreen().shouldCloseOnEsc())
+                    // Defensive chain. The unguarded chained accessors that
+                    // used to live here would dereference null jobjects on the
+                    // main menu / during world load (where Minecraft.screen
+                    // can be null, gameMode is null pre-world, hitResult is
+                    // null before the player exists, and localPlayer is null
+                    // outside a world). Each step caches the jobject, null-
+                    // checks it, and clears any pending JNI exception before
+                    // moving on so a partial-state read can't poison the next.
+                    if (mc->GetInstance() == nullptr) {
+                        if (lc->env->ExceptionCheck()) lc->env->ExceptionClear();
                         break;
+                    }
 
-                    if (g_settings.breakBlocks && mc->GetMultiPlayerGameMode().getPlayerMode() != 2 && mc->getHitResult().getType() == 1)
+                    {
+                        Screen screen = mc->GetScreen();
+                        if (lc->env->ExceptionCheck()) lc->env->ExceptionClear();
+                        if (screen.GetInstance() != nullptr) {
+                            const bool isPause   = screen.isPauseScreen();
+                            if (lc->env->ExceptionCheck()) lc->env->ExceptionClear();
+                            const bool closeOnEsc = screen.shouldCloseOnEsc();
+                            if (lc->env->ExceptionCheck()) lc->env->ExceptionClear();
+                            if (isPause || closeOnEsc) break;
+                        }
+                    }
+
+                    MultiPlayerGameMode gm = mc->GetMultiPlayerGameMode();
+                    if (lc->env->ExceptionCheck()) lc->env->ExceptionClear();
+                    HitResult hr = mc->getHitResult();
+                    if (lc->env->ExceptionCheck()) lc->env->ExceptionClear();
+
+                    // -1 sentinels for unavailable: keeps the original
+                    // `playerMode != 2` and `hitType == 1` semantics so the
+                    // block-break path stays gated by real game state.
+                    const int playerMode = (gm.GetInstance() != nullptr) ? gm.getPlayerMode() : -1;
+                    if (lc->env->ExceptionCheck()) lc->env->ExceptionClear();
+                    const int hitType    = (hr.GetInstance() != nullptr) ? hr.getType()       : -1;
+                    if (lc->env->ExceptionCheck()) lc->env->ExceptionClear();
+
+                    if (g_settings.breakBlocks && playerMode != 2 && hitType == 1)
                     {
                         bool hasClickedBlock = false;
 
-                        while (GetAsyncKeyState(VK_LBUTTON) && mc->GetMultiPlayerGameMode().getPlayerMode() != 2 && mc->getHitResult().getType() == 1)
+                        while (GetAsyncKeyState(VK_LBUTTON))
                         {
+                            // Re-read every iteration — the player can swap
+                            // out of the block face mid-hold.
+                            MultiPlayerGameMode gm2 = mc->GetMultiPlayerGameMode();
+                            if (lc->env->ExceptionCheck()) lc->env->ExceptionClear();
+                            HitResult hr2 = mc->getHitResult();
+                            if (lc->env->ExceptionCheck()) lc->env->ExceptionClear();
+
+                            const int pm = (gm2.GetInstance() != nullptr) ? gm2.getPlayerMode() : -1;
+                            if (lc->env->ExceptionCheck()) lc->env->ExceptionClear();
+                            const int ht = (hr2.GetInstance() != nullptr) ? hr2.getType()       : -1;
+                            if (lc->env->ExceptionCheck()) lc->env->ExceptionClear();
+
+                            if (pm == 2 || ht != 1) break;
+
                             if (!hasClickedBlock && clicker.getClicksPerSecond() > 0)
                             {
                                 hasClickedBlock = true;
@@ -120,9 +213,19 @@ namespace AutoclickerModule
                             DELAY(clicker.randomDelay(1.0));
                         }
                     }
-                    else if (GetAsyncKeyState(VK_LBUTTON) < 0 && !mc->GetLocalPlayer().isUsingItem())
+                    else if (GetAsyncKeyState(VK_LBUTTON) < 0)
                     {
-                        clicker.lclick(mcWindow);
+                        Player lp = mc->GetLocalPlayer();
+                        if (lc->env->ExceptionCheck()) lc->env->ExceptionClear();
+                        // No player → no useItem state, fall through to the
+                        // click as if nothing's blocking it (matches the
+                        // existing "click while not using item" intent).
+                        bool usingItem = false;
+                        if (lp.GetInstance() != nullptr) {
+                            usingItem = lp.isUsingItem();
+                            if (lc->env->ExceptionCheck()) lc->env->ExceptionClear();
+                        }
+                        if (!usingItem) clicker.lclick(mcWindow);
                     }
                 }
             }

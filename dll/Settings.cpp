@@ -53,7 +53,6 @@ void Settings::Save()
     fprintf(f, "aimSpeedV=%d\n",     aimSpeedV);
     fprintf(f, "aimFov=%d\n",        aimFov);
     fprintf(f, "aimRange=%d\n",      aimRange);
-    fprintf(f, "aimTargetPart=%d\n", aimTargetPart);
     fprintf(f, "aimKey=%d\n",        aimKey);
 
     fclose(f);
@@ -106,7 +105,6 @@ void Settings::Load()
         else if (k == "aimSpeedV")     aimSpeedV     = val;
         else if (k == "aimFov")        aimFov        = val;
         else if (k == "aimRange")      aimRange      = val;
-        else if (k == "aimTargetPart") aimTargetPart = val;
         else if (k == "aimKey")        aimKey        = val;
         else if (k.rfind("macro", 0) == 0) {
             // macro<i>_{name,delay,key}
@@ -152,7 +150,6 @@ void Settings::Load()
     if (aimSpeedV < 0)  aimSpeedV = 0;  if (aimSpeedV > 10) aimSpeedV = 10;
     if (aimFov    < 1)  aimFov    = 1;  if (aimFov    > 180) aimFov   = 180;
     if (aimRange  < 1)  aimRange  = 1;  if (aimRange  > 64)  aimRange = 64;
-    if (aimTargetPart < 0 || aimTargetPart > 2) aimTargetPart = 1;
     aimKey = clampVK(aimKey);
 
     // Migration: any config older than the current schema gets its
