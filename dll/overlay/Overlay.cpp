@@ -164,10 +164,17 @@ static const char* GetKeyName(int vk)
 //
 // Active state is a single static — only one picker can listen at a time,
 // across all tabs. No per-widget storage means there's no way for a picker
-// to be "stuck listening" after the menu closes, switches tabs, or fails
-// the arming gate; ESC and a second pill-click both always bail.
-static ImGuiID s_kbActiveId   = 0;
-static bool    s_kbArmed      = false;
+// to be "stuck listening" after the menu closes, switches tabs, etc; ESC
+// and a second pill-click both always bail.
+//
+// s_kbExcluded snapshots which VKs were held at the instant the user
+// clicked the pill — those can't bind until the user has physically released
+// them. Replaces the prior "arming gate" (which required ALL keys to be
+// released globally before any could bind, and could deadlock if a single
+// key reported held). Each excluded key clears the moment it's released, so
+// a fresh press binds it.
+static ImGuiID s_kbActiveId      = 0;
+static bool    s_kbExcluded[256] = {};
 static bool RowKeybind(const char* label, int* vk)
 {
     using namespace ImGui;
@@ -208,7 +215,14 @@ static bool RowKeybind(const char* label, int* vk)
             s_kbActiveId = 0;
         } else {
             s_kbActiveId = id;
-            s_kbArmed    = false;
+            // Freeze the current "held" set into the exclusion list. The LMB
+            // release that just fired this click, any modifier the user is
+            // holding for movement, the menu key still down from opening the
+            // overlay — all of these get excluded until physically released.
+            // Without this snapshot, the next scan would instantly bind to
+            // whichever of them sat lowest in VK order.
+            for (int k = 0; k < 256; ++k)
+                s_kbExcluded[k] = (GetAsyncKeyState(k) & 0x8000) != 0;
         }
     }
 
@@ -224,33 +238,29 @@ static bool RowKeybind(const char* label, int* vk)
     if (listening) {
         s_keybindListening = true;
 
-        // ESC bails the picker at any stage. The user's primary "get me out
-        // of here" key — works whether we're still arming or already accepting.
-        // Doesn't clear the existing binding (they're cancelling, not asking
-        // to unbind); right-click is the explicit unbind gesture.
+        // ESC always bails — works regardless of any key's state. Doesn't
+        // clear the existing binding (right-click is the explicit unbind).
         if (GetAsyncKeyState(VK_ESCAPE) & 0x8000) {
             s_kbActiveId = 0;
         }
-        else if (!s_kbArmed) {
-            // Arming: wait for everything to be released before accepting a
-            // press. Skip the menu key (so opening the overlay via INSERT
-            // doesn't keep us stuck) and ESC (handled above) so neither can
-            // block the gate forever.
+        else {
+            // Decay the exclusion set: any key that's been released since
+            // the click is now a valid fresh-press candidate.
+            for (int k = 0; k < 256; ++k) {
+                if (s_kbExcluded[k] && !(GetAsyncKeyState(k) & 0x8000))
+                    s_kbExcluded[k] = false;
+            }
+
+            // First held, non-excluded, bindable key wins. Menu key is
+            // explicitly skipped — letting it bind would create a conflict
+            // (the same key would open the overlay AND fire the bound action).
             const int menuVk = (g_settings.menuKey > 0 && g_settings.menuKey <= 0xFE)
                 ? g_settings.menuKey : VK_INSERT;
-            bool anyHeld = false;
             for (int k = 0x07; k <= 0xFE; ++k) {
-                if (isFilteredVk(k)) continue;
-                if (k == menuVk)     continue;
-                if (k == VK_ESCAPE)  continue;
-                if (GetAsyncKeyState(k) & 0x8000) { anyHeld = true; break; }
-            }
-            if (!anyHeld) s_kbArmed = true;
-        }
-        else {
-            // Accepting: first held key wins.
-            for (int k = 0x07; k <= 0xFE; ++k) {
-                if (isFilteredVk(k)) continue;
+                if (isFilteredVk(k))  continue;
+                if (k == VK_ESCAPE)   continue;
+                if (k == menuVk)      continue;
+                if (s_kbExcluded[k])  continue;
                 if (!(GetAsyncKeyState(k) & 0x8000)) continue;
                 *vk     = k;
                 changed = true;
@@ -356,15 +366,15 @@ static bool RowSlider(const char* label, int* v, int v_min, int v_max,
     return changed;
 }
 
-// Full-width clickable row used as a sidebar tab item: an icon glyph on the
-// left, a label to its right, and a 2-px full-height accent stripe along the
-// right edge that slides between tabs when the selection changes. Mirrors
-// the `custom::tab` style from the reference GUI in .temp/.../custom.cpp.
+// Full-width clickable row used as a sidebar tab item: a label and a 2-px
+// full-height accent stripe along the right edge that slides between tabs
+// when the selection changes. Mirrors the `custom::tab` style from the
+// reference GUI in .temp/.../custom.cpp.
 //
 // The accent stripe uses a static `line_pos` shared across every tab call —
 // only the selected tab updates the target, all tabs paint at the same Y so
 // the stripe visually "moves" between them as line_pos lerps.
-static bool SidebarTab(const char* icon, const char* label, bool selected)
+static bool SidebarTab(const char* label, bool selected)
 {
     using namespace ImGui;
     ImGuiWindow* window = GetCurrentWindow();
@@ -400,15 +410,8 @@ static bool SidebarTab(const char* icon, const char* label, bool selected)
 
     PushStyleColor(ImGuiCol_Text, textCol);
 
-    // Icon glyph from the MDL2 / Fluent Icons font in Fonts[1].
-    PushFont(GetIO().Fonts->Fonts[1]);
-    ImVec2 iconSz = CalcTextSize(icon);
-    RenderText(ImVec2(bb.Min.x + 20.0f - iconSz.x * 0.5f,
-                      bb.GetCenter().y - iconSz.y * 0.5f), icon);
-    PopFont();
-
     ImVec2 labelSz = CalcTextSize(label);
-    RenderText(ImVec2(bb.Min.x + 42.0f,
+    RenderText(ImVec2(bb.Min.x + 20.0f,
                       bb.GetCenter().y - labelSz.y * 0.5f), label);
 
     PopStyleColor();
@@ -923,9 +926,10 @@ static BOOL WINAPI hk_wglSwapBuffers(HDC hdc)
         // our edge before we could see it — the GUI checkbox followed any
         // toggle that did fire, but most key presses produced zero toggles
         // so the actual ESP draw state appeared "stuck".
-        static bool s_espKeyHeldPrev = false;
-        static bool s_acKeyHeldPrev  = false;
-        static bool s_aimKeyHeldPrev = false;
+        static bool s_espKeyHeldPrev      = false;
+        static bool s_acKeyHeldPrev       = false;
+        static bool s_aimKeyHeldPrev      = false;
+        static bool s_destructKeyHeldPrev = false;
 
         const bool espHeld =
             (g_settings.espKey > 0 && g_settings.espKey <= 0xFE) &&
@@ -936,15 +940,24 @@ static BOOL WINAPI hk_wglSwapBuffers(HDC hdc)
         const bool aimHeld =
             (g_settings.aimKey > 0 && g_settings.aimKey <= 0xFE) &&
             (GetAsyncKeyState(g_settings.aimKey) & 0x8000);
+        const bool destructHeld =
+            (g_settings.selfDestructKey > 0 && g_settings.selfDestructKey <= 0xFE) &&
+            (GetAsyncKeyState(g_settings.selfDestructKey) & 0x8000);
 
         if (!listeningSuppress) {
-            if (espHeld && !s_espKeyHeldPrev) g_settings.espEnabled = !g_settings.espEnabled;
-            if (acHeld  && !s_acKeyHeldPrev)  g_settings.acEnabled  = !g_settings.acEnabled;
-            if (aimHeld && !s_aimKeyHeldPrev) g_settings.aimEnabled = !g_settings.aimEnabled;
+            if (espHeld      && !s_espKeyHeldPrev)      g_settings.espEnabled  = !g_settings.espEnabled;
+            if (acHeld       && !s_acKeyHeldPrev)       g_settings.acEnabled   = !g_settings.acEnabled;
+            if (aimHeld      && !s_aimKeyHeldPrev)      g_settings.aimEnabled  = !g_settings.aimEnabled;
+            // Self-destruct is one-way: edge-press flips selfDestruct true,
+            // which the autoclicker loop polls + then drives `destruct = true`
+            // for an orderly DLL unload. Same flag the menu's Self-Destruct
+            // button sets, so there's exactly one path into the teardown.
+            if (destructHeld && !s_destructKeyHeldPrev) g_settings.selfDestruct = true;
         }
-        s_espKeyHeldPrev = espHeld;
-        s_acKeyHeldPrev  = acHeld;
-        s_aimKeyHeldPrev = aimHeld;
+        s_espKeyHeldPrev      = espHeld;
+        s_acKeyHeldPrev       = acHeld;
+        s_aimKeyHeldPrev      = aimHeld;
+        s_destructKeyHeldPrev = destructHeld;
     }
 
     const bool needFrame = s_visible || g_settings.espEnabled;
@@ -1013,19 +1026,12 @@ static BOOL WINAPI hk_wglSwapBuffers(HDC hdc)
                 //   U+E1F5  Target (crosshair-ish)
                 //   U+E716  People
                 //   U+E713  Settings (gear)
-                // Glyphs from Segoe Fluent Icons / MDL2 Assets — UTF-8 byte
-                // escapes for codepoints in the Private Use Area:
-                //   U+E1F5  Target (crosshair-ish, autoclicker)
-                //   U+E716  People (ESP)
-                //   U+E945  LightningBolt (macros)
-                //   U+E18B  Bullseye (aim assist)
-                //   U+E713  Settings (gear)
                 ImGui::SetCursorPos(ImVec2(0, 76));
-                if (SidebarTab("\xEE\x87\xB5", "Autoclicker", s_currentTab == 0)) s_currentTab = 0;
-                if (SidebarTab("\xEE\x86\x8B", "Aim",         s_currentTab == 1)) s_currentTab = 1;
-                if (SidebarTab("\xEE\x9C\x96", "ESP",         s_currentTab == 2)) s_currentTab = 2;
-                if (SidebarTab("\xEE\xA5\x85", "Macros",      s_currentTab == 3)) s_currentTab = 3;
-                if (SidebarTab("\xEE\x9C\x93", "Settings",    s_currentTab == 4)) s_currentTab = 4;
+                if (SidebarTab("Autoclicker", s_currentTab == 0)) s_currentTab = 0;
+                if (SidebarTab("Aim",         s_currentTab == 1)) s_currentTab = 1;
+                if (SidebarTab("ESP",         s_currentTab == 2)) s_currentTab = 2;
+                if (SidebarTab("Macros",      s_currentTab == 3)) s_currentTab = 3;
+                if (SidebarTab("Settings",    s_currentTab == 4)) s_currentTab = 4;
             }
             ImGui::EndChild();
 
@@ -1046,20 +1052,24 @@ static BOOL WINAPI hk_wglSwapBuffers(HDC hdc)
                                         "settings");
                 ImGui::PopFont();
 
-                // Body region — leaves room for the unload button anchored
-                // at the bottom (height ≈ 32 + padding). The body extends
-                // closer to the right edge of the content panel than the
-                // 22px left margin so the scrollbar (when one appears) sits
-                // ~4px from the window border instead of buried 22px inside
-                // it, with content past the scrollbar visually clipped.
+                // Body region. The Self-Destruct button lives inside the
+                // Settings tab body now, so bodyBottom is just a small visual
+                // margin to the window's bottom border. AlwaysVerticalScrollbar
+                // is set so the scrollbar (or its reserved space) is present
+                // on every tab — without it, the available content width
+                // jumps between tabs that overflow and tabs that don't, and
+                // widgets like the macros trash button visibly slide left/
+                // right depending on whether the list is full or not.
                 const float bodyTop          = 64.0f;
-                const float bodyBottom       = 60.0f;
-                const float bodyRightMargin  = 4.0f;
+                const float bodyBottom       = 20.0f;
+                const float bodyRightMargin  = 14.0f;
                 ImGui::SetCursorPos(ImVec2(22, bodyTop));
                 ImGui::BeginChild("##body",
                     ImVec2(winSize.x - SIDEBAR_W - 22 - bodyRightMargin,
                            winSize.y - bodyTop - bodyBottom),
-                    false, ImGuiWindowFlags_NoBackground);
+                    false,
+                    ImGuiWindowFlags_NoBackground |
+                    ImGuiWindowFlags_AlwaysVerticalScrollbar);
 
                 // Zero ItemSpacing so the rows' bottom borders chain into a
                 // single continuous separator list (the reference look).
@@ -1126,21 +1136,20 @@ static BOOL WINAPI hk_wglSwapBuffers(HDC hdc)
                         ImGui::TextUnformatted(hdr);
                         ImGui::PopFont();
 
-                        // Trash icon on the right side of the header row.
-                        // U+E74D = Delete (Segoe Fluent / MDL2 Assets). The
-                        // 32px offset accounts for the 24px button + a small
-                        // margin so it never clips the scrollbar when the
-                        // list overflows.
+                        // Right-aligned delete button. Plain text "x" instead
+                        // of the previous Fluent-Icons trash glyph — the PUA
+                        // icons read as tacky next to the otherwise-text UI.
+                        // Width 44 fits "Delete" comfortably if we ever swap;
+                        // for now the bare "x" keeps it visually light.
+                        const float delW   = 24.0f;
                         const float availX = ImGui::GetContentRegionAvail().x;
-                        ImGui::SameLine(availX - 32.0f);
-                        ImGui::PushFont(ImGui::GetIO().Fonts->Fonts[1]);
+                        ImGui::SameLine(availX - delW);
                         ImGui::PushStyleColor(ImGuiCol_Button,        FromHex(0x161d2e, 0.0f));
                         ImGui::PushStyleColor(ImGuiCol_ButtonHovered, FromHex(0x9b1c1c, 0.6f));
                         ImGui::PushStyleColor(ImGuiCol_ButtonActive,  FromHex(0x7a1414, 0.8f));
-                        if (ImGui::Button("\xEE\x9D\x8D##del", ImVec2(24, 24)))
+                        if (ImGui::Button("x##del", ImVec2(delW, 24)))
                             toDelete = i;
                         ImGui::PopStyleColor(3);
-                        ImGui::PopFont();
 
                         // Full-width name input. Saves on every keystroke so
                         // an in-progress edit isn't lost if the user closes
@@ -1199,7 +1208,8 @@ static BOOL WINAPI hk_wglSwapBuffers(HDC hdc)
                 }
                 else
                 {
-                    dirty |= RowKeybind("Menu Key", &g_settings.menuKey);
+                    dirty |= RowKeybind("Menu Key",          &g_settings.menuKey);
+                    dirty |= RowKeybind("Self-Destruct Key", &g_settings.selfDestructKey);
 
                     EspModule::Snapshot snap;
                     {
@@ -1216,6 +1226,25 @@ static BOOL WINAPI hk_wglSwapBuffers(HDC hdc)
                         snap.cam.x, snap.cam.y, snap.cam.z,
                         snap.cam.yRot, snap.cam.xRot, snap.cam.fov);
                     ImGui::PopStyleColor();
+
+                    // Self-Destruct button — moved inside the Settings tab so
+                    // it can't be triggered accidentally from any tab via a
+                    // misclick on a permanent footer. Same flag as the
+                    // selfDestructKey edge-detect path; the autoclicker thread
+                    // polls it + drives the orderly DLL teardown.
+                    ImGui::PopStyleVar(); // zero ItemSpacing
+                    ImGui::Dummy(ImVec2(0, 8));
+                    ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 4.0f);
+                    ImGui::PushStyleColor(ImGuiCol_Button,        FromHex(0x9b1c1c));
+                    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, FromHex(0xb91c1c));
+                    ImGui::PushStyleColor(ImGuiCol_ButtonActive,  FromHex(0x7a1414));
+                    ImGui::PushStyleColor(ImGuiCol_Text,          FromHex(0xffffff));
+                    if (ImGui::Button("Self-Destruct",
+                            ImVec2(ImGui::GetContentRegionAvail().x, 32)))
+                        g_settings.selfDestruct = true;
+                    ImGui::PopStyleColor(4);
+                    ImGui::PopStyleVar();
+                    ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0, 0));
                 }
 
                 if (dirty) g_settings.Save();
@@ -1223,19 +1252,6 @@ static BOOL WINAPI hk_wglSwapBuffers(HDC hdc)
                 ImGui::PopStyleVar(); // ItemSpacing
 
                 ImGui::EndChild(); // ##body
-
-                // Unload button anchored to the bottom-right of content.
-                ImGui::SetCursorPos(ImVec2(22, winSize.y - 48));
-                ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 4.0f);
-                ImGui::PushStyleColor(ImGuiCol_Button,        FromHex(0x9b1c1c));
-                ImGui::PushStyleColor(ImGuiCol_ButtonHovered, FromHex(0xb91c1c));
-                ImGui::PushStyleColor(ImGuiCol_ButtonActive,  FromHex(0x7a1414));
-                ImGui::PushStyleColor(ImGuiCol_Text,          FromHex(0xffffff));
-                if (ImGui::Button("UNLOAD",
-                        ImVec2(winSize.x - SIDEBAR_W - 44, 32)))
-                    g_settings.selfDestruct = true;
-                ImGui::PopStyleColor(4);
-                ImGui::PopStyleVar();
             }
             ImGui::EndChild(); // ##content
 

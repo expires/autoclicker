@@ -140,7 +140,13 @@ namespace AutoclickerModule
 
                 while (!destruct && activeWindow == mcWindow && GetAsyncKeyState(VK_LBUTTON) && g_settings.acEnabled)
                 {
-                    if (GetAsyncKeyState(VK_END) || g_settings.selfDestruct)
+                    // Self-destruct is now driven entirely off the shared
+                    // selfDestruct flag — the overlay's edge-detected
+                    // selfDestructKey handler and the in-menu Self-Destruct
+                    // button both set it. END is the default binding so the
+                    // historical behavior is preserved without a hard-coded
+                    // VK check here.
+                    if (g_settings.selfDestruct)
                     {
                         destruct = true;
                         break;

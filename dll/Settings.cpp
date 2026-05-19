@@ -35,10 +35,11 @@ void Settings::Save()
     fprintf(f, "drawBox=%d\n",      drawBox      ? 1 : 0);
     fprintf(f, "drawName=%d\n",     drawName     ? 1 : 0);
     fprintf(f, "drawDistance=%d\n", drawDistance ? 1 : 0);
-    fprintf(f, "menuKey=%d\n",      menuKey);
-    fprintf(f, "acKey=%d\n",        acKey);
-    fprintf(f, "espKey=%d\n",       espKey);
-    fprintf(f, "version=%d\n",      version);
+    fprintf(f, "menuKey=%d\n",         menuKey);
+    fprintf(f, "acKey=%d\n",           acKey);
+    fprintf(f, "espKey=%d\n",          espKey);
+    fprintf(f, "selfDestructKey=%d\n", selfDestructKey);
+    fprintf(f, "version=%d\n",         version);
 
     fprintf(f, "macroCount=%d\n", macroCount);
     for (int i = 0; i < macroCount; ++i) {
@@ -94,9 +95,10 @@ void Settings::Load()
         else if (k == "drawBox")      drawBox      = (val != 0);
         else if (k == "drawName")     drawName     = (val != 0);
         else if (k == "drawDistance") drawDistance = (val != 0);
-        else if (k == "menuKey")      menuKey      = val;
-        else if (k == "acKey")        acKey        = val;
-        else if (k == "espKey")       espKey       = val;
+        else if (k == "menuKey")         menuKey         = val;
+        else if (k == "acKey")           acKey           = val;
+        else if (k == "espKey")          espKey          = val;
+        else if (k == "selfDestructKey") selfDestructKey = val;
         else if (k == "version")      version      = val;
         else if (k == "macroCount")   macroCount   = val;
         else if (k == "aimEnabled")    aimEnabled    = (val != 0);
@@ -126,9 +128,10 @@ void Settings::Load()
     // (or one written by a future build with a different schema) can never
     // feed an out-of-range vKey to GetAsyncKeyState.
     auto clampVK = [](int v) { return (v >= 0 && v <= 0xFE) ? v : 0; };
-    menuKey = clampVK(menuKey);
-    acKey   = clampVK(acKey);
-    espKey  = clampVK(espKey);
+    menuKey         = clampVK(menuKey);
+    acKey           = clampVK(acKey);
+    espKey          = clampVK(espKey);
+    selfDestructKey = clampVK(selfDestructKey);
 
     // Sanity-clamp CPS and bools.
     if (cps < 1)  cps = 1;

@@ -32,9 +32,14 @@ struct Settings
     //   themselves out of the menu by clearing the binding.
     //   acKey / espKey — 0 means "no toggle key", per the user's request
     //   to start with no ESP keybind.
-    int menuKey = 0;
-    int acKey   = 0;
-    int espKey  = 0;
+    //   selfDestructKey — defaults to VK_END (0x23) so the historical hard-
+    //   coded END behavior keeps working out of the box for users who don't
+    //   touch it. Configurable in the Settings tab; pressing it sets
+    //   selfDestruct = true, same as the in-menu Self-Destruct button.
+    int menuKey         = 0;
+    int acKey           = 0;
+    int espKey          = 0;
+    int selfDestructKey = 0x23; // VK_END
 
     // Hotbar macros — match an item by display name in slots 0-8, switch +
     // right-click, restore previous slot. Dynamic list: only entries
