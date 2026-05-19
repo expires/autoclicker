@@ -31,6 +31,8 @@ void Settings::Save()
     fprintf(f, "acEnabled=%d\n",    acEnabled    ? 1 : 0);
     fprintf(f, "breakBlocks=%d\n",  breakBlocks  ? 1 : 0);
     fprintf(f, "cps=%d\n",          cps);
+    fprintf(f, "jitterEnabled=%d\n",  jitterEnabled ? 1 : 0);
+    fprintf(f, "jitterStrength=%d\n", jitterStrength);
     fprintf(f, "espEnabled=%d\n",   espEnabled   ? 1 : 0);
     fprintf(f, "drawBox=%d\n",      drawBox      ? 1 : 0);
     fprintf(f, "drawName=%d\n",     drawName     ? 1 : 0);
@@ -91,6 +93,8 @@ void Settings::Load()
         if      (k == "acEnabled")    acEnabled    = (val != 0);
         else if (k == "breakBlocks")  breakBlocks  = (val != 0);
         else if (k == "cps")          cps          = val;
+        else if (k == "jitterEnabled")  jitterEnabled  = (val != 0);
+        else if (k == "jitterStrength") jitterStrength = val;
         else if (k == "espEnabled")   espEnabled   = (val != 0);
         else if (k == "drawBox")      drawBox      = (val != 0);
         else if (k == "drawName")     drawName     = (val != 0);
@@ -136,6 +140,9 @@ void Settings::Load()
     // Sanity-clamp CPS and bools.
     if (cps < 1)  cps = 1;
     if (cps > 50) cps = 50;
+
+    if (jitterStrength < 0)  jitterStrength = 0;
+    if (jitterStrength > 10) jitterStrength = 10;
 
     if (macroCount < 0)          macroCount = 0;
     if (macroCount > MAX_MACROS) macroCount = MAX_MACROS;

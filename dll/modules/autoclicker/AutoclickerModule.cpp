@@ -209,7 +209,12 @@ namespace AutoclickerModule
                             usingItem = lp.isUsingItem();
                             if (lc->env->ExceptionCheck()) lc->env->ExceptionClear();
                         }
-                        if (!usingItem) clicker.lclick(mcWindow);
+                        if (!usingItem) {
+                            const int js = g_settings.jitterEnabled
+                                ? g_settings.jitterStrength
+                                : 0;
+                            clicker.lclick(mcWindow, js);
+                        }
                     }
                 }
             }

@@ -18,7 +18,7 @@ int Clicker::randomDelay(double fraction)
     return delay;
 }
 
-void Clicker::lclick(HWND hwnd)
+void Clicker::lclick(HWND hwnd, int jitterStrength)
 {
     if (getClicksPerSecond() == 0)
         DELAY(100);
@@ -28,9 +28,9 @@ void Clicker::lclick(HWND hwnd)
     POINT pt;
     GetCursorPos(&pt);
     SendMessage(hwnd, WM_LBUTTONDOWN, MK_LBUTTON, MAKELPARAM(pt.x, pt.y));
-    DELAY(randomDelay(0.3));
+    jitterFor(randomDelay(0.3), jitterStrength);
     SendMessage(hwnd, WM_LBUTTONUP, MK_LBUTTON, MAKELPARAM(pt.x, pt.y));
-    DELAY(randomDelay(0.7));
+    jitterFor(randomDelay(0.7), jitterStrength);
 
     trackClick();
 }
@@ -71,58 +71,64 @@ void Clicker::trackClick()
     clicks.push_back(std::chrono::steady_clock::now());
 }
 
-int64_t Clicker::jitter(HWND hwnd)
+// Human-like tremor for `totalMs`. The old "sweep ±N pixels then reverse"
+// approach was instantly identifiable as a script — pure diagonal lines,
+// uniform speed, alternating directions. Real hand tremor is a damped
+// random walk on velocity (Ornstein-Uhlenbeck): each step adds a small
+// Gaussian impulse to the velocity, which is then dampened back toward
+// zero, and position integrates the velocity. That produces continuous
+// motion with no abrupt direction changes, mean-reverting so the cursor
+// doesn't drift off-target over time, and a frequency content close to
+// real physiological tremor (~8-12 Hz dominant).
+//
+// Strength 0 short-circuits to a plain DELAY — same wall time, no motion.
+// Strength 10 produces visible jitter (~3-5 px excursions) without missing
+// the target on typical PvP reach.
+void Clicker::jitterFor(int totalMs, int strength)
 {
-    const int minThreshold = 5;
-    const int maxThreshold = 10;
+    if (totalMs <= 0) return;
+    if (strength <= 0) { DELAY(totalMs); return; }
+    if (strength > 10) strength = 10;
 
-    int totalDeltaX = (rand() % (maxThreshold - minThreshold + 1)) + minThreshold;
-    int totalDeltaY = (rand() % (maxThreshold - minThreshold + 1)) + minThreshold;
+    // Impulse scale: linear in strength. 0.08 px std per step at strength=1,
+    // 0.8 at strength=10. Combined with the OU steady-state amplification
+    // (1 / sqrt(1 - damping²) ≈ 1.9 at damping=0.18), peak excursion sits
+    // around ~5 pixels at max strength — visible but not throwing aim off.
+    const float impulseStd = 0.08f * (float)strength;
+    const float damping    = 0.82f;  // velocity retention per step (1 - 0.18)
 
-    if (directionFlag)
-    {
-        totalDeltaX = abs(totalDeltaX);
-        totalDeltaY = abs(totalDeltaY);
+    std::normal_distribution<float>   impulse(0.0f, impulseStd);
+    std::uniform_int_distribution<int> stepMs(6, 12);
+
+    const auto deadline = std::chrono::steady_clock::now()
+                        + std::chrono::milliseconds(totalMs);
+
+    while (std::chrono::steady_clock::now() < deadline) {
+        // OU step on velocity.
+        jvx = jvx * damping + impulse(gen);
+        jvy = jvy * damping + impulse(gen);
+
+        // Sub-pixel position accumulator so impulses below one pixel still
+        // contribute over time instead of being lost to int truncation.
+        jax += jvx;
+        jay += jvy;
+
+        const int dx = (int)std::lround(jax);
+        const int dy = (int)std::lround(jay);
+        jax -= (float)dx;
+        jay -= (float)dy;
+
+        if (dx != 0 || dy != 0) {
+            INPUT in = {};
+            in.type         = INPUT_MOUSE;
+            in.mi.dx        = dx;
+            in.mi.dy        = dy;
+            in.mi.dwFlags   = MOUSEEVENTF_MOVE;
+            SendInput(1, &in, sizeof(INPUT));
+        }
+
+        // Varied step interval — uniform 5ms ticks would alias against the
+        // server tick and produce a periodic-looking signature.
+        DELAY(stepMs(gen));
     }
-    else
-    {
-        totalDeltaX = -abs(totalDeltaX);
-        totalDeltaY = -abs(totalDeltaY);
-    }
-
-    int steps = max(abs(totalDeltaX), abs(totalDeltaY));
-
-    float stepX = static_cast<float>(totalDeltaX) / steps;
-    float stepY = static_cast<float>(totalDeltaY) / steps;
-
-    float currentX = 0;
-    float currentY = 0;
-
-    auto start_time = std::chrono::high_resolution_clock::now();
-
-    for (int i = 0; i < steps; ++i)
-    {
-        currentX += stepX;
-        currentY += stepY;
-
-        INPUT input = {0};
-        input.type = INPUT_MOUSE;
-        input.mi.dx = static_cast<int>(currentX);
-        input.mi.dy = static_cast<int>(currentY);
-        input.mi.dwFlags = MOUSEEVENTF_MOVE;
-
-        SendInput(1, &input, sizeof(INPUT));
-
-        std::this_thread::sleep_for(std::chrono::milliseconds(5));
-
-        currentX -= static_cast<int>(currentX);
-        currentY -= static_cast<int>(currentY);
-    }
-
-    auto end_time = std::chrono::high_resolution_clock::now();
-    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time).count();
-
-    directionFlag = !directionFlag;
-
-    return duration;
 }

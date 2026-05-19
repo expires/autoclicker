@@ -20,6 +20,13 @@ struct Settings
     int  cps          = 10;
     bool selfDestruct = false;
 
+    // Jitter mode: while autoclicking, push small organic mouse deltas
+    // (Ornstein-Uhlenbeck random walk on velocity) so the cursor wanders
+    // the way a tense human hand does instead of staying pixel-locked.
+    // Strength is a 0-10 slider; 0 disables.
+    bool jitterEnabled  = false;
+    int  jitterStrength = 5;
+
     bool espEnabled   = true;
     bool drawBox      = true;
     bool drawName     = true;

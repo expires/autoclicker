@@ -1054,35 +1054,21 @@ static BOOL WINAPI hk_wglSwapBuffers(HDC hdc)
 
                 // Body region. The Self-Destruct button lives inside the
                 // Settings tab body now, so bodyBottom is just a small visual
-                // margin to the window's bottom border. AlwaysVerticalScrollbar
-                // is set so the scrollbar (or its reserved space) is present
-                // on every tab — without it, the available content width
-                // jumps between tabs that overflow and tabs that don't, and
-                // widgets like the macros trash button visibly slide left/
-                // right depending on whether the list is full or not.
-                //
-                // bodyHorizPad is body's interior WindowPadding.x — it sets
-                // both the left margin (body_left → first widget) AND the
-                // right gap (last widget → scrollbar). By moving the body's
-                // cursor origin left by (bodyHorizPad - 12), the previous
-                // visual position of widget-left is preserved exactly while
-                // the right side gains a matching 22-px buffer between the
-                // last column and the scrollbar.
+                // margin to the window's bottom border. NoScrollbar — the
+                // scrollbar is hidden entirely (mouse-wheel scroll still
+                // works in tabs that overflow). With no scrollbar to leave
+                // room for, the body uses the global symmetric WindowPadding
+                // and sits with equal margins on both sides.
                 const float bodyTop          = 64.0f;
                 const float bodyBottom       = 20.0f;
-                const float bodyRightMargin  = 14.0f;
-                const float bodyHorizPad     = 22.0f;
-                const float bodyLeftCursor   = 22.0f - (bodyHorizPad - 12.0f);
-                ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding,
-                                    ImVec2(bodyHorizPad, 12.0f));
-                ImGui::SetCursorPos(ImVec2(bodyLeftCursor, bodyTop));
+                const float bodyRightMargin  = 22.0f;
+                ImGui::SetCursorPos(ImVec2(22, bodyTop));
                 ImGui::BeginChild("##body",
-                    ImVec2(winSize.x - SIDEBAR_W - bodyLeftCursor - bodyRightMargin,
+                    ImVec2(winSize.x - SIDEBAR_W - 22 - bodyRightMargin,
                            winSize.y - bodyTop - bodyBottom),
                     false,
                     ImGuiWindowFlags_NoBackground |
-                    ImGuiWindowFlags_AlwaysVerticalScrollbar);
-                ImGui::PopStyleVar(); // WindowPadding (body captured it at Begin)
+                    ImGuiWindowFlags_NoScrollbar);
 
                 // Zero ItemSpacing so the rows' bottom borders chain into a
                 // single continuous separator list (the reference look).
@@ -1100,6 +1086,9 @@ static BOOL WINAPI hk_wglSwapBuffers(HDC hdc)
                     dirty |= RowCheckbox("Enabled",      &g_settings.acEnabled);
                     dirty |= RowCheckbox("Break Blocks", &g_settings.breakBlocks);
                     dirty |= RowSlider  ("CPS",          &g_settings.cps, 1, 50);
+                    dirty |= RowCheckbox("Jitter",       &g_settings.jitterEnabled);
+                    if (g_settings.jitterEnabled)
+                        dirty |= RowSlider("Jitter Strength", &g_settings.jitterStrength, 0, 10);
                     dirty |= RowKeybind ("Toggle Key",   &g_settings.acKey);
                 }
                 else if (s_currentTab == 1)
