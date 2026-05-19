@@ -1060,16 +1060,29 @@ static BOOL WINAPI hk_wglSwapBuffers(HDC hdc)
                 // jumps between tabs that overflow and tabs that don't, and
                 // widgets like the macros trash button visibly slide left/
                 // right depending on whether the list is full or not.
+                //
+                // bodyHorizPad is body's interior WindowPadding.x — it sets
+                // both the left margin (body_left → first widget) AND the
+                // right gap (last widget → scrollbar). By moving the body's
+                // cursor origin left by (bodyHorizPad - 12), the previous
+                // visual position of widget-left is preserved exactly while
+                // the right side gains a matching 22-px buffer between the
+                // last column and the scrollbar.
                 const float bodyTop          = 64.0f;
                 const float bodyBottom       = 20.0f;
                 const float bodyRightMargin  = 14.0f;
-                ImGui::SetCursorPos(ImVec2(22, bodyTop));
+                const float bodyHorizPad     = 22.0f;
+                const float bodyLeftCursor   = 22.0f - (bodyHorizPad - 12.0f);
+                ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding,
+                                    ImVec2(bodyHorizPad, 12.0f));
+                ImGui::SetCursorPos(ImVec2(bodyLeftCursor, bodyTop));
                 ImGui::BeginChild("##body",
-                    ImVec2(winSize.x - SIDEBAR_W - 22 - bodyRightMargin,
+                    ImVec2(winSize.x - SIDEBAR_W - bodyLeftCursor - bodyRightMargin,
                            winSize.y - bodyTop - bodyBottom),
                     false,
                     ImGuiWindowFlags_NoBackground |
                     ImGuiWindowFlags_AlwaysVerticalScrollbar);
+                ImGui::PopStyleVar(); // WindowPadding (body captured it at Begin)
 
                 // Zero ItemSpacing so the rows' bottom borders chain into a
                 // single continuous separator list (the reference look).
