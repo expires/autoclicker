@@ -1224,10 +1224,7 @@ static BOOL WINAPI hk_wglSwapBuffers(HDC hdc)
                     ImGui::PopStyleColor();
                     ImGui::PushStyleColor(ImGuiCol_Text, FromHex(0x707a8c));
                     ImGui::TextWrapped(
-                        "Ability exploits for the Clans/Champions gamemode. "
-                        "Testbed for the anticheat — each module mirrors "
-                        "the server-side activation conditions client-side "
-                        "so it only fires when the server would accept.");
+                        "Ability exploits for the Clans/Champions");
                     ImGui::PopStyleColor();
                     ImGui::Dummy(ImVec2(0, 6));
 
