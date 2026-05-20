@@ -20,6 +20,16 @@ public:
     // fire). Better to skip a click than spuriously burn cooldown.
     bool isAir();
 
+    // True if this state has a collision box that stops entity motion.
+    // Distinguishes solid walls (true) from foliage / fluids / decorations
+    // (false). This is what we want for the leap-cheat back-wall check:
+    // the server's airFoliage(block) excludes both air and replaceable
+    // foliage, so we use !blocksMotion as a closer approximation than
+    // !isAir alone. Returns false on JNI failure — biases toward "no wall"
+    // so a failed read suppresses the click instead of false-positive
+    // firing on foliage.
+    bool blocksMotion();
+
 private:
     jobject instance;
 };

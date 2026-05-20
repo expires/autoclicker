@@ -159,3 +159,4 @@
 #define MTD_Level_getBlockState       "@mtd_Level_getBlockState@"
 #define DESC_Level_getBlockState      "@desc_Level_getBlockState@"
 #define MTD_BlockState_isAir          "@mtd_BlockState_isAir@"
+#define MTD_BlockState_blocksMotion   "@mtd_BlockState_blocksMotion@"

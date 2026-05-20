@@ -90,6 +90,7 @@ foreach(KEY
     class_BlockPos class_BlockState
     mtd_Level_getBlockState     desc_Level_getBlockState
     mtd_BlockState_isAir
+    mtd_BlockState_blocksMotion
 )
     string(JSON ${KEY} GET "${MAPPING_JSON}" "${KEY}")
 endforeach()

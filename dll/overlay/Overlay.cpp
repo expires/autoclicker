@@ -39,7 +39,7 @@ static fn_SetCursor    o_SetCursor    = nullptr;
 
 static bool    s_initialized        = false;
 static bool    s_visible            = false;
-static int     s_currentTab         = 0; // 0=Autoclicker, 1=Aim, 2=ESP, 3=Macros, 4=Leap, 5=Settings
+static int     s_currentTab         = 0; // 0=Autoclicker, 1=Aim, 2=ESP, 3=Macros, 4=Clans, 5=Settings
 static HWND    s_hwnd               = nullptr;
 static WNDPROC s_origProc           = nullptr;
 // Set when ESC is used to close the menu. Keeps the WndProc swallowing ESC
@@ -1031,7 +1031,7 @@ static BOOL WINAPI hk_wglSwapBuffers(HDC hdc)
                 if (SidebarTab("Aim",         s_currentTab == 1)) s_currentTab = 1;
                 if (SidebarTab("ESP",         s_currentTab == 2)) s_currentTab = 2;
                 if (SidebarTab("Macros",      s_currentTab == 3)) s_currentTab = 3;
-                if (SidebarTab("Leap",        s_currentTab == 4)) s_currentTab = 4;
+                if (SidebarTab("Clans",       s_currentTab == 4)) s_currentTab = 4;
                 if (SidebarTab("Settings",    s_currentTab == 5)) s_currentTab = 5;
             }
             ImGui::EndChild();
@@ -1050,7 +1050,7 @@ static BOOL WINAPI hk_wglSwapBuffers(HDC hdc)
                     s_currentTab == 1 ? "aim assist"  :
                     s_currentTab == 2 ? "esp"         :
                     s_currentTab == 3 ? "macros"      :
-                    s_currentTab == 4 ? "auto leap"   :
+                    s_currentTab == 4 ? "clans"       :
                                         "settings");
                 ImGui::PopFont();
 
@@ -1213,21 +1213,29 @@ static BOOL WINAPI hk_wglSwapBuffers(HDC hdc)
                 else if (s_currentTab == 4)
                 {
                     // EXPERIMENTAL banner. Drops out of zero-ItemSpacing for
-                    // one line so the warning gets some breathing room above
-                    // the chained-row settings below.
+                    // a few lines so the warning + section header get some
+                    // breathing room above the chained-row settings below.
+                    // This tab houses ability-exploit cheats targeting the
+                    // Clans/Champions gamemode — currently auto-leap; more
+                    // get added here as they're built.
                     ImGui::PopStyleVar(); // zero ItemSpacing
                     ImGui::PushStyleColor(ImGuiCol_Text, FromHex(0xf2c14e));
                     ImGui::TextUnformatted("EXPERIMENTAL");
                     ImGui::PopStyleColor();
                     ImGui::PushStyleColor(ImGuiCol_Text, FromHex(0x707a8c));
                     ImGui::TextWrapped(
-                        "Smart auto-leap. Fires the axe wall-kick exploit "
-                        "(no cooldown branch) when the player has a solid "
-                        "block behind them and air ahead. Mirrors server "
-                        "conditions client-side; fires nothing when the "
-                        "server would reject.");
+                        "Ability exploits for the Clans/Champions gamemode. "
+                        "Testbed for the anticheat — each module mirrors "
+                        "the server-side activation conditions client-side "
+                        "so it only fires when the server would accept.");
                     ImGui::PopStyleColor();
                     ImGui::Dummy(ImVec2(0, 6));
+
+                    // Per-ability section header. Adding a new exploit here
+                    // means another bold label + its rows below.
+                    ImGui::PushFont(ImGui::GetIO().Fonts->Fonts[2]);
+                    ImGui::TextUnformatted("Auto Leap");
+                    ImGui::PopFont();
                     ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0, 0));
 
                     dirty |= RowCheckbox("Enabled",       &g_settings.leapEnabled);

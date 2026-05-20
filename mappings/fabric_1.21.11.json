@@ -149,5 +149,6 @@
   "class_BlockState":              "net.minecraft.class_2680",
   "mtd_Level_getBlockState":       "method_8320",
   "desc_Level_getBlockState":      "(Lnet/minecraft/class_2338;)Lnet/minecraft/class_2680;",
-  "mtd_BlockState_isAir":          "method_26215"
+  "mtd_BlockState_isAir":          "method_26215",
+  "mtd_BlockState_blocksMotion":   "method_26225"
 }

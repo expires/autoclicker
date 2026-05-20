@@ -102,9 +102,12 @@ namespace LeapModule
     //     else                       : (0, 1, sign(facing.z))
     //     forward must be air
     //
-    // We approximate "solid" as "not air" and "airFoliage" as "is air".
-    // Foliage will read as a wall (false-positive fire on tall grass etc.)
-    // but the server then rejects via its own check + cooldown absorbs it.
+    // Back-wall check uses blocksMotion() — true only for blocks whose
+    // collision box stops entity motion. Excludes air AND foliage / fluids
+    // / decorations, matching the server's airFoliage exclusion. !isAir
+    // alone counted tall grass as a wall and caused false-positive fires.
+    // Forward-air check stays on isAir — we want any non-collidable cell
+    // ahead so the kick velocity isn't immediately consumed by an obstacle.
     static bool WallKickConditionsMet(Minecraft& mc)
     {
         bool result = false;
@@ -159,10 +162,10 @@ namespace LeapModule
                 lc->env->DeleteLocalRef(bp.GetInstance());
 
                 if (st.GetInstance() == nullptr) continue;
-                const bool air = st.isAir();
+                const bool solid = st.blocksMotion();
                 lc->env->DeleteLocalRef(st.GetInstance());
 
-                if (!air) wallFound = true;
+                if (solid) wallFound = true;
             }
         }
 
@@ -212,9 +215,18 @@ namespace LeapModule
             return 0;
         }
 
-        // Far past initialisation so the first eligible tick fires
-        // immediately; the wall-kick cooldown on the server then rate-limits
-        // any further fires.
+        // Edge-trigger state. Fire once on the rising edge of
+        // WallKickConditionsMet, then stay silent until the conditions
+        // drop (player flies away from the wall on the kick, lands
+        // elsewhere, walks back). Without this, sitting against a wall
+        // with the module enabled would auto-fire every `leapInterval`
+        // ms — exactly the "spam" pattern we want to avoid.
+        bool prevConditions = false;
+
+        // Hardware-safety floor against pathological condition-state
+        // flapping (player skirting the exact block boundary, etc.).
+        // Edge detection handles the common case; this is the lower
+        // bound between any two fires.
         auto lastClick = std::chrono::steady_clock::now()
                        - std::chrono::seconds(10);
 
@@ -226,30 +238,36 @@ namespace LeapModule
             // into LevelChunk + section array), so 20Hz costs nothing.
             std::this_thread::sleep_for(std::chrono::milliseconds(50));
 
-            if (!g_settings.leapEnabled)              continue;
-            if (Overlay::IsMenuVisible())             continue;
-            if (GetForegroundWindow() != mcWindow)    continue;
+            // Any gate failure resets edge tracking. Otherwise the user
+            // disabling + re-enabling (or alt-tabbing out and back) while
+            // already against a wall would skip the first valid fire —
+            // prevConditions would still read true from before the gate
+            // flipped, suppressing the next rising-edge detection.
+            if (!g_settings.leapEnabled)              { prevConditions = false; continue; }
+            if (Overlay::IsMenuVisible())             { prevConditions = false; continue; }
+            if (GetForegroundWindow() != mcWindow)    { prevConditions = false; continue; }
 
             if (g_settings.leapKey > 0 && g_settings.leapKey <= 0xFE) {
-                if (!(GetAsyncKeyState(g_settings.leapKey) & 0x8000))
+                if (!(GetAsyncKeyState(g_settings.leapKey) & 0x8000)) {
+                    prevConditions = false;
                     continue;
+                }
             }
+
+            if (g_settings.leapRequireAxe) {
+                const std::string name = SelectedItemName(mc);
+                if (!ContainsCi(name, "axe")) { prevConditions = false; continue; }
+            }
+
+            const bool cur  = WallKickConditionsMet(mc);
+            const bool edge = cur && !prevConditions;
+            prevConditions  = cur;
+
+            if (!edge) continue;
 
             const auto now = std::chrono::steady_clock::now();
             const auto sinceLast = std::chrono::duration_cast<std::chrono::milliseconds>(now - lastClick).count();
             if (sinceLast < g_settings.leapInterval) continue;
-
-            if (g_settings.leapRequireAxe) {
-                const std::string name = SelectedItemName(mc);
-                if (!ContainsCi(name, "axe")) continue;
-            }
-
-            // Only fire when the server-side wall-kick branch will accept
-            // the right-click — otherwise the normal-leap branch fires,
-            // burns the skill cooldown, and the cheat goes quiet for the
-            // full cooldown duration. The condition check is the whole
-            // point of this being a "smart" exploit vs. dumb spam.
-            if (!WallKickConditionsMet(mc)) continue;
 
             RightClick(mcWindow);
             lastClick = std::chrono::steady_clock::now();
