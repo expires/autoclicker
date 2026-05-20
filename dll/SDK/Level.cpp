@@ -3,6 +3,17 @@
 
 jclass Level::GetClass() { return lc->GetClass(MC_ClientLevel); }
 
+BlockState Level::getBlockState(BlockPos& pos)
+{
+    if (!instance || !pos.GetInstance()) return BlockState(nullptr);
+    jmethodID m = lc->env->GetMethodID(this->GetClass(),
+        MTD_Level_getBlockState, DESC_Level_getBlockState);
+    if (!m) { lc->env->ExceptionClear(); return BlockState(nullptr); }
+    jobject r = lc->env->CallObjectMethod(this->instance, m, pos.GetInstance());
+    if (lc->env->ExceptionCheck()) { lc->env->ExceptionClear(); return BlockState(nullptr); }
+    return BlockState(r);
+}
+
 std::vector<Player> Level::players()
 {
     std::vector<Player> out;

@@ -143,5 +143,11 @@
   "desc_Inventory_getItem":        "(I)Lnet/minecraft/class_1799;",
   "mtd_ItemStack_getHoverName":    "method_7964",
   "desc_ItemStack_getHoverName":   "()Lnet/minecraft/class_2561;",
-  "mtd_ItemStack_isEmpty":         "method_7960"
+  "mtd_ItemStack_isEmpty":         "method_7960",
+
+  "class_BlockPos":                "net.minecraft.class_2338",
+  "class_BlockState":              "net.minecraft.class_2680",
+  "mtd_Level_getBlockState":       "method_8320",
+  "desc_Level_getBlockState":      "(Lnet/minecraft/class_2338;)Lnet/minecraft/class_2680;",
+  "mtd_BlockState_isAir":          "method_26215"
 }

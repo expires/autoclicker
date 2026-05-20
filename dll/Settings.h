@@ -71,6 +71,24 @@ struct Settings
     int  aimRange      = 6;
     int  aimKey        = 0;
 
+    // Auto-leap (Champions axe Leap exploit). Wall-kick branch of the skill
+    // has no cooldown — only an energy cost — so a script that holds the
+    // axe and repeatedly right-clicks while back-against-wall gets free
+    // re-leaps until energy drains. We don't have block-reading SDK, so
+    // this module is the dumb variant: while enabled + axe in main hand
+    // + key held, spam right-click at `leapInterval` ms. The user lines
+    // themselves up against a wall, holds the key, the wall-kick fires
+    // every time conditions naturally align. leapRequireAxe gates on a
+    // case-insensitive "axe" substring match in the selected slot's hover
+    // name so accidental right-clicks (eating food, throwing pearls) can't
+    // fire from this module.
+    bool leapEnabled     = false;
+    bool leapRequireAxe  = true;
+    // Default 600ms — sits just above the server's 500ms wall-kick internal
+    // cooldown, so back-to-back fires don't get rejected for "too fast".
+    int  leapInterval    = 600;
+    int  leapKey         = 0;
+
     // Bump when defaults change. Load() force-resets the keybinds when it
     // reads an older version so legacy bindings (e.g. the historical
     // CapsLock→ESP that users had baked into their config) don't survive

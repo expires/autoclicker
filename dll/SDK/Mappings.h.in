@@ -151,3 +151,11 @@
 #define MTD_ItemStack_getHoverName    "@mtd_ItemStack_getHoverName@"
 #define DESC_ItemStack_getHoverName   "@desc_ItemStack_getHoverName@"
 #define MTD_ItemStack_isEmpty         "@mtd_ItemStack_isEmpty@"
+
+// Leap module — block sampling around the player to mirror the server's
+// wall-kick check (block behind = solid, block ahead = air).
+#define MC_BlockPos                   "@class_BlockPos@"
+#define MC_BlockState                 "@class_BlockState@"
+#define MTD_Level_getBlockState       "@mtd_Level_getBlockState@"
+#define DESC_Level_getBlockState      "@desc_Level_getBlockState@"
+#define MTD_BlockState_isAir          "@mtd_BlockState_isAir@"

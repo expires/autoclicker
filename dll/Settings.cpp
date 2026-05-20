@@ -58,6 +58,11 @@ void Settings::Save()
     fprintf(f, "aimRange=%d\n",      aimRange);
     fprintf(f, "aimKey=%d\n",        aimKey);
 
+    fprintf(f, "leapEnabled=%d\n",    leapEnabled    ? 1 : 0);
+    fprintf(f, "leapRequireAxe=%d\n", leapRequireAxe ? 1 : 0);
+    fprintf(f, "leapInterval=%d\n",   leapInterval);
+    fprintf(f, "leapKey=%d\n",        leapKey);
+
     fclose(f);
 }
 
@@ -112,6 +117,10 @@ void Settings::Load()
         else if (k == "aimFov")        aimFov        = val;
         else if (k == "aimRange")      aimRange      = val;
         else if (k == "aimKey")        aimKey        = val;
+        else if (k == "leapEnabled")    leapEnabled    = (val != 0);
+        else if (k == "leapRequireAxe") leapRequireAxe = (val != 0);
+        else if (k == "leapInterval")   leapInterval   = val;
+        else if (k == "leapKey")        leapKey        = val;
         else if (k.rfind("macro", 0) == 0) {
             // macro<i>_{name,delay,key}
             for (int i = 0; i < MAX_MACROS; ++i) {
@@ -161,6 +170,15 @@ void Settings::Load()
     if (aimFov    < 1)  aimFov    = 1;  if (aimFov    > 180) aimFov   = 180;
     if (aimRange  < 1)  aimRange  = 1;  if (aimRange  > 64)  aimRange = 64;
     aimKey = clampVK(aimKey);
+
+    // Leap clamps. Interval floor of 50ms guards against accidentally
+    // spamming right-clicks faster than MC's per-tick input handler can
+    // service them (a high-rate spam looks more obviously botted in the
+    // server's interaction packet stream anyway). 1000ms ceiling because
+    // any slower than that and the cheat is uselessly sluggish.
+    if (leapInterval < 50)   leapInterval = 50;
+    if (leapInterval > 1000) leapInterval = 1000;
+    leapKey = clampVK(leapKey);
 
     // Migration: any config older than the current schema gets its
     // keybinds force-cleared. Catches the historical CapsLock→ESP default

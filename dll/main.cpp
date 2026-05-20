@@ -6,6 +6,7 @@
 #include "modules/esp/EspModule.h"
 #include "modules/macros/MacrosModule.h"
 #include "modules/aim/AimAssistModule.h"
+#include "modules/leap/LeapModule.h"
 #include "overlay/Overlay.h"
 
 using namespace std::chrono;
@@ -21,6 +22,7 @@ BOOL APIENTRY DllMain(const HINSTANCE instance, const DWORD reason, LPVOID reser
         CreateThread(nullptr, 0, EspModule::init,         instance, 0, nullptr);
         CreateThread(nullptr, 0, MacrosModule::init,      instance, 0, nullptr);
         CreateThread(nullptr, 0, AimAssistModule::init,   instance, 0, nullptr);
+        CreateThread(nullptr, 0, LeapModule::init,        instance, 0, nullptr);
     }
     else if (reason == DLL_PROCESS_DETACH)
     {

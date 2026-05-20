@@ -87,6 +87,9 @@ foreach(KEY
     mtd_Inventory_getItem       desc_Inventory_getItem
     mtd_ItemStack_getHoverName  desc_ItemStack_getHoverName
     mtd_ItemStack_isEmpty
+    class_BlockPos class_BlockState
+    mtd_Level_getBlockState     desc_Level_getBlockState
+    mtd_BlockState_isAir
 )
     string(JSON ${KEY} GET "${MAPPING_JSON}" "${KEY}")
 endforeach()
@@ -170,6 +173,8 @@ file(GLOB MACROS_HEADERS       "modules/macros/*.h")
 file(GLOB MACROS_SOURCES       "modules/macros/*.cpp")
 file(GLOB AIM_HEADERS          "modules/aim/*.h")
 file(GLOB AIM_SOURCES          "modules/aim/*.cpp")
+file(GLOB LEAP_HEADERS         "modules/leap/*.h")
+file(GLOB LEAP_SOURCES         "modules/leap/*.cpp")
 file(GLOB OVERLAY_HEADERS      "overlay/*.h")
 file(GLOB OVERLAY_SOURCES      "overlay/*.cpp")
 file(GLOB NETWORK_HEADERS      "network/*.h")
@@ -187,6 +192,8 @@ add_library(${PROJECT_NAME} SHARED
     ${MACROS_SOURCES}
     ${AIM_HEADERS}
     ${AIM_SOURCES}
+    ${LEAP_HEADERS}
+    ${LEAP_SOURCES}
     ${SDK_SOURCES}
     ${SDK_HEADERS}
     ${OVERLAY_HEADERS}
@@ -207,6 +214,8 @@ source_group("Header Files\\Macros"      FILES ${MACROS_HEADERS})
 source_group("Source Files\\Macros"      FILES ${MACROS_SOURCES})
 source_group("Header Files\\Aim"         FILES ${AIM_HEADERS})
 source_group("Source Files\\Aim"         FILES ${AIM_SOURCES})
+source_group("Header Files\\Leap"        FILES ${LEAP_HEADERS})
+source_group("Source Files\\Leap"        FILES ${LEAP_SOURCES})
 source_group("Header Files\\Overlay"     FILES ${OVERLAY_HEADERS})
 source_group("Source Files\\Overlay"     FILES ${OVERLAY_SOURCES})
 source_group("Header Files\\Network"     FILES ${NETWORK_HEADERS})
