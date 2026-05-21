@@ -1,6 +1,7 @@
 #include "AutoclickerModule.h"
 #include "../../Settings.h"
 #include "../../network/Network.h"
+#include "../../overlay/Overlay.h"
 #include "Config.h"
 #include <chrono>
 #include <string>
@@ -118,6 +119,12 @@ namespace AutoclickerModule
 
                 while (!destruct && activeWindow == mcWindow && GetAsyncKeyState(VK_LBUTTON) && g_settings.acEnabled)
                 {
+                    // Silently pause while the overlay menu is open — the
+                    // user is configuring, not playing, so clicks (and the
+                    // jitter that piggybacks on lclick) shouldn't fire.
+                    // Matches the gate used by Aim/Leap/Macros.
+                    if (Overlay::IsMenuVisible()) break;
+
                     // Self-destruct is now driven entirely off the shared
                     // selfDestruct flag — the overlay's edge-detected
                     // selfDestructKey handler and the in-menu Self-Destruct
