@@ -89,6 +89,18 @@ struct Settings
     int  leapInterval    = 600;
     int  leapKey         = 0;
 
+    // Auto-ability — spams right-click while a sword is held and the
+    // crosshair is on a living entity, gated by a delay (attempt rate) and
+    // cooldown (min ms between successful fires, matching the ability's
+    // server cooldown). Built as a testbed for the user's anticheat to
+    // observe right-click ability spam patterns; gated on the hovering
+    // entity being a LivingEntity so it never fires at item drops / arrows.
+    bool autoAbilityEnabled       = false;
+    bool autoAbilityRequireSword  = true;
+    int  autoAbilityDelay         = 100;
+    int  autoAbilityCooldown      = 600;
+    int  autoAbilityKey           = 0;
+
     // Bump when defaults change. Load() force-resets the keybinds when it
     // reads an older version so legacy bindings (e.g. the historical
     // CapsLock→ESP that users had baked into their config) don't survive

@@ -63,6 +63,12 @@ void Settings::Save()
     fprintf(f, "leapInterval=%d\n",   leapInterval);
     fprintf(f, "leapKey=%d\n",        leapKey);
 
+    fprintf(f, "autoAbilityEnabled=%d\n",      autoAbilityEnabled      ? 1 : 0);
+    fprintf(f, "autoAbilityRequireSword=%d\n", autoAbilityRequireSword ? 1 : 0);
+    fprintf(f, "autoAbilityDelay=%d\n",        autoAbilityDelay);
+    fprintf(f, "autoAbilityCooldown=%d\n",     autoAbilityCooldown);
+    fprintf(f, "autoAbilityKey=%d\n",          autoAbilityKey);
+
     fclose(f);
 }
 
@@ -121,6 +127,11 @@ void Settings::Load()
         else if (k == "leapRequireAxe") leapRequireAxe = (val != 0);
         else if (k == "leapInterval")   leapInterval   = val;
         else if (k == "leapKey")        leapKey        = val;
+        else if (k == "autoAbilityEnabled")      autoAbilityEnabled      = (val != 0);
+        else if (k == "autoAbilityRequireSword") autoAbilityRequireSword = (val != 0);
+        else if (k == "autoAbilityDelay")        autoAbilityDelay        = val;
+        else if (k == "autoAbilityCooldown")     autoAbilityCooldown     = val;
+        else if (k == "autoAbilityKey")          autoAbilityKey          = val;
         else if (k.rfind("macro", 0) == 0) {
             // macro<i>_{name,delay,key}
             for (int i = 0; i < MAX_MACROS; ++i) {
@@ -179,6 +190,16 @@ void Settings::Load()
     if (leapInterval < 50)   leapInterval = 50;
     if (leapInterval > 1000) leapInterval = 1000;
     leapKey = clampVK(leapKey);
+
+    // Auto-ability clamps. Delay floor of 30ms keeps the right-click rate
+    // below MC's per-tick interaction handler (which services use-item once
+    // per 50ms tick anyway — finer pacing just wastes attempts). Cooldown
+    // floor of 50ms because anything tighter is effectively no cooldown.
+    if (autoAbilityDelay    < 30)   autoAbilityDelay    = 30;
+    if (autoAbilityDelay    > 1000) autoAbilityDelay    = 1000;
+    if (autoAbilityCooldown < 50)   autoAbilityCooldown = 50;
+    if (autoAbilityCooldown > 5000) autoAbilityCooldown = 5000;
+    autoAbilityKey = clampVK(autoAbilityKey);
 
     // Migration: any config older than the current schema gets its
     // keybinds force-cleared. Catches the historical CapsLock→ESP default

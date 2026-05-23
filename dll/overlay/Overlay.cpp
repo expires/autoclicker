@@ -1229,16 +1229,39 @@ static BOOL WINAPI hk_wglSwapBuffers(HDC hdc)
                     ImGui::Dummy(ImVec2(0, 6));
 
                     // Per-ability section header. Adding a new exploit here
-                    // means another bold label + its rows below.
+                    // means another bold label + its rows below. PushID per
+                    // section so duplicate row labels ("Enabled", "Hold Key")
+                    // don't collide on the ImGui widget IDs.
+                    //
+                    // ItemSpacing is pushed once below and held across both
+                    // sections so the outer PopStyleVar at the end of the
+                    // tab balances exactly one push. The inter-section gap
+                    // uses an explicit Dummy(0, 6) rather than relying on
+                    // spacing.
+                    ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0, 0));
+
+                    ImGui::PushID("leap");
                     ImGui::PushFont(ImGui::GetIO().Fonts->Fonts[2]);
                     ImGui::TextUnformatted("Auto Leap");
                     ImGui::PopFont();
-                    ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0, 0));
-
                     dirty |= RowCheckbox("Enabled",       &g_settings.leapEnabled);
                     dirty |= RowCheckbox("Require Axe",   &g_settings.leapRequireAxe);
                     dirty |= RowSlider  ("Interval (ms)", &g_settings.leapInterval, 50, 1000);
                     dirty |= RowKeybind ("Hold Key",      &g_settings.leapKey);
+                    ImGui::PopID();
+
+                    ImGui::Dummy(ImVec2(0, 6));
+
+                    ImGui::PushID("autoability");
+                    ImGui::PushFont(ImGui::GetIO().Fonts->Fonts[2]);
+                    ImGui::TextUnformatted("Auto Ability");
+                    ImGui::PopFont();
+                    dirty |= RowCheckbox("Enabled",       &g_settings.autoAbilityEnabled);
+                    dirty |= RowCheckbox("Require Sword", &g_settings.autoAbilityRequireSword);
+                    dirty |= RowSlider  ("Delay (ms)",    &g_settings.autoAbilityDelay,    30, 1000);
+                    dirty |= RowSlider  ("Cooldown (ms)", &g_settings.autoAbilityCooldown, 50, 5000);
+                    dirty |= RowKeybind ("Hold Key",      &g_settings.autoAbilityKey);
+                    ImGui::PopID();
                 }
                 else
                 {
