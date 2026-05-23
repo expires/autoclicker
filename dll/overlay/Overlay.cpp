@@ -1,6 +1,7 @@
 #include "Overlay.h"
 #include <Windows.h>
 #include <gl/GL.h>
+#include <climits>
 #include <cmath>
 #include <mutex>
 #define IMGUI_DEFINE_MATH_OPERATORS
@@ -362,6 +363,66 @@ static bool RowSlider(const char* label, int* v, int v_min, int v_max,
     window->DrawList->AddCircleFilled(
         ImVec2(frame.Min.x + fillW, frame.GetCenter().y), 8.0f,
         GetColorU32(ImGuiCol_SliderGrab));
+
+    return changed;
+}
+
+// InputInt sized to fit on the right of a chained row: label on the left,
+// numeric box with +/- step buttons on the right, same bottom-border chain
+// as RowSlider/RowCheckbox. Step / fast-step are configurable so cooldown
+// rows in the millisecond range get useful increments (100 / 1000) rather
+// than the +1 default. v_min / v_max clamp on commit so a hand-typed value
+// can't escape the slider's old range guarantees.
+static bool RowInputInt(const char* label, int* v,
+                        int v_min, int v_max,
+                        int step = 1, int fastStep = 10)
+{
+    using namespace ImGui;
+    ImGuiWindow* window = GetCurrentWindow();
+    if (window->SkipItems) return false;
+
+    const float rowH    = 36.0f;
+    const float w       = GetContentRegionAvail().x;
+    const float inputW  = 160.0f;
+    const ImVec2 origin = window->DC.CursorPos;
+
+    // Reserve the full row up front so the bottom-border draw below sits at
+    // a known Y. ItemAdd with a no-op ID — the InputInt below carries its
+    // own ID derived from the label.
+    const ImRect rowBB(origin, ImVec2(origin.x + w, origin.y + rowH));
+    ItemSize(rowBB);
+
+    // Label drawn at the row's vertical center, left-aligned. CalcTextSize
+    // is height-only here; horizontal sizing is the natural label width.
+    const ImVec2 labelSz = CalcTextSize(label);
+    RenderText(ImVec2(origin.x, origin.y + (rowH - labelSz.y) * 0.5f), label);
+
+    // Position the InputInt flush to the right. The +/- step buttons are
+    // appended after the field by InputInt itself, so we hand it the field
+    // width minus the buttons (~2 * (GetFrameHeight() + ItemInnerSpacing.x))
+    // to keep total geometry under inputW.
+    ImGuiContext& g = *GImGui;
+    const float btn = GetFrameHeight();
+    const float gap = g.Style.ItemInnerSpacing.x;
+    const float fieldW = inputW - 2.0f * (btn + gap);
+    SetCursorScreenPos(ImVec2(origin.x + w - inputW,
+                              origin.y + (rowH - GetFrameHeight()) * 0.5f));
+    SetNextItemWidth(fieldW);
+
+    char hidden[64];
+    snprintf(hidden, sizeof(hidden), "##%s", label);
+    bool changed = InputInt(hidden, v, step, fastStep,
+                            ImGuiInputTextFlags_CharsDecimal);
+    if (changed) {
+        if (*v < v_min) *v = v_min;
+        if (*v > v_max) *v = v_max;
+    }
+
+    // Bottom 1-px border to chain into adjacent rows, matching the slider /
+    // checkbox visual.
+    const ImU32 border = GetColorU32(ImGuiCol_Border);
+    window->DrawList->AddLine(ImVec2(rowBB.Min.x, rowBB.Max.y - 1),
+                              ImVec2(rowBB.Max.x, rowBB.Max.y - 1), border);
 
     return changed;
 }
@@ -1256,11 +1317,15 @@ static BOOL WINAPI hk_wglSwapBuffers(HDC hdc)
                     ImGui::PushFont(ImGui::GetIO().Fonts->Fonts[2]);
                     ImGui::TextUnformatted("Auto Ability");
                     ImGui::PopFont();
-                    dirty |= RowCheckbox("Enabled",       &g_settings.autoAbilityEnabled);
-                    dirty |= RowCheckbox("Require Sword", &g_settings.autoAbilityRequireSword);
-                    dirty |= RowSlider  ("Delay (ms)",    &g_settings.autoAbilityDelay,    30, 1000);
-                    dirty |= RowSlider  ("Cooldown (ms)", &g_settings.autoAbilityCooldown, 50, 5000);
-                    dirty |= RowKeybind ("Hold Key",      &g_settings.autoAbilityKey);
+                    dirty |= RowCheckbox ("Enabled",       &g_settings.autoAbilityEnabled);
+                    dirty |= RowCheckbox ("Require Sword", &g_settings.autoAbilityRequireSword);
+                    dirty |= RowInputInt ("Delay (ms)",    &g_settings.autoAbilityDelay,
+                                          30, 1000,         50, 500);
+                    // Max cooldown set to INT_MAX so any real-world ability
+                    // cooldown the user wants to test (minutes, hours) fits.
+                    dirty |= RowInputInt ("Cooldown (ms)", &g_settings.autoAbilityCooldown,
+                                          50, INT_MAX,      100, 1000);
+                    dirty |= RowKeybind  ("Hold Key",      &g_settings.autoAbilityKey);
                     ImGui::PopID();
                 }
                 else

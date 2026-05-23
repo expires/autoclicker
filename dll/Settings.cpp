@@ -198,7 +198,10 @@ void Settings::Load()
     if (autoAbilityDelay    < 30)   autoAbilityDelay    = 30;
     if (autoAbilityDelay    > 1000) autoAbilityDelay    = 1000;
     if (autoAbilityCooldown < 50)   autoAbilityCooldown = 50;
-    if (autoAbilityCooldown > 5000) autoAbilityCooldown = 5000;
+    // No upper clamp on cooldown — abilities the user wants to test span
+    // anywhere from 500ms (basic swing) to multi-minute ultimates, and
+    // INT_MAX (~24 days) is a safe ceiling that still fits a signed int
+    // without overflow when we subtract steady-clock millisecond deltas.
     autoAbilityKey = clampVK(autoAbilityKey);
 
     // Migration: any config older than the current schema gets its
