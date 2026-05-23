@@ -1,7 +1,7 @@
 #include "AutoAbilityModule.h"
 #include "../../Settings.h"
 #include "../../SDK/Minecraft.h"
-#include "../../SDK/Mappings.h"
+#include "Mappings.h"
 #include "../autoclicker/AutoclickerModule.h"
 #include "../../overlay/Overlay.h"
 #include <algorithm>
