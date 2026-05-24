@@ -176,7 +176,13 @@ static const char* GetKeyName(int vk)
 // a fresh press binds it.
 static ImGuiID s_kbActiveId      = 0;
 static bool    s_kbExcluded[256] = {};
-static bool RowKeybind(const char* label, int* vk)
+// allowMouse=true lets the picker bind middle / X1 / X2 mouse buttons.
+// LMB and RMB are still filtered unconditionally — clicking the pill itself
+// uses LMB, and RMB on the pill is the "clear binding" gesture. The bindings
+// that this opens up are useful for in-world toggles (friend-toggle on MMB
+// is the asking use-case) where the in-menu keystrokes don't apply because
+// the consuming module already gates on Overlay::IsMenuVisible().
+static bool RowKeybind(const char* label, int* vk, bool allowMouse = false)
 {
     using namespace ImGui;
     ImGuiWindow* window = GetCurrentWindow();
@@ -201,11 +207,25 @@ static bool RowKeybind(const char* label, int* vk)
 
     bool changed = false;
 
-    auto isFilteredVk = [](int k) {
-        // Mouse buttons aren't bindable here (they'd conflict with clicking
-        // around the menu).
-        return k == VK_LBUTTON || k == VK_RBUTTON || k == VK_MBUTTON ||
-               k == VK_XBUTTON1 || k == VK_XBUTTON2;
+    auto isFilteredVk = [allowMouse](int k) {
+        // LMB / RMB always filtered: LMB is how the user clicks the pill to
+        // activate the picker, RMB on the pill is the unbind gesture. Letting
+        // either bind would deadlock the UI.
+        if (k == VK_LBUTTON || k == VK_RBUTTON) return true;
+        // MMB / XBUTTONs: filtered by default to keep menu input clean, but
+        // allowed when the caller opts in (used by the friend-toggle key so
+        // the user can bind MMB to "add hovered player as friend").
+        if (!allowMouse &&
+            (k == VK_MBUTTON || k == VK_XBUTTON1 || k == VK_XBUTTON2))
+            return true;
+        // Side-agnostic SHIFT/CONTROL/MENU: pressing R-Shift sets BOTH
+        // VK_SHIFT (0x10) and VK_RSHIFT (0xA1), so a low-to-high scan
+        // would always bind the ambiguous generic VK and the runtime
+        // poll would then fire on either side. Filter the generic forms
+        // so only the explicit L/R variants can bind — preserves the
+        // user's intent to bind specifically RShift vs LShift.
+        if (k == VK_SHIFT || k == VK_CONTROL || k == VK_MENU) return true;
+        return false;
     };
 
     // Click handling: clicking the pill activates this picker. Clicking it
@@ -256,8 +276,13 @@ static bool RowKeybind(const char* label, int* vk)
             // explicitly skipped — letting it bind would create a conflict
             // (the same key would open the overlay AND fire the bound action).
             const int menuVk = (g_settings.menuKey > 0 && g_settings.menuKey <= 0xFE)
-                ? g_settings.menuKey : VK_INSERT;
-            for (int k = 0x07; k <= 0xFE; ++k) {
+                ? g_settings.menuKey : VK_RSHIFT;
+            // Loop start drops to 0x01 when mouse binds are allowed so
+            // VK_MBUTTON (0x04) and the XBUTTONs (0x05/0x06) come into
+            // range; isFilteredVk still rejects the always-unbindable
+            // LMB/RMB.
+            const int loopStart = allowMouse ? 0x01 : 0x07;
+            for (int k = loopStart; k <= 0xFE; ++k) {
                 if (isFilteredVk(k))  continue;
                 if (k == VK_ESCAPE)   continue;
                 if (k == menuVk)      continue;
@@ -977,11 +1002,11 @@ static BOOL WINAPI hk_wglSwapBuffers(HDC hdc)
         const bool listeningSuppress = s_keybindListening;
         s_keybindListening = false;
 
-        // Menu key — falls back to INSERT if user cleared the binding or
+        // Menu key — falls back to RSHIFT if user cleared the binding or
         // the value is out of the valid VK range, so the menu can never
         // become unreachable AND GetAsyncKeyState never sees a junk value.
         const bool menuValid = (g_settings.menuKey > 0 && g_settings.menuKey <= 0xFE);
-        const int  menuVk    = menuValid ? g_settings.menuKey : VK_INSERT;
+        const int  menuVk    = menuValid ? g_settings.menuKey : VK_RSHIFT;
         const bool menuEdge  = (GetAsyncKeyState(menuVk) & 1) != 0;
 
         // ESC only closes the overlay (never opens). Suppress it while a
@@ -1215,7 +1240,12 @@ static BOOL WINAPI hk_wglSwapBuffers(HDC hdc)
                     // room than chained into a continuous border list.
                     ImGui::PopStyleVar();
 
-                    dirty |= RowKeybind("Toggle Friend Key", &g_settings.friendKey);
+                    // Pass allowMouse=true so the user can bind MMB (the
+                    // asking use-case: middle-click a player to friend
+                    // them). The friends module already gates on
+                    // Overlay::IsMenuVisible() and foreground-window so
+                    // an MMB bind never double-fires inside the menu.
+                    dirty |= RowKeybind("Bind", &g_settings.friendKey, true);
 
                     ImGui::Dummy(ImVec2(0, 6));
 
@@ -1285,24 +1315,32 @@ static BOOL WINAPI hk_wglSwapBuffers(HDC hdc)
                         for (int i = 0; i < (int)snap.size(); ++i) {
                             ImGui::PushID(i);
 
-                            // Name on the left.
+                            // Right-aligned delete button. availX is captured
+                            // BEFORE drawing the label so SameLine(availX - delW)
+                            // can jump to the row's right edge regardless of
+                            // label length — the earlier Dummy-based layout
+                            // computed availX after the label, which yielded a
+                            // bogus spacer width on long names.
+                            const float delW   = 24.0f;
+                            const float availX = ImGui::GetContentRegionAvail().x;
+
                             ImGui::AlignTextToFramePadding();
                             ImGui::TextUnformatted(snap[i].c_str());
 
-                            // Right-aligned x button — same red-on-hover
-                            // styling as the macros tab delete button so
-                            // the destructive intent reads consistently.
-                            const float delW   = 24.0f;
-                            const float availX = ImGui::GetContentRegionAvail().x;
-                            ImGui::SameLine(0, 0);
-                            ImGui::Dummy(ImVec2(availX - delW, 0));
-                            ImGui::SameLine(0, 0);
-                            ImGui::PushStyleColor(ImGuiCol_Button,        FromHex(0x161d2e, 0.0f));
-                            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, FromHex(0x9b1c1c, 0.6f));
-                            ImGui::PushStyleColor(ImGuiCol_ButtonActive,  FromHex(0x7a1414, 0.8f));
-                            if (ImGui::Button("x##del", ImVec2(delW, 24)))
+                            ImGui::SameLine(availX - delW);
+                            // Same red-on-hover styling as the macros tab
+                            // delete button so the destructive intent reads
+                            // consistently across tabs. Solid background
+                            // (not the 0-alpha rest state used in macros) so
+                            // the button is discoverable without hover —
+                            // the user reported "no delete button" before.
+                            ImGui::PushStyleColor(ImGuiCol_Button,        FromHex(0x2a1212, 0.9f));
+                            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, FromHex(0x9b1c1c, 0.85f));
+                            ImGui::PushStyleColor(ImGuiCol_ButtonActive,  FromHex(0x7a1414, 1.0f));
+                            ImGui::PushStyleColor(ImGuiCol_Text,          FromHex(0xffffff));
+                            if (ImGui::Button("x", ImVec2(delW, 24)))
                                 toDelete = i;
-                            ImGui::PopStyleColor(3);
+                            ImGui::PopStyleColor(4);
 
                             ImGui::PopID();
                         }

@@ -44,15 +44,17 @@ struct Settings
     int  maxDistance  = 128;
 
     // Keybinds (VK_* codes). 0 = unbound.
-    //   menuKey — falls back to VK_INSERT if 0 so the user can never lock
-    //   themselves out of the menu by clearing the binding.
+    //   menuKey — defaults to VK_RSHIFT (0xA1). Right-shift is rarely used
+    //   in MC keymaps (left-shift is the conventional sneak key) so it's
+    //   a safe out-of-the-box bind. Runtime falls back to RShift if the
+    //   value ever goes to 0 so the user can't lock themselves out.
     //   acKey / espKey — 0 means "no toggle key", per the user's request
     //   to start with no ESP keybind.
     //   selfDestructKey — defaults to VK_END (0x23) so the historical hard-
     //   coded END behavior keeps working out of the box for users who don't
     //   touch it. Configurable in the Settings tab; pressing it sets
     //   selfDestruct = true, same as the in-menu Self-Destruct button.
-    int menuKey         = 0;
+    int menuKey         = 0xA1; // VK_RSHIFT
     int acKey           = 0;
     int espKey          = 0;
     int selfDestructKey = 0x23; // VK_END
@@ -129,7 +131,10 @@ struct Settings
     // reads an older version so legacy bindings (e.g. the historical
     // CapsLock→ESP that users had baked into their config) don't survive
     // the migration to "unbound by default".
-    static constexpr int CURRENT_VERSION = 2;
+    //
+    //   v3: menuKey default changed from 0 (runtime fallback to VK_INSERT)
+    //       to VK_RSHIFT — picks an explicit, rarely-used vanilla MC key.
+    static constexpr int CURRENT_VERSION = 3;
     int version = CURRENT_VERSION;
 
     void Load();

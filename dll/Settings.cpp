@@ -253,9 +253,11 @@ void Settings::Load()
 
     // Migration: any config older than the current schema gets its
     // keybinds force-cleared. Catches the historical CapsLock→ESP default
-    // that users had previously committed to disk.
+    // that users had previously committed to disk; v3 also rolls the menu
+    // key forward to VK_RSHIFT (0xA1) so existing users pick up the new
+    // explicit default rather than the implicit VK_INSERT fallback.
     if (version < CURRENT_VERSION) {
-        menuKey = 0;
+        menuKey = 0xA1; // VK_RSHIFT
         acKey   = 0;
         espKey  = 0;
         version = CURRENT_VERSION;
