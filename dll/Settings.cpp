@@ -1,6 +1,7 @@
 #include "Settings.h"
 #include <windows.h>
 #include <shlobj.h>
+#include <cctype>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
@@ -37,6 +38,8 @@ void Settings::Save()
     fprintf(f, "drawBox=%d\n",      drawBox      ? 1 : 0);
     fprintf(f, "drawName=%d\n",     drawName     ? 1 : 0);
     fprintf(f, "drawDistance=%d\n", drawDistance ? 1 : 0);
+    fprintf(f, "drawHealth=%d\n",     drawHealth       ? 1 : 0);
+    fprintf(f, "highlightFriends=%d\n", highlightFriends ? 1 : 0);
     fprintf(f, "menuKey=%d\n",         menuKey);
     fprintf(f, "acKey=%d\n",           acKey);
     fprintf(f, "espKey=%d\n",          espKey);
@@ -68,6 +71,17 @@ void Settings::Save()
     fprintf(f, "autoAbilityDelay=%d\n",        autoAbilityDelay);
     fprintf(f, "autoAbilityCooldown=%d\n",     autoAbilityCooldown);
     fprintf(f, "autoAbilityKey=%d\n",          autoAbilityKey);
+
+    fprintf(f, "friendKey=%d\n", friendKey);
+    // Snapshot the friends list under lock — the friends-module / overlay
+    // could be appending mid-Save. Worst case without the lock is a torn
+    // string in mid-resize, which corrupts the on-disk list.
+    {
+        std::lock_guard<std::mutex> lk(friendsMutex);
+        fprintf(f, "friendCount=%d\n", (int)friends.size());
+        for (size_t i = 0; i < friends.size(); ++i)
+            fprintf(f, "friend%zu=%s\n", i, friends[i].c_str());
+    }
 
     fclose(f);
 }
@@ -110,6 +124,8 @@ void Settings::Load()
         else if (k == "drawBox")      drawBox      = (val != 0);
         else if (k == "drawName")     drawName     = (val != 0);
         else if (k == "drawDistance") drawDistance = (val != 0);
+        else if (k == "drawHealth")       drawHealth       = (val != 0);
+        else if (k == "highlightFriends") highlightFriends = (val != 0);
         else if (k == "menuKey")         menuKey         = val;
         else if (k == "acKey")           acKey           = val;
         else if (k == "espKey")          espKey          = val;
@@ -132,6 +148,35 @@ void Settings::Load()
         else if (k == "autoAbilityDelay")        autoAbilityDelay        = val;
         else if (k == "autoAbilityCooldown")     autoAbilityCooldown     = val;
         else if (k == "autoAbilityKey")          autoAbilityKey          = val;
+        else if (k == "friendKey")               friendKey               = val;
+        else if (k == "friendCount") {
+            // Reset before reading entries so a partial older list doesn't
+            // leak stale tail names. The actual content arrives in subsequent
+            // friend<i>=name lines handled below.
+            std::lock_guard<std::mutex> lk(friendsMutex);
+            friends.clear();
+            int n = val;
+            if (n < 0) n = 0;
+            friends.reserve((size_t)n);
+        }
+        else if (k.rfind("friend", 0) == 0 && k.size() > 6 &&
+                 isdigit((unsigned char)k[6])) {
+            // friend<i>=<name>. We don't trust <i> to be contiguous (a hand-
+            // edited config could skip indices), so just append in file order.
+            std::string name = valStr;
+            // Lowercase for case-insensitive matching — MC usernames are
+            // case-insensitive on the server, and the ESP-side lookup will
+            // also lowercase before comparing.
+            for (char& c : name) c = (char)tolower((unsigned char)c);
+            if (!name.empty()) {
+                std::lock_guard<std::mutex> lk(friendsMutex);
+                // Soft de-dup so a hand-edited config can't grow the list
+                // forever with copies of the same name.
+                bool exists = false;
+                for (const auto& f : friends) if (f == name) { exists = true; break; }
+                if (!exists) friends.push_back(std::move(name));
+            }
+        }
         else if (k.rfind("macro", 0) == 0) {
             // macro<i>_{name,delay,key}
             for (int i = 0; i < MAX_MACROS; ++i) {
@@ -203,6 +248,8 @@ void Settings::Load()
     // INT_MAX (~24 days) is a safe ceiling that still fits a signed int
     // without overflow when we subtract steady-clock millisecond deltas.
     autoAbilityKey = clampVK(autoAbilityKey);
+
+    friendKey = clampVK(friendKey);
 
     // Migration: any config older than the current schema gets its
     // keybinds force-cleared. Catches the historical CapsLock→ESP default

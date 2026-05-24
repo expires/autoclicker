@@ -1,5 +1,9 @@
 #pragma once
 
+#include <mutex>
+#include <string>
+#include <vector>
+
 // One hotbar macro: when `key` is pressed (edge), the macros thread looks for
 // an item whose display name contains `name` (case-insensitive substring) in
 // slots 0-8, switches to that slot, right-clicks once, then restores the
@@ -31,6 +35,11 @@ struct Settings
     bool drawBox      = true;
     bool drawName     = true;
     bool drawDistance = true;
+    bool drawHealth   = true;
+    // Recolor the box + nametag chunks bright green for friends. Cosmetic
+    // override of the team-derived color — disable to keep team colors but
+    // still see the friend list in the Friends tab.
+    bool highlightFriends = true;
     // 8 chunks (128 blocks). Fixed — no UI slider for this anymore.
     int  maxDistance  = 128;
 
@@ -100,6 +109,21 @@ struct Settings
     int  autoAbilityDelay         = 100;
     int  autoAbilityCooldown      = 600;
     int  autoAbilityKey           = 0;
+
+    // Friends list — lowercase usernames matched case-insensitively against
+    // the bare GameProfile name pulled off each Player entity. The list is
+    // mutated from the overlay UI (manual add / remove) and the friends
+    // module (hotkey-toggle on hovered player); read by ESP every frame to
+    // decide which targets get the friend tint. Mutex guards every access.
+    //
+    // Soft cap: nothing enforces an upper bound at the data layer — the
+    // overlay tab just visually scrolls past a screenful — but anyone with
+    // hundreds of friends in a Minecraft cheat is using the wrong tool.
+    mutable std::mutex       friendsMutex;
+    std::vector<std::string> friends;
+    // Edge-triggered: press once while crosshair is on a Player → toggle.
+    // 0 = unbound (manual entry only via the Friends tab).
+    int friendKey = 0;
 
     // Bump when defaults change. Load() force-resets the keybinds when it
     // reads an older version so legacy bindings (e.g. the historical

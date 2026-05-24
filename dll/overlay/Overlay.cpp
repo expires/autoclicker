@@ -368,11 +368,13 @@ static bool RowSlider(const char* label, int* v, int v_min, int v_max,
 }
 
 // InputInt sized to fit on the right of a chained row: label on the left,
-// numeric box with +/- step buttons on the right, same bottom-border chain
-// as RowSlider/RowCheckbox. Step / fast-step are configurable so cooldown
-// rows in the millisecond range get useful increments (100 / 1000) rather
-// than the +1 default. v_min / v_max clamp on commit so a hand-typed value
-// can't escape the slider's old range guarantees.
+// numeric box with +/- step buttons on the right. Step / fast-step are
+// configurable so cooldown rows in the millisecond range get useful
+// increments (100 / 1000) rather than the +1 default. v_min / v_max clamp
+// on commit so a hand-typed value can't escape the slider's old range
+// guarantees. No bottom border — the other Row* helpers don't draw one
+// either, and the visual mismatch looked off when two InputInt rows sat
+// next to a borderless Checkbox above and Keybind below.
 static bool RowInputInt(const char* label, int* v,
                         int v_min, int v_max,
                         int step = 1, int fastStep = 10)
@@ -417,12 +419,6 @@ static bool RowInputInt(const char* label, int* v,
         if (*v < v_min) *v = v_min;
         if (*v > v_max) *v = v_max;
     }
-
-    // Bottom 1-px border to chain into adjacent rows, matching the slider /
-    // checkbox visual.
-    const ImU32 border = GetColorU32(ImGuiCol_Border);
-    window->DrawList->AddLine(ImVec2(rowBB.Min.x, rowBB.Max.y - 1),
-                              ImVec2(rowBB.Max.x, rowBB.Max.y - 1), border);
 
     return changed;
 }
@@ -663,26 +659,55 @@ static void DrawEsp(float dispW, float dispH)
         // Clip insane offscreen values
         if (maxSX < 0 || minSX > dispW || maxSY < 0 || minSY > dispH) continue;
 
+        // Friend tint — bright lime green. Override the team-derived box
+        // and nametag colors so a friend pops visually no matter what team
+        // color the server assigned. Gated by highlightFriends so the user
+        // can opt out (e.g. for a screenshot where they want pure team
+        // colors but still want the friends list functional elsewhere).
+        const bool tintFriend = t.isFriend && g_settings.highlightFriends;
+        const ImU32 friendCol = IM_COL32(85, 255, 85, 255);
+
         if (g_settings.drawBox)
         {
             // Drop alpha to ~220/255 so the box reads as a subtle outline
             // rather than fully saturated, matching the old hardcoded look
             // but in the player's team color.
-            const ImU32 colBox = (t.boxColor & 0x00FFFFFFu) | (220u << 24);
+            const uint32_t srcCol = tintFriend ? friendCol : t.boxColor;
+            const ImU32 colBox = (srcCol & 0x00FFFFFFu) | (220u << 24);
             dl->AddRect(ImVec2(minSX, minSY), ImVec2(maxSX, maxSY), colBox, 0.0f, 0, 1.5f);
         }
 
-        if (g_settings.drawName || g_settings.drawDistance)
+        if (g_settings.drawName || g_settings.drawDistance || g_settings.drawHealth)
         {
             // Build the list of colored chunks we'll render. drawName toggles
             // include the team-formatted player chunks; drawDistance appends
-            // a final dimmed chunk with the distance.
+            // a final dimmed chunk with the distance; drawHealth appends
+            // an HP chunk with a red→yellow→green ramp.
             struct Chunk { std::string text; ImU32 col; };
             std::vector<Chunk> chunks;
             if (g_settings.drawName) {
                 for (const auto& nc : t.nameChunks)
-                    if (!nc.first.empty())
-                        chunks.push_back({nc.first, (ImU32)nc.second});
+                    if (!nc.first.empty()) {
+                        // Friend tint replaces every name chunk's color so
+                        // multi-color guild prefixes don't drown the signal.
+                        const ImU32 col = tintFriend ? friendCol : (ImU32)nc.second;
+                        chunks.push_back({nc.first, col});
+                    }
+            }
+            if (g_settings.drawHealth && t.health >= 0.0f && t.maxHealth > 0.0f) {
+                // Display in HP units (not hearts) so the value matches what
+                // sandbox/debug tools / commands report. Ramp the color by
+                // health fraction: <30% red, <70% yellow, else green — quick
+                // visual read of whether a player is finishable.
+                char hpBuf[24];
+                snprintf(hpBuf, sizeof(hpBuf), " %.0f/%.0f",
+                         t.health, t.maxHealth);
+                const float frac = t.health / t.maxHealth;
+                ImU32 hpCol;
+                if (frac < 0.30f)      hpCol = IM_COL32(255,  80,  80, 230);
+                else if (frac < 0.70f) hpCol = IM_COL32(255, 210,  90, 230);
+                else                   hpCol = IM_COL32(120, 230, 120, 230);
+                chunks.push_back({hpBuf, hpCol});
             }
             if (g_settings.drawDistance) {
                 char distBuf[16];
@@ -1091,9 +1116,10 @@ static BOOL WINAPI hk_wglSwapBuffers(HDC hdc)
                 if (SidebarTab("Autoclicker", s_currentTab == 0)) s_currentTab = 0;
                 if (SidebarTab("Aim",         s_currentTab == 1)) s_currentTab = 1;
                 if (SidebarTab("ESP",         s_currentTab == 2)) s_currentTab = 2;
-                if (SidebarTab("Macros",      s_currentTab == 3)) s_currentTab = 3;
-                if (SidebarTab("Clans",       s_currentTab == 4)) s_currentTab = 4;
-                if (SidebarTab("Settings",    s_currentTab == 5)) s_currentTab = 5;
+                if (SidebarTab("Friends",     s_currentTab == 3)) s_currentTab = 3;
+                if (SidebarTab("Macros",      s_currentTab == 4)) s_currentTab = 4;
+                if (SidebarTab("Clans",       s_currentTab == 5)) s_currentTab = 5;
+                if (SidebarTab("Settings",    s_currentTab == 6)) s_currentTab = 6;
             }
             ImGui::EndChild();
 
@@ -1110,8 +1136,9 @@ static BOOL WINAPI hk_wglSwapBuffers(HDC hdc)
                     s_currentTab == 0 ? "autoclicker" :
                     s_currentTab == 1 ? "aim assist"  :
                     s_currentTab == 2 ? "esp"         :
-                    s_currentTab == 3 ? "macros"      :
-                    s_currentTab == 4 ? "clans"       :
+                    s_currentTab == 3 ? "friends"     :
+                    s_currentTab == 4 ? "macros"      :
+                    s_currentTab == 5 ? "clans"       :
                                         "settings");
                 ImGui::PopFont();
 
@@ -1168,13 +1195,136 @@ static BOOL WINAPI hk_wglSwapBuffers(HDC hdc)
                 {
                     dirty |= RowCheckbox("Enabled",  &g_settings.espEnabled);
                     if (g_settings.espEnabled) {
-                        dirty |= RowCheckbox("Box",      &g_settings.drawBox);
-                        dirty |= RowCheckbox("Name",     &g_settings.drawName);
-                        dirty |= RowCheckbox("Distance", &g_settings.drawDistance);
+                        dirty |= RowCheckbox("Box",                &g_settings.drawBox);
+                        dirty |= RowCheckbox("Name",               &g_settings.drawName);
+                        dirty |= RowCheckbox("Distance",           &g_settings.drawDistance);
+                        dirty |= RowCheckbox("Health",             &g_settings.drawHealth);
+                        dirty |= RowCheckbox("Highlight Friends",  &g_settings.highlightFriends);
                     }
                     dirty |= RowKeybind("Toggle Key", &g_settings.espKey);
                 }
                 else if (s_currentTab == 3)
+                {
+                    // Friends tab — separate from ESP because the list can
+                    // grow long and we want it scrollable without pushing
+                    // the ESP toggles out of view. Toggle Friend Key lives
+                    // here too so all friend-related controls cluster.
+                    //
+                    // Flip back to default ItemSpacing for this tab; the
+                    // free-form list of names reads better with breathing
+                    // room than chained into a continuous border list.
+                    ImGui::PopStyleVar();
+
+                    dirty |= RowKeybind("Toggle Friend Key", &g_settings.friendKey);
+
+                    ImGui::Dummy(ImVec2(0, 6));
+
+                    // ── Manual add row ──────────────────────────────────
+                    // Buffer survives across frames so the user can type
+                    // mid-edit without each frame nuking their input.
+                    // Cleared after a successful add.
+                    static char addBuf[32] = {};
+                    ImGui::PushItemWidth(-80.0f);
+                    bool submitted = ImGui::InputTextWithHint(
+                        "##friendadd", "username (Enter to add)",
+                        addBuf, sizeof(addBuf),
+                        ImGuiInputTextFlags_EnterReturnsTrue);
+                    ImGui::PopItemWidth();
+                    ImGui::SameLine(0, 6);
+                    bool clicked = ImGui::Button("Add", ImVec2(74.0f, 0));
+
+                    if (submitted || clicked) {
+                        // Trim + lowercase. MC usernames are case-insensitive
+                        // on the server, so the on-disk canonical form is
+                        // lowercase to keep the ESP-side string compare cheap.
+                        std::string name = addBuf;
+                        while (!name.empty() && std::isspace((unsigned char)name.front()))
+                            name.erase(name.begin());
+                        while (!name.empty() && std::isspace((unsigned char)name.back()))
+                            name.pop_back();
+                        for (char& c : name) c = (char)std::tolower((unsigned char)c);
+
+                        if (!name.empty()) {
+                            std::lock_guard<std::mutex> lk(g_settings.friendsMutex);
+                            bool exists = false;
+                            for (const auto& f : g_settings.friends)
+                                if (f == name) { exists = true; break; }
+                            if (!exists) {
+                                g_settings.friends.push_back(std::move(name));
+                                dirty = true;
+                            }
+                        }
+                        addBuf[0] = '\0';
+                    }
+
+                    ImGui::Dummy(ImVec2(0, 6));
+
+                    // ── List ────────────────────────────────────────────
+                    // Snapshot under the mutex — the friends module could
+                    // be mutating the underlying vector from its own
+                    // thread, and iterating it raw would race with
+                    // push_back's potential reallocation.
+                    std::vector<std::string> snap;
+                    {
+                        std::lock_guard<std::mutex> lk(g_settings.friendsMutex);
+                        snap = g_settings.friends;
+                    }
+
+                    if (snap.empty()) {
+                        ImGui::PushStyleColor(ImGuiCol_Text, FromHex(0x707a8c));
+                        ImGui::TextUnformatted("No friends yet. Bind a key above and");
+                        ImGui::TextUnformatted("toggle while hovering a player, or type");
+                        ImGui::TextUnformatted("a username and press Enter.");
+                        ImGui::PopStyleColor();
+                    } else {
+                        // Deferred delete index — mutating the vector while
+                        // iterating its snapshot would still leave the live
+                        // list in sync, but a single deletion per frame is
+                        // simpler to reason about than a remove-while-scan.
+                        int toDelete = -1;
+                        for (int i = 0; i < (int)snap.size(); ++i) {
+                            ImGui::PushID(i);
+
+                            // Name on the left.
+                            ImGui::AlignTextToFramePadding();
+                            ImGui::TextUnformatted(snap[i].c_str());
+
+                            // Right-aligned x button — same red-on-hover
+                            // styling as the macros tab delete button so
+                            // the destructive intent reads consistently.
+                            const float delW   = 24.0f;
+                            const float availX = ImGui::GetContentRegionAvail().x;
+                            ImGui::SameLine(0, 0);
+                            ImGui::Dummy(ImVec2(availX - delW, 0));
+                            ImGui::SameLine(0, 0);
+                            ImGui::PushStyleColor(ImGuiCol_Button,        FromHex(0x161d2e, 0.0f));
+                            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, FromHex(0x9b1c1c, 0.6f));
+                            ImGui::PushStyleColor(ImGuiCol_ButtonActive,  FromHex(0x7a1414, 0.8f));
+                            if (ImGui::Button("x##del", ImVec2(delW, 24)))
+                                toDelete = i;
+                            ImGui::PopStyleColor(3);
+
+                            ImGui::PopID();
+                        }
+                        if (toDelete >= 0) {
+                            std::lock_guard<std::mutex> lk(g_settings.friendsMutex);
+                            // Re-find by name in the live vector — the
+                            // snapshot index could be stale if the friends
+                            // module appended between snap-copy and now.
+                            for (auto it = g_settings.friends.begin();
+                                 it != g_settings.friends.end(); ++it) {
+                                if (*it == snap[toDelete]) {
+                                    g_settings.friends.erase(it);
+                                    dirty = true;
+                                    break;
+                                }
+                            }
+                        }
+                    }
+
+                    ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0, 0));
+                }
+                else if (s_currentTab == 4)
                 {
                     // Macros — flip back to default ItemSpacing for this tab.
                     // The other tabs intentionally use zero spacing so adjacent
@@ -1271,7 +1421,7 @@ static BOOL WINAPI hk_wglSwapBuffers(HDC hdc)
 
                     ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0, 0));
                 }
-                else if (s_currentTab == 4)
+                else if (s_currentTab == 5)
                 {
                     // EXPERIMENTAL banner. Drops out of zero-ItemSpacing for
                     // a few lines so the warning + section header get some
@@ -1328,7 +1478,7 @@ static BOOL WINAPI hk_wglSwapBuffers(HDC hdc)
                     dirty |= RowKeybind  ("Hold Key",      &g_settings.autoAbilityKey);
                     ImGui::PopID();
                 }
-                else
+                else if (s_currentTab == 6)
                 {
                     dirty |= RowKeybind("Menu Key",          &g_settings.menuKey);
                     dirty |= RowKeybind("Self-Destruct Key", &g_settings.selfDestructKey);

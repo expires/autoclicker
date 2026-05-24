@@ -47,6 +47,7 @@ foreach(KEY
     mtd_HitResult_getType          desc_HitResult_getType
     mtd_LivingEntity_isUsingItem
     mtd_LivingEntity_getItemInHand desc_LivingEntity_getItemInHand
+    mtd_LivingEntity_getHealth     mtd_LivingEntity_getMaxHealth
     mtd_Entity_getName             desc_Entity_getName
     mtd_Entity_getUUID             desc_Entity_getUUID
     mtd_Entity_getTypeName         desc_Entity_getTypeName
@@ -178,6 +179,8 @@ file(GLOB LEAP_HEADERS         "modules/leap/*.h")
 file(GLOB LEAP_SOURCES         "modules/leap/*.cpp")
 file(GLOB AUTOABILITY_HEADERS  "modules/autoability/*.h")
 file(GLOB AUTOABILITY_SOURCES  "modules/autoability/*.cpp")
+file(GLOB FRIENDS_HEADERS      "modules/friends/*.h")
+file(GLOB FRIENDS_SOURCES      "modules/friends/*.cpp")
 file(GLOB OVERLAY_HEADERS      "overlay/*.h")
 file(GLOB OVERLAY_SOURCES      "overlay/*.cpp")
 file(GLOB NETWORK_HEADERS      "network/*.h")
@@ -199,6 +202,8 @@ add_library(${PROJECT_NAME} SHARED
     ${LEAP_SOURCES}
     ${AUTOABILITY_HEADERS}
     ${AUTOABILITY_SOURCES}
+    ${FRIENDS_HEADERS}
+    ${FRIENDS_SOURCES}
     ${SDK_SOURCES}
     ${SDK_HEADERS}
     ${OVERLAY_HEADERS}
@@ -223,6 +228,8 @@ source_group("Header Files\\Leap"        FILES ${LEAP_HEADERS})
 source_group("Source Files\\Leap"        FILES ${LEAP_SOURCES})
 source_group("Header Files\\AutoAbility" FILES ${AUTOABILITY_HEADERS})
 source_group("Source Files\\AutoAbility" FILES ${AUTOABILITY_SOURCES})
+source_group("Header Files\\Friends"     FILES ${FRIENDS_HEADERS})
+source_group("Source Files\\Friends"     FILES ${FRIENDS_SOURCES})
 source_group("Header Files\\Overlay"     FILES ${OVERLAY_HEADERS})
 source_group("Source Files\\Overlay"     FILES ${OVERLAY_SOURCES})
 source_group("Header Files\\Network"     FILES ${NETWORK_HEADERS})

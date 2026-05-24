@@ -3,6 +3,7 @@
 #include "../../SDK/Minecraft.h"
 #include "Mappings.h"
 #include "../autoclicker/AutoclickerModule.h"
+#include <cctype>
 #include <thread>
 #include <chrono>
 
@@ -155,6 +156,33 @@ namespace EspModule
                 // overlay can paint each Style-span (prefix / name / suffix)
                 // in its own color the same way MC's renderer does.
                 t.nameChunks = p.getFormattedNameChunks();
+
+                // Bare GameProfile username for friend matching. Entity.getName()
+                // on a Player returns a Component wrapping gameProfile.getName(),
+                // so .getString() gives the raw "Notch" with no team prefix.
+                {
+                    Component bare = p.getName();
+                    if (bare.GetInstance() != nullptr) {
+                        t.playerName = bare.getString();
+                        for (char& c : t.playerName)
+                            c = (char)std::tolower((unsigned char)c);
+                    }
+                }
+
+                // HP — for the nametag readout. Negative on failure; overlay
+                // suppresses the chunk so a lookup hiccup doesn't print "-1/-1".
+                t.health    = p.getHealth();
+                t.maxHealth = p.getMaxHealth();
+
+                // Friend lookup under the friends-list mutex. Hold the lock
+                // for the linear scan only; the per-target bool then rides
+                // with the snapshot so the overlay can render lock-free.
+                if (!t.playerName.empty()) {
+                    std::lock_guard<std::mutex> lk(g_settings.friendsMutex);
+                    for (const auto& f : g_settings.friends) {
+                        if (f == t.playerName) { t.isFriend = true; break; }
+                    }
+                }
 
                 // formatNameForTeam emits chunks in order: [prefix] name [suffix].
                 // The team's own color is applied to every chunk that doesn't

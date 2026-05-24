@@ -30,3 +30,23 @@ bool LivingEntity::isUsingItem()
 		MTD_LivingEntity_isUsingItem, "()Z");
 	return lc->env->CallBooleanMethod(this->GetInstance(), isUsingItem);
 }
+
+float LivingEntity::getHealth()
+{
+	jmethodID m = lc->env->GetMethodID(this->GetClass(),
+		MTD_LivingEntity_getHealth, "()F");
+	if (!m) { lc->env->ExceptionClear(); return -1.0f; }
+	jfloat v = lc->env->CallFloatMethod(this->GetInstance(), m);
+	if (lc->env->ExceptionCheck()) { lc->env->ExceptionClear(); return -1.0f; }
+	return v;
+}
+
+float LivingEntity::getMaxHealth()
+{
+	jmethodID m = lc->env->GetMethodID(this->GetClass(),
+		MTD_LivingEntity_getMaxHealth, "()F");
+	if (!m) { lc->env->ExceptionClear(); return -1.0f; }
+	jfloat v = lc->env->CallFloatMethod(this->GetInstance(), m);
+	if (lc->env->ExceptionCheck()) { lc->env->ExceptionClear(); return -1.0f; }
+	return v;
+}
