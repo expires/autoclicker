@@ -3,9 +3,11 @@
 #include "../../SDK/Minecraft.h"
 #include "../autoclicker/AutoclickerModule.h"
 #include "../../overlay/Overlay.h"
+#include <cctype>
 #include <cfloat>
 #include <chrono>
 #include <cmath>
+#include <string>
 #include <thread>
 
 #ifndef M_PI
@@ -140,6 +142,36 @@ namespace AimAssistModule
                         const bool same = (lc->env->IsSameObject(pt, myTeam) == JNI_TRUE);
                         lc->env->DeleteLocalRef(pt);
                         if (same) continue;
+                    }
+                }
+
+                // Friend skip. Mirrors the team-skip policy: a player you've
+                // marked as a friend should never be a valid aim target,
+                // regardless of what scoreboard team the server has them on.
+                // Cheap to compute — getName().getString() is one JNI call
+                // and the friends list is small. Skip the whole block when
+                // the list is empty so cross-server play with no friends
+                // configured doesn't pay even the linear-scan cost.
+                {
+                    bool listEmpty;
+                    {
+                        std::lock_guard<std::mutex> lk(g_settings.friendsMutex);
+                        listEmpty = g_settings.friends.empty();
+                    }
+                    if (!listEmpty) {
+                        Component bare = p.getName();
+                        if (bare.GetInstance() != nullptr) {
+                            std::string name = bare.getString();
+                            for (char& c : name)
+                                c = (char)std::tolower((unsigned char)c);
+                            bool isFriend = false;
+                            {
+                                std::lock_guard<std::mutex> lk(g_settings.friendsMutex);
+                                for (const auto& f : g_settings.friends)
+                                    if (f == name) { isFriend = true; break; }
+                            }
+                            if (isFriend) continue;
+                        }
                     }
                 }
 
