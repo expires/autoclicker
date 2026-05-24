@@ -1,4 +1,5 @@
 #include "AutoclickerModule.h"
+#include "../../Teardown.h"
 #include "../../Settings.h"
 #include "../../network/Network.h"
 #include "../../overlay/Overlay.h"
@@ -226,8 +227,12 @@ namespace AutoclickerModule
                 }
             }
             lc->vm->DetachCurrentThread();
-            FreeLibraryAndExitThread(instance, 0);
-            return 0;
+            // Replaces the bare FreeLibraryAndExitThread — Teardown waits
+            // for every other worker (aim/esp/jitter/etc.) to return and
+            // drains the render-thread hook before the DLL is unmapped.
+            // Without this, uninjecting while aim assist or jitter is
+            // mid-SendInput crashes MC (return-into-freed-memory).
+            Teardown::FinalizeAndUnload(instance);
         }
         else
         {
