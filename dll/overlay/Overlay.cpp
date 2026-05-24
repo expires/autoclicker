@@ -463,7 +463,10 @@ static bool SidebarTab(const char* label, bool selected)
     if (window->SkipItems) return false;
 
     ImVec2 p = window->DC.CursorPos;
-    ImVec2 size(window->Size.x, 38.0f);
+    // 32px tall — trimmed from 38 so all seven tabs (Autoclicker, Aim,
+    // ESP, Friends, Macros, Clans, Settings) fit inside the 380px window
+    // without the last one clipping off the bottom edge.
+    ImVec2 size(window->Size.x, 32.0f);
     ImRect bb(p, ImVec2(p.x + size.x, p.y + size.y));
 
     ImGuiID id = window->GetID(label);
