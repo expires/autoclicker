@@ -448,6 +448,65 @@ static bool RowInputInt(const char* label, int* v,
     return changed;
 }
 
+// Two labeled InputInts side-by-side in a single row. Each half splits the
+// row width evenly (label left, narrower input on the right with +/- step
+// buttons). Used by Auto Ability so the Delay and Cooldown rows read as the
+// related pair they are rather than two stacked full-width rows. Same
+// clamp-on-commit semantics as RowInputInt.
+static bool RowInputIntPair(const char* labelA, int* vA, int minA, int maxA, int stepA, int fastA,
+                            const char* labelB, int* vB, int minB, int maxB, int stepB, int fastB)
+{
+    using namespace ImGui;
+    ImGuiWindow* window = GetCurrentWindow();
+    if (window->SkipItems) return false;
+
+    const float rowH    = 36.0f;
+    const float w       = GetContentRegionAvail().x;
+    // 6px gutter between the two halves so the inputs don't visually fuse.
+    const float gutter  = 6.0f;
+    const float halfW   = (w - gutter) * 0.5f;
+    // Input cell is ~110px (narrower than RowInputInt's 160 so the label has
+    // room on the left side of the half). +/- buttons still come out of this
+    // budget — fieldW below subtracts them.
+    const float inputW  = 110.0f;
+    const ImVec2 origin = window->DC.CursorPos;
+
+    const ImRect rowBB(origin, ImVec2(origin.x + w, origin.y + rowH));
+    ItemSize(rowBB);
+
+    ImGuiContext& g = *GImGui;
+    const float btn = GetFrameHeight();
+    const float gap = g.Style.ItemInnerSpacing.x;
+    const float fieldW = inputW - 2.0f * (btn + gap);
+
+    // Shared draw routine for one half. originX is the left edge of the half;
+    // label sits at originX vertically centered, input flushes to originX+halfW.
+    auto drawHalf = [&](float originX, const char* label, int* v, int vMin, int vMax,
+                        int step, int fast) -> bool {
+        const ImVec2 labelSz = CalcTextSize(label);
+        RenderText(ImVec2(originX, origin.y + (rowH - labelSz.y) * 0.5f), label);
+
+        SetCursorScreenPos(ImVec2(originX + halfW - inputW,
+                                  origin.y + (rowH - GetFrameHeight()) * 0.5f));
+        SetNextItemWidth(fieldW);
+
+        char hidden[64];
+        snprintf(hidden, sizeof(hidden), "##%s", label);
+        bool changed = InputInt(hidden, v, step, fast,
+                                ImGuiInputTextFlags_CharsDecimal);
+        if (changed) {
+            if (*v < vMin) *v = vMin;
+            if (*v > vMax) *v = vMax;
+        }
+        return changed;
+    };
+
+    bool changedA = drawHalf(origin.x,                       labelA, vA, minA, maxA, stepA, fastA);
+    bool changedB = drawHalf(origin.x + halfW + gutter,      labelB, vB, minB, maxB, stepB, fastB);
+
+    return changedA || changedB;
+}
+
 // Full-width clickable row used as a sidebar tab item: a label and a 2-px
 // full-height accent stripe along the right edge that slides between tabs
 // when the selection changes. Mirrors the `custom::tab` style from the
@@ -1510,12 +1569,16 @@ static BOOL WINAPI hk_wglSwapBuffers(HDC hdc)
                     ImGui::PopFont();
                     dirty |= RowCheckbox ("Enabled",       &g_settings.autoAbilityEnabled);
                     dirty |= RowCheckbox ("Require Sword", &g_settings.autoAbilityRequireSword);
-                    dirty |= RowInputInt ("Delay (ms)",    &g_settings.autoAbilityDelay,
-                                          30, 1000,         50, 500);
-                    // Max cooldown set to INT_MAX so any real-world ability
-                    // cooldown the user wants to test (minutes, hours) fits.
-                    dirty |= RowInputInt ("Cooldown (ms)", &g_settings.autoAbilityCooldown,
-                                          50, INT_MAX,      100, 1000);
+                    // Delay + Cooldown share a row — they're the related
+                    // timing pair (attempt rate vs server-side fire gap)
+                    // and read better side-by-side than stacked. Max
+                    // cooldown stays at INT_MAX so multi-minute ability
+                    // tests still fit.
+                    dirty |= RowInputIntPair(
+                        "Delay (ms)",    &g_settings.autoAbilityDelay,
+                        30, 1000,         50, 500,
+                        "Cooldown (ms)", &g_settings.autoAbilityCooldown,
+                        50, INT_MAX,     100, 1000);
                     dirty |= RowKeybind  ("Hold Key",      &g_settings.autoAbilityKey);
                     ImGui::PopID();
                 }

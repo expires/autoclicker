@@ -97,7 +97,32 @@ namespace AutoAbilityModule
                                 lc->env->DeleteLocalRef(myTeam);
                             }
                         }
-                        result = !sameTeam;
+
+                        // Friend skip — mirrors the AimAssist policy. A
+                        // player you've friended should never eat an ability
+                        // right-click even if the server has them on a
+                        // different team. Empty-list fast-path so users
+                        // without any friends configured don't pay the
+                        // getName().getString() cost per hit-test.
+                        bool isFriend = false;
+                        bool listEmpty;
+                        {
+                            std::lock_guard<std::mutex> lk(g_settings.friendsMutex);
+                            listEmpty = g_settings.friends.empty();
+                        }
+                        if (!sameTeam && !listEmpty) {
+                            Component bare = ent.getName();
+                            if (bare.GetInstance() != nullptr) {
+                                std::string name = bare.getString();
+                                for (char& c : name)
+                                    c = (char)std::tolower((unsigned char)c);
+                                std::lock_guard<std::mutex> lk(g_settings.friendsMutex);
+                                for (const auto& f : g_settings.friends)
+                                    if (f == name) { isFriend = true; break; }
+                            }
+                        }
+
+                        result = !sameTeam && !isFriend;
                     }
                 }
             }
