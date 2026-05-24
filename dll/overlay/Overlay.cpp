@@ -1576,12 +1576,22 @@ static BOOL WINAPI hk_wglSwapBuffers(HDC hdc)
                     dirty |= RowCheckbox("Enabled",        &g_settings.autoAbilityEnabled);
                     dirty |= RowCheckbox("Require Sword",  &g_settings.autoAbilityRequireSword);
                     dirty |= RowSlider  ("Delay (ms)",     &g_settings.autoAbilityDelay,    30, 1000);
-                    // Cooldown slider caps at 10000ms (10s) — covers the
-                    // real-world ability range cleanly on a slider; the
-                    // underlying clamp in Settings still allows up to
-                    // INT_MAX for hand-edited configs, the UI just
-                    // doesn't expose that range.
-                    dirty |= RowSlider  ("Cooldown (ms)",  &g_settings.autoAbilityCooldown, 50, 10000);
+                    // Cooldown UI is in whole seconds (0–30), but storage
+                    // stays as milliseconds so the module's chrono-ms
+                    // comparison doesn't need a unit conversion. Truncate-
+                    // to-second on display, multiply-by-1000 on commit;
+                    // the small reading↔storage round-trip mismatch only
+                    // matters on first show of a legacy config (e.g.
+                    // 600ms saved → slider reads 0s — user just nudges).
+                    {
+                        int cooldownSec = g_settings.autoAbilityCooldown / 1000;
+                        if (cooldownSec > 30) cooldownSec = 30;
+                        if (cooldownSec < 0)  cooldownSec = 0;
+                        if (RowSlider("Cooldown (s)", &cooldownSec, 0, 30, "%ds")) {
+                            g_settings.autoAbilityCooldown = cooldownSec * 1000;
+                            dirty = true;
+                        }
+                    }
                     ImGui::PopID();
                 }
                 else if (s_currentTab == 6)

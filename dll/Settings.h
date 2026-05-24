@@ -109,7 +109,10 @@ struct Settings
     bool autoAbilityEnabled       = false;
     bool autoAbilityRequireSword  = true;
     int  autoAbilityDelay         = 100;
-    int  autoAbilityCooldown      = 600;
+    // Stored as milliseconds for chrono compatibility, but the UI slider
+    // exposes it as whole seconds (0-30s). Default of 1000ms shows as "1s"
+    // — a reasonable starting cooldown that's visible on the slider track.
+    int  autoAbilityCooldown      = 1000;
     int  autoAbilityKey           = 0;
 
     // Friends list — lowercase usernames matched case-insensitively against

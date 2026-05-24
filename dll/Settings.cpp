@@ -242,11 +242,13 @@ void Settings::Load()
     // floor of 50ms because anything tighter is effectively no cooldown.
     if (autoAbilityDelay    < 30)   autoAbilityDelay    = 30;
     if (autoAbilityDelay    > 1000) autoAbilityDelay    = 1000;
-    if (autoAbilityCooldown < 50)   autoAbilityCooldown = 50;
-    // No upper clamp on cooldown — abilities the user wants to test span
-    // anywhere from 500ms (basic swing) to multi-minute ultimates, and
-    // INT_MAX (~24 days) is a safe ceiling that still fits a signed int
-    // without overflow when we subtract steady-clock millisecond deltas.
+    // Floor 0 — cooldown UI is a 0-30s slider; "0" is meaningful (means
+    // "no extra gap beyond Delay") so the floor can't be a positive number.
+    // Ceiling clamped to 30s (30000ms) to match the slider's max, so a
+    // hand-edited config can't push the value off the slider track and
+    // become un-adjustable from the UI.
+    if (autoAbilityCooldown < 0)     autoAbilityCooldown = 0;
+    if (autoAbilityCooldown > 30000) autoAbilityCooldown = 30000;
     autoAbilityKey = clampVK(autoAbilityKey);
 
     friendKey = clampVK(friendKey);
