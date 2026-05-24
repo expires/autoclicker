@@ -190,15 +190,37 @@ namespace AimAssistModule
                 const double minY = box.minY(), maxY = box.maxY();
                 const double minZ = box.minZ(), maxZ = box.maxZ();
 
-                // Walk the 8 AABB corners, build the angular bounding box
-                // around the cursor. Yaw is unwrapped to be near curYaw so
-                // the ±180 seam can't make the min/max collapse.
+                // Shrink the AABB to its inner core before projecting.
+                // The assist clamps the cursor into whatever box we feed
+                // it — if we feed the full hitbox, the assist stops the
+                // moment the ray crosses the body's outer edge, leaving
+                // the cursor on the rim where small flicks can miss.
+                // Shrinking to 55% keeps the "valid target zone" inside
+                // the body, so when the cursor settles it's well-centered.
+                // Not 50% so a player who's already aimed at the body
+                // doesn't get yanked harder toward the geometric center
+                // every tick.
+                constexpr double INNER_SHRINK = 0.55;
+                const double cxMid = (minX + maxX) * 0.5;
+                const double cyMid = (minY + maxY) * 0.5;
+                const double czMid = (minZ + maxZ) * 0.5;
+                const double hx    = (maxX - minX) * 0.5 * INNER_SHRINK;
+                const double hy    = (maxY - minY) * 0.5 * INNER_SHRINK;
+                const double hz    = (maxZ - minZ) * 0.5 * INNER_SHRINK;
+                const double iMinX = cxMid - hx, iMaxX = cxMid + hx;
+                const double iMinY = cyMid - hy, iMaxY = cyMid + hy;
+                const double iMinZ = czMid - hz, iMaxZ = czMid + hz;
+
+                // Walk the 8 (inner) AABB corners, build the angular
+                // bounding box around the cursor. Yaw is unwrapped to be
+                // near curYaw so the ±180 seam can't make the min/max
+                // collapse.
                 float ymin = +FLT_MAX, ymax = -FLT_MAX;
                 float pmin = +FLT_MAX, pmax = -FLT_MAX;
                 for (int i = 0; i < 8; ++i) {
-                    const double cx = (i & 1) ? maxX : minX;
-                    const double cy = (i & 2) ? maxY : minY;
-                    const double cz = (i & 4) ? maxZ : minZ;
+                    const double cx = (i & 1) ? iMaxX : iMinX;
+                    const double cy = (i & 2) ? iMaxY : iMinY;
+                    const double cz = (i & 4) ? iMaxZ : iMinZ;
                     float cy_ang, cp_ang;
                     anglesTo(cx - ex, cy - ey, cz - ez, cy_ang, cp_ang);
                     const float yawRel = curYaw + wrapDeg(cy_ang - curYaw);
@@ -230,13 +252,15 @@ namespace AimAssistModule
             if (!haveTarget) continue;
 
             // Per-tick step toward target. Quadratic so the low end of the
-            // 0-10 slider feels gentle (1 → 1% of remaining per tick) and the
-            // top is snappy (10 → 10% of remaining per tick). At 100Hz that
-            // gives a half-life of ~70ms at slider=10, ~7s at slider=1.
+            // 0-10 slider feels gentle (1 → ~0.2% of remaining per tick)
+            // and the top is snappy (10 → 22% of remaining per tick).
+            // Coefficient bumped from 0.10 → 0.22 — old top-end felt weak
+            // (half-life ~70ms at slider=10); new value gives half-life
+            // ~28ms which lands clearly on the target without overshoot.
             const float fH = (float)g_settings.aimSpeedH / 10.0f;
             const float fV = (float)g_settings.aimSpeedV / 10.0f;
-            float stepYaw   = bestYawDelta   * fH * fH * 0.10f;
-            float stepPitch = bestPitchDelta * fV * fV * 0.10f;
+            float stepYaw   = bestYawDelta   * fH * fH * 0.22f;
+            float stepPitch = bestPitchDelta * fV * fV * 0.22f;
 
             // Cap the per-tick step so a far-off target doesn't translate to
             // a one-shot snap (visually obvious + can overshoot through the
