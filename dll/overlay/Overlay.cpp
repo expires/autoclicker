@@ -1362,13 +1362,7 @@ static BOOL WINAPI hk_wglSwapBuffers(HDC hdc)
                         snap = g_settings.friends;
                     }
 
-                    if (snap.empty()) {
-                        ImGui::PushStyleColor(ImGuiCol_Text, FromHex(0x707a8c));
-                        ImGui::TextUnformatted("No friends yet. Bind a key above and");
-                        ImGui::TextUnformatted("toggle while hovering a player, or type");
-                        ImGui::TextUnformatted("a username and press Enter.");
-                        ImGui::PopStyleColor();
-                    } else {
+                    if (!snap.empty()) {
                         // Deferred delete index — mutating the vector while
                         // iterating its snapshot would still leave the live
                         // list in sync, but a single deletion per frame is
@@ -1561,25 +1555,33 @@ static BOOL WINAPI hk_wglSwapBuffers(HDC hdc)
                     dirty |= RowKeybind ("Hold Key",      &g_settings.leapKey);
                     ImGui::PopID();
 
-                    ImGui::Dummy(ImVec2(0, 6));
+                    // Visual separator between the two ability cheats.
+                    // Padding above + below so the line breathes; thin
+                    // border-colored line so it reads as a divider, not
+                    // another row's bottom edge.
+                    ImGui::Dummy(ImVec2(0, 10));
+                    {
+                        const ImVec2 p = ImGui::GetCursorScreenPos();
+                        const float  w = ImGui::GetContentRegionAvail().x;
+                        ImGui::GetWindowDrawList()->AddLine(
+                            p, ImVec2(p.x + w, p.y),
+                            ImGui::GetColorU32(ImGuiCol_Border));
+                    }
+                    ImGui::Dummy(ImVec2(0, 10));
 
                     ImGui::PushID("autoability");
                     ImGui::PushFont(ImGui::GetIO().Fonts->Fonts[2]);
                     ImGui::TextUnformatted("Auto Ability");
                     ImGui::PopFont();
-                    dirty |= RowCheckbox ("Enabled",       &g_settings.autoAbilityEnabled);
-                    dirty |= RowCheckbox ("Require Sword", &g_settings.autoAbilityRequireSword);
-                    // Delay + Cooldown share a row — they're the related
-                    // timing pair (attempt rate vs server-side fire gap)
-                    // and read better side-by-side than stacked. Max
-                    // cooldown stays at INT_MAX so multi-minute ability
-                    // tests still fit.
-                    dirty |= RowInputIntPair(
-                        "Delay (ms)",    &g_settings.autoAbilityDelay,
-                        30, 1000,         50, 500,
-                        "Cooldown (ms)", &g_settings.autoAbilityCooldown,
-                        50, INT_MAX,     100, 1000);
-                    dirty |= RowKeybind  ("Hold Key",      &g_settings.autoAbilityKey);
+                    dirty |= RowCheckbox("Enabled",        &g_settings.autoAbilityEnabled);
+                    dirty |= RowCheckbox("Require Sword",  &g_settings.autoAbilityRequireSword);
+                    dirty |= RowSlider  ("Delay (ms)",     &g_settings.autoAbilityDelay,    30, 1000);
+                    // Cooldown slider caps at 10000ms (10s) — covers the
+                    // real-world ability range cleanly on a slider; the
+                    // underlying clamp in Settings still allows up to
+                    // INT_MAX for hand-edited configs, the UI just
+                    // doesn't expose that range.
+                    dirty |= RowSlider  ("Cooldown (ms)",  &g_settings.autoAbilityCooldown, 50, 10000);
                     ImGui::PopID();
                 }
                 else if (s_currentTab == 6)

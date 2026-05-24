@@ -179,10 +179,10 @@ namespace AutoAbilityModule
             if (Overlay::IsMenuVisible())              continue;
             if (GetForegroundWindow() != mcWindow)     continue;
 
-            if (g_settings.autoAbilityKey > 0 && g_settings.autoAbilityKey <= 0xFE) {
-                if (!(GetAsyncKeyState(g_settings.autoAbilityKey) & 0x8000))
-                    continue;
-            }
+            // Hold-key gate removed — module fires whenever enabled and the
+            // sword/target/cooldown gates pass. The `autoAbilityKey` field
+            // still lives on Settings for config-file back-compat, just no
+            // longer read.
 
             if (g_settings.autoAbilityRequireSword) {
                 const std::string name = SelectedItemName(mc);
