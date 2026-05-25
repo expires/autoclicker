@@ -1358,6 +1358,7 @@ static BOOL WINAPI hk_wglSwapBuffers(HDC hdc)
                         dirty |= RowCheckbox("Name",               &g_settings.drawName);
                         dirty |= RowCheckbox("Distance",           &g_settings.drawDistance);
                         dirty |= RowCheckbox("Health",             &g_settings.drawHealth);
+                        dirty |= RowCheckbox("Glow",               &g_settings.drawGlow);
                         dirty |= RowCheckbox("Highlight Friends",  &g_settings.highlightFriends);
                     }
                     dirty |= RowKeybind("Toggle Key", &g_settings.espKey);

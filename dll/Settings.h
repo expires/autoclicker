@@ -36,6 +36,12 @@ struct Settings
     bool drawName     = true;
     bool drawDistance = true;
     bool drawHealth   = true;
+    // Force-glow targets via direct JNI write to Entity.hasGlowingTag every
+    // snapshot iteration. Bypasses Lunar's frontend hooks (Lunar throttles
+    // repeated Java-side setGlowingTag calls) by going straight to the field.
+    // Off by default — it's a much louder visual than the box/name overlay
+    // and not everyone wants the outline shader on for stealth.
+    bool drawGlow     = false;
     // Recolor the box + nametag chunks bright green for friends. Cosmetic
     // override of the team-derived color — disable to keep team colors but
     // still see the friend list in the Friends tab.

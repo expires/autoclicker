@@ -117,13 +117,27 @@ namespace EspModule
             const double maxDistSq =
                 (double)g_settings.maxDistance * (double)g_settings.maxDistance;
 
+            // Glow state edge tracking. When the user toggles drawGlow off,
+            // the next iteration runs a one-shot pass writing false to every
+            // non-local player to actively clear stale glow tags — without
+            // this, the last "true" we wrote sticks on every entity until
+            // they despawn.
+            static bool s_glowWasOn = false;
+            const bool glowNow = g_settings.drawGlow;
+
             for (auto& p : players)
             {
                 if (lc->env->IsSameObject(p.GetInstance(), localInst)) continue;
 
                 Target t;
                 Vec3 pos = p.getPosition();
-                if (pos.GetInstance() == nullptr) continue;
+                if (pos.GetInstance() == nullptr) {
+                    // No position read — can't decide in-range either way.
+                    // Force-clear glow so a previous "true" doesn't stick on
+                    // an entity we can no longer evaluate this iteration.
+                    if (glowNow) p.setGlowingTag(false);
+                    continue;
+                }
                 t.x = pos.getX();
                 t.y = pos.getY();
                 t.z = pos.getZ();
@@ -133,7 +147,12 @@ namespace EspModule
 
                 double dx = t.x - back.cam.x, dy = t.y - back.cam.y, dz = t.z - back.cam.z;
                 double distSq = dx*dx + dy*dy + dz*dz;
-                if (distSq > maxDistSq) continue;
+                if (distSq > maxDistSq) {
+                    // Out of ESP range — clear so the glow shrinks with the
+                    // ESP range setting rather than leaking past it.
+                    if (glowNow) p.setGlowingTag(false);
+                    continue;
+                }
 
                 AABB box = p.getBoundingBox();
                 if (box.GetInstance() != nullptr)
@@ -195,8 +214,27 @@ namespace EspModule
                     if (!it->first.empty()) { t.boxColor = it->second; break; }
                 }
 
+                // Glow application — true for in-range non-friend. We always
+                // write so isFriend going true (user friend-toggles a target
+                // mid-game) actively clears the outline rather than leaving
+                // it sticky until they leave / re-enter range.
+                if (glowNow) p.setGlowingTag(!t.isFriend);
+
                 back.targets.push_back(std::move(t));
             }
+
+            // One-shot cleanup pass on the falling edge of drawGlow. Writes
+            // false to every non-local player so any in-flight "true" we left
+            // last iteration gets actively cleared, instead of waiting for
+            // each entity to despawn / leave render distance before MC stops
+            // outlining them.
+            if (s_glowWasOn && !glowNow) {
+                for (auto& p : players) {
+                    if (lc->env->IsSameObject(p.GetInstance(), localInst)) continue;
+                    p.setGlowingTag(false);
+                }
+            }
+            s_glowWasOn = glowNow;
 
             if (lc->env->ExceptionCheck()) lc->env->ExceptionClear();
 
