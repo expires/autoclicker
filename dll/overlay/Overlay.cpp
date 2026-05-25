@@ -1012,6 +1012,54 @@ static HCURSOR WINAPI hk_SetCursor(HCURSOR cursor)
     return o_SetCursor(cursor);
 }
 
+// Raw-input borrow. GLFW3 in disabled-cursor mode delivers mouse deltas via
+// WM_INPUT (registered with RegisterRawInputDevices). Some configurations of
+// LWJGL / Lunar appear to consume raw input via GetRawInputBuffer polling
+// rather than messages — that bypasses our WndProc swallow entirely, so the
+// user's mouse keeps rotating the camera even while our menu is on screen.
+//
+// The bulletproof workaround: unregister the mouse raw-input device for the
+// whole process when the menu opens. Without a registration, GetRawInputBuffer
+// has nothing to return and WM_INPUT stops firing — both paths go quiet. On
+// close we re-register with the standard GLFW flags so MC's input resumes.
+//
+// Stored flags let us round-trip without guessing MC's original config. We
+// re-register with INPUTSINK so MC keeps receiving input regardless of focus
+// state during the transition; 0 flags would be more correct but risks a
+// brief "mouse stops working" pause if the window momentarily loses focus.
+static bool  s_rawInputBorrowed = false;
+static DWORD s_origRawFlags     = 0;
+static HWND  s_origRawTarget    = nullptr;
+
+static void BorrowRawMouseInput()
+{
+    if (s_rawInputBorrowed) return;
+    // Unregister the generic-desktop mouse (UsagePage 0x01, Usage 0x02).
+    RAWINPUTDEVICE rid = {};
+    rid.usUsagePage = 0x01;
+    rid.usUsage     = 0x02;
+    rid.dwFlags     = RIDEV_REMOVE;
+    rid.hwndTarget  = nullptr;
+    if (RegisterRawInputDevices(&rid, 1, sizeof(RAWINPUTDEVICE)))
+        s_rawInputBorrowed = true;
+}
+
+static void ReturnRawMouseInput()
+{
+    if (!s_rawInputBorrowed) return;
+    // Re-register so MC's input pump comes back to life. INPUTSINK + the
+    // window we have on file matches what LWJGL3's glfwSetInputMode does
+    // in disabled-cursor mode on Win32 (delivers input even if focus has
+    // momentarily shifted to our overlay's modal frame).
+    RAWINPUTDEVICE rid = {};
+    rid.usUsagePage = 0x01;
+    rid.usUsage     = 0x02;
+    rid.dwFlags     = RIDEV_INPUTSINK;
+    rid.hwndTarget  = s_hwnd;
+    if (RegisterRawInputDevices(&rid, 1, sizeof(RAWINPUTDEVICE)))
+        s_rawInputBorrowed = false;
+}
+
 // Synthesize key-up / button-up messages for everything currently pressed so
 // MC's input pump sees them as released. Without this, holding W when you
 // press INSERT keeps the player walking forward forever — we swallow the
@@ -1242,33 +1290,31 @@ static BOOL WINAPI hk_wglSwapBuffers(HDC hdc)
             const bool wasVisible = s_visible;
             s_visible = menuEdge ? !s_visible : false;
             ClipCursor(nullptr);
-            // Release any mouse capture MC / GLFW grabbed — capture survives
-            // ShowCursor and means raw mouse keeps routing to MC's wndproc
-            // even after we un-hide the cursor.
             ReleaseCapture();
             if (s_visible) {
+                // Take raw mouse input away from MC at the registration
+                // layer — this is what actually stops the camera rotating,
+                // because polling consumers (GetRawInputBuffer) and message
+                // consumers (WM_INPUT via WndProc) both go quiet when no
+                // device is registered.
+                BorrowRawMouseInput();
                 // Pump the show-counter all the way up to 0 (visible).
                 // GLFW slammed ShowCursor(FALSE) many times before our DLL
                 // loaded — counter is often at -50 or worse. A single
                 // ShowCursor(TRUE) only bumps it to -49 and the cursor
-                // stays hidden. Use the original to bypass our own gate
-                // (we know we want to show right now) and stop the moment
-                // the counter goes non-negative.
+                // stays hidden. Bypass our own gate via o_ShowCursor and
+                // stop the moment the counter goes non-negative.
                 int safety = 256;
                 while (safety-- > 0 && o_ShowCursor(TRUE) < 0) {}
             } else if (wasVisible) {
-                // Closing: don't try to drag the counter back to where
-                // GLFW expects it — GLFW re-asserts ShowCursor(FALSE) every
-                // frame in disabled-cursor mode and our hk_ShowCursor lets
-                // those through when !s_visible, so the counter settles
-                // back to its hidden state within a frame or two on its
-                // own. Manually decrementing here would race that and can
-                // overshoot, locking the cursor invisible permanently.
+                // Closing: give raw input back to MC, otherwise the player
+                // can't look around once the menu is dismissed. Counter
+                // re-decays naturally via GLFW's per-frame ShowCursor(FALSE)
+                // calls (our hk_ShowCursor lets those through when !s_visible).
+                ReturnRawMouseInput();
             }
             if (s_visible && !wasVisible) ReleaseAllHeldInputs();
-            // Persist settings every time the user closes the overlay.
             if (!s_visible && wasVisible) g_settings.Save();
-            // Arm the ESC-eater so the residual key state can't reach MC.
             if (escEdge) s_eatEscUntilRelease = true;
         }
 
