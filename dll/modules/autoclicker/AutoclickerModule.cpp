@@ -151,16 +151,21 @@ namespace AutoclickerModule
                         break;
                     }
 
+                    // Menu gate. Block both the click AND its piggybacked
+                    // jitter while ANY menu is open — chat / inventory /
+                    // pause / container / Lunar HUD. The old check accepted
+                    // screens that returned false for both isPauseScreen and
+                    // shouldCloseOnEsc; gating on screen != null OR isPaused()
+                    // is the simpler "any UI surface is up, don't fire" rule.
+                    if (mc->isPaused()) {
+                        if (lc->env->ExceptionCheck()) lc->env->ExceptionClear();
+                        break;
+                    }
+                    if (lc->env->ExceptionCheck()) lc->env->ExceptionClear();
                     {
                         Screen screen = mc->GetScreen();
                         if (lc->env->ExceptionCheck()) lc->env->ExceptionClear();
-                        if (screen.GetInstance() != nullptr) {
-                            const bool isPause   = screen.isPauseScreen();
-                            if (lc->env->ExceptionCheck()) lc->env->ExceptionClear();
-                            const bool closeOnEsc = screen.shouldCloseOnEsc();
-                            if (lc->env->ExceptionCheck()) lc->env->ExceptionClear();
-                            if (isPause || closeOnEsc) break;
-                        }
+                        if (screen.GetInstance() != nullptr) break;
                     }
 
                     MultiPlayerGameMode gm = mc->GetMultiPlayerGameMode();

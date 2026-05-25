@@ -143,6 +143,17 @@ namespace AimAssistModule
                 continue;
             }
 
+            // MC menu gate. Any non-null Minecraft.screen means a menu is up
+            // (chat, inventory, pause, ESC menu, GUI containers, etc.) — and
+            // isPaused() covers the rest (connection-lost, internal pause).
+            // Don't nudge the cursor while the user is interacting with a
+            // menu; the assist would fight whatever click/drag they're doing.
+            if (mc.isPaused()) { lc->env->PopLocalFrame(nullptr); continue; }
+            if (lc->env->ExceptionCheck()) lc->env->ExceptionClear();
+            Screen screen = mc.GetScreen();
+            if (lc->env->ExceptionCheck()) lc->env->ExceptionClear();
+            if (screen.GetInstance() != nullptr) { lc->env->PopLocalFrame(nullptr); continue; }
+
             Player local = mc.GetLocalPlayer();
             if (local.GetInstance() == nullptr) { lc->env->PopLocalFrame(nullptr); continue; }
 

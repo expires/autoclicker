@@ -796,22 +796,29 @@ static void DrawEsp(float dispW, float dispH)
         const double cy[2] = {minY, maxY};
         const double cz[2] = {minZ, maxZ};
 
+        // Project all 8 corners. corner[i] = (x_bit | y_bit<<1 | z_bit<<2):
+        //   0 = (-x, -y, -z)   4 = (-x, -y, +z)
+        //   1 = (+x, -y, -z)   5 = (+x, -y, +z)
+        //   2 = (-x, +y, -z)   6 = (-x, +y, +z)
+        //   3 = (+x, +y, -z)   7 = (+x, +y, +z)
+        ImVec2 sp[8];
+        bool   ok[8];
         float minSX =  1e9f, minSY =  1e9f;
         float maxSX = -1e9f, maxSY = -1e9f;
         bool any = false;
 
         for (int i = 0; i < 8; ++i)
         {
-            ImVec2 p;
             double wx = cx[(i >> 0) & 1];
             double wy = cy[(i >> 1) & 1];
             double wz = cz[(i >> 2) & 1];
-            if (!ProjectWorld(wx, wy, wz, snap.cam, dispW, dispH, p)) continue;
+            ok[i] = ProjectWorld(wx, wy, wz, snap.cam, dispW, dispH, sp[i]);
+            if (!ok[i]) continue;
             any = true;
-            if (p.x < minSX) minSX = p.x;
-            if (p.y < minSY) minSY = p.y;
-            if (p.x > maxSX) maxSX = p.x;
-            if (p.y > maxSY) maxSY = p.y;
+            if (sp[i].x < minSX) minSX = sp[i].x;
+            if (sp[i].y < minSY) minSY = sp[i].y;
+            if (sp[i].x > maxSX) maxSX = sp[i].x;
+            if (sp[i].y > maxSY) maxSY = sp[i].y;
         }
         if (!any) continue;
 
@@ -828,12 +835,28 @@ static void DrawEsp(float dispW, float dispH)
 
         if (g_settings.drawBox)
         {
-            // Drop alpha to ~220/255 so the box reads as a subtle outline
-            // rather than fully saturated, matching the old hardcoded look
-            // but in the player's team color.
+            // 3D wireframe — 12 edges of the AABB cuboid, like MC's F3+B
+            // hitbox overlay. Each edge connects two of the 8 corners; we
+            // skip an edge if either endpoint failed to project (behind near
+            // plane). Listed in (corner_a, corner_b) pairs:
+            //   bottom face (y=min):     0-1, 1-3, 3-2, 2-0
+            //   top face    (y=max):     4-5, 5-7, 7-6, 6-4
+            //   vertical pillars:        0-4, 1-5, 2-6, 3-7
+            static const int edges[12][2] = {
+                {0,1},{1,3},{3,2},{2,0},
+                {4,5},{5,7},{7,6},{6,4},
+                {0,4},{1,5},{2,6},{3,7},
+            };
             const uint32_t srcCol = tintFriend ? friendCol : t.boxColor;
+            // Slightly thinner than the old 2D rect (1.0 vs 1.5) — 12 edges
+            // is a lot more ink on screen and reads as cluttered at the old
+            // thickness. Alpha ~220 to match the prior outline look.
             const ImU32 colBox = (srcCol & 0x00FFFFFFu) | (220u << 24);
-            dl->AddRect(ImVec2(minSX, minSY), ImVec2(maxSX, maxSY), colBox, 0.0f, 0, 1.5f);
+            for (int e = 0; e < 12; ++e) {
+                const int a = edges[e][0], b = edges[e][1];
+                if (!ok[a] || !ok[b]) continue;
+                dl->AddLine(sp[a], sp[b], colBox, 1.0f);
+            }
         }
 
         if (g_settings.drawName || g_settings.drawDistance || g_settings.drawHealth)
