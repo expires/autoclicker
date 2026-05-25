@@ -1045,13 +1045,12 @@ typedef UINT(WINAPI* fn_GetRawInputData)(HRAWINPUT, UINT, LPVOID, PUINT, UINT);
 static fn_GetRawInputBuffer o_GetRawInputBuffer = nullptr;
 static fn_GetRawInputData   o_GetRawInputData   = nullptr;
 
-// NEXTRAWINPUTBLOCK isn't always exposed by winuser.h — define our own
-// 8-byte-aligned advance (the spec calls for QWORD alignment, but the
-// QWORD typedef isn't reliably present in MSVC's Windows headers across
-// SDK versions; 8 is the correct literal regardless).
-#ifndef NEXTRAWINPUTBLOCK
-#define NEXTRAWINPUTBLOCK(ptr) ((PRAWINPUT)(((ULONG_PTR)((PBYTE)(ptr) + (ptr)->header.dwSize) + 7) & ~(ULONG_PTR)7))
-#endif
+// Our own RAWINPUT advance — system NEXTRAWINPUTBLOCK expands to a body
+// that uses the QWORD typedef, which isn't defined in all MSVC SDK
+// configurations (CI runner trips here). 8 is the correct literal for
+// QWORD alignment regardless.
+#define ESP_NEXT_RAWINPUT_BLOCK(ptr) \
+    ((PRAWINPUT)(((ULONG_PTR)((PBYTE)(ptr) + (ptr)->header.dwSize) + 7) & ~(ULONG_PTR)7))
 
 // Filter-not-block strategy: let raw-input reads complete normally, but
 // zero out the mouse delta + button bits in any RIM_TYPEMOUSE records
@@ -1075,7 +1074,7 @@ static UINT WINAPI hk_GetRawInputBuffer(PRAWINPUT pData, PUINT pcbSize, UINT cbS
                 cur->data.mouse.usButtonData  = 0;
                 cur->data.mouse.ulRawButtons  = 0;
             }
-            cur = NEXTRAWINPUTBLOCK(cur);
+            cur = ESP_NEXT_RAWINPUT_BLOCK(cur);
         }
     }
     return count;
