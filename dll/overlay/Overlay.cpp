@@ -812,8 +812,20 @@ static void DrawEsp(float dispW, float dispH)
             double wx = cx[(i >> 0) & 1];
             double wy = cy[(i >> 1) & 1];
             double wz = cz[(i >> 2) & 1];
-            ok[i] = ProjectWorld(wx, wy, wz, snap.cam, dispW, dispH, sp[i]);
+            ImVec2 p;
+            ok[i] = ProjectWorld(wx, wy, wz, snap.cam, dispW, dispH, p);
             if (!ok[i]) continue;
+            // Snap to integer pixels. Without this, the 1.8px anti-aliased
+            // lines pick up float-precision drift in the projection math —
+            // every frame the line endpoints round differently into the
+            // rasterizer and the cuboid visibly shimmers, especially during
+            // wall-press where the camera is held against a collision and
+            // the only motion is sub-pixel projection noise. Pixel snapping
+            // costs visible-smooth-motion at the corner of a moving target
+            // (it now steps frame-by-frame instead of sliding), but stops
+            // the shake completely.
+            sp[i].x = std::floor(p.x + 0.5f);
+            sp[i].y = std::floor(p.y + 0.5f);
             any = true;
             if (sp[i].x < minSX) minSX = sp[i].x;
             if (sp[i].y < minSY) minSY = sp[i].y;
@@ -848,14 +860,14 @@ static void DrawEsp(float dispW, float dispH)
                 {0,4},{1,5},{2,6},{3,7},
             };
             const uint32_t srcCol = tintFriend ? friendCol : t.boxColor;
-            // Slightly thinner than the old 2D rect (1.0 vs 1.5) — 12 edges
-            // is a lot more ink on screen and reads as cluttered at the old
-            // thickness. Alpha ~220 to match the prior outline look.
+            // Alpha ~220 to match the prior outline look. 1.8px line weight
+            // keeps the 12-edge cuboid readable at distance without going
+            // full crayon — 1.0 read too thin per user, 2.5 too cartoonish.
             const ImU32 colBox = (srcCol & 0x00FFFFFFu) | (220u << 24);
             for (int e = 0; e < 12; ++e) {
                 const int a = edges[e][0], b = edges[e][1];
                 if (!ok[a] || !ok[b]) continue;
-                dl->AddLine(sp[a], sp[b], colBox, 1.0f);
+                dl->AddLine(sp[a], sp[b], colBox, 1.8f);
             }
         }
 
@@ -1381,7 +1393,6 @@ static BOOL WINAPI hk_wglSwapBuffers(HDC hdc)
                         dirty |= RowCheckbox("Name",               &g_settings.drawName);
                         dirty |= RowCheckbox("Distance",           &g_settings.drawDistance);
                         dirty |= RowCheckbox("Health",             &g_settings.drawHealth);
-                        dirty |= RowCheckbox("Glow",               &g_settings.drawGlow);
                         dirty |= RowCheckbox("Highlight Friends",  &g_settings.highlightFriends);
                     }
                     dirty |= RowKeybind("Toggle Key", &g_settings.espKey);

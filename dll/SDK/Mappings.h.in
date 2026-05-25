@@ -85,8 +85,6 @@
 #define FLD_Entity_xRot             "@fld_Entity_xRot@"
 #define MTD_Entity_getBoundingBox   "@mtd_Entity_getBoundingBox@"
 #define DESC_Entity_getBoundingBox  "@desc_Entity_getBoundingBox@"
-#define MTD_Entity_setGlowingTag    "@mtd_Entity_setGlowingTag@"
-#define FLD_Entity_hasGlowingTag    "@fld_Entity_hasGlowingTag@"
 #define FLD_Entity_xo               "@fld_Entity_xo@"
 #define FLD_Entity_yo               "@fld_Entity_yo@"
 #define FLD_Entity_zo               "@fld_Entity_zo@"

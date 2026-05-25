@@ -301,16 +301,3 @@ jobject Entity::getTeamRaw()
     return t;
 }
 
-bool Entity::setGlowingTag(bool glowing)
-{
-    // Direct field write to Entity.hasGlowingTag (a local-only boolean). Avoids
-    // the setter method entirely so anything that method does beyond the field
-    // assignment (e.g. setting the synced flag bit) is bypassed. isCurrentlyGlowing
-    // ORs hasGlowingTag with the synced flag, so writing this field alone is
-    // sufficient on the client side.
-    jfieldID f = lc->env->GetFieldID(this->GetClass(), FLD_Entity_hasGlowingTag, "Z");
-    if (!f) { lc->env->ExceptionClear(); return false; }
-    lc->env->SetBooleanField(this->instance, f, (jboolean)glowing);
-    if (lc->env->ExceptionCheck()) { lc->env->ExceptionClear(); return false; }
-    return true;
-}

@@ -57,11 +57,6 @@ public:
     // a PushLocalFrame around the loop is the simplest cleanup.
     jobject getTeamRaw();
 
-    // Client-side only: flips Entity.hasGlowingTag. isCurrentlyGlowing() reads
-    // this and the engine renders the outline. Not synced to server.
-    // Returns true if the JNI lookup found the method and the call dispatched.
-    bool setGlowingTag(bool glowing);
-
 private:
     jobject instance;
 };

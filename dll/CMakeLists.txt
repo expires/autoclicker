@@ -60,7 +60,6 @@ foreach(KEY
     fld_Minecraft_gameRenderer  desc_Minecraft_gameRenderer
     fld_Entity_position desc_Entity_position fld_Entity_yRot fld_Entity_xRot
     mtd_Entity_getBoundingBox   desc_Entity_getBoundingBox
-    mtd_Entity_setGlowingTag fld_Entity_hasGlowingTag
     fld_Entity_xo fld_Entity_yo fld_Entity_zo
     class_DeltaTracker
     mtd_Minecraft_getDeltaTracker   desc_Minecraft_getDeltaTracker
@@ -113,6 +112,29 @@ string(LENGTH "${BANNED_PATH}" _banned_len)
 message(STATUS "DISCORD_WEBHOOK_PATH length: ${_webhook_len}")
 message(STATUS "BANNED_PATH length: ${_banned_len}")
 configure_file(Config.h.in ${CMAKE_CURRENT_BINARY_DIR}/Config.h @ONLY)
+
+# Build-time Revision.h — re-runs every build via a phony custom target so
+# the embedded BUILD_REVISION matches the current HEAD SHA (+ -dirty if the
+# working tree has uncommitted changes). The helper script writes the file
+# only when content changes, so a no-op build doesn't ripple recompiles
+# into network/Network.cpp unless the SHA actually moved.
+set(REVISION_HEADER ${CMAKE_CURRENT_BINARY_DIR}/Revision.h)
+add_custom_target(generate_revision_h ALL
+    BYPRODUCTS ${REVISION_HEADER}
+    COMMAND ${CMAKE_COMMAND}
+        -DSOURCE_DIR=${CMAKE_SOURCE_DIR}
+        -DOUTPUT=${REVISION_HEADER}
+        -P ${CMAKE_CURRENT_SOURCE_DIR}/cmake/RevisionHeader.cmake
+    COMMENT "Generating Revision.h"
+    VERBATIM
+)
+# Seed the file at configure time so the first build has something to
+# include even before the custom target has fired.
+if(NOT EXISTS ${REVISION_HEADER})
+    file(WRITE ${REVISION_HEADER}
+        "#pragma once\n#define BUILD_REVISION \"unknown\"\n")
+endif()
+
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 
@@ -215,6 +237,7 @@ add_library(${PROJECT_NAME} SHARED
 )
 
 target_link_libraries(${PROJECT_NAME} PRIVATE ${JVM_LIB} imgui minhook winhttp)
+add_dependencies(${PROJECT_NAME} generate_revision_h)
 
 source_group("Header Files\\SDK"         FILES ${SDK_HEADERS})
 source_group("Source Files\\SDK"         FILES ${SDK_SOURCES})
