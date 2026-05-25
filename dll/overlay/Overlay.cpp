@@ -725,6 +725,25 @@ static void RefreshCameraFromRenderThread(EspModule::Snapshot& snap)
 
     Minecraft mc;
     if (jobject mcInst = mc.GetInstance()) {
+        // Read partial tick FIRST — getFov() interpolates by partialTick for
+        // FOV transitions (sprint start/stop, eating, hurt anim, bow draw),
+        // so passing the same pt MC just used for its world render is what
+        // syncs our projection to the on-screen world. The old code passed
+        // a hardcoded 1.0 here, which meant during a sprint→walk FOV
+        // transition (triggered by colliding with a wall) MC's world drew
+        // at the in-transition FOV while our boxes projected at the fully-
+        // transitioned target FOV — boxes drifted relative to entities for
+        // a few frames each collision, reading as jitter.
+        float pt = 1.0f;
+        DeltaTracker dt = mc.GetDeltaTracker();
+        if (dt.GetInstance() != nullptr) {
+            float ptRead = dt.getPartialTick(true);
+            if (!lc->env->ExceptionCheck()) {
+                pt = ptRead;
+                snap.partialTick = ptRead;
+            }
+        }
+
         GameRenderer gr = mc.GetGameRenderer();
         if (gr.GetInstance() != nullptr) {
             Camera cam = gr.getMainCamera();
@@ -737,16 +756,9 @@ static void RefreshCameraFromRenderThread(EspModule::Snapshot& snap)
                 }
                 snap.cam.yRot = cam.getYRot();
                 snap.cam.xRot = cam.getXRot();
-                // FOV mostly constant but cheap to refresh; matches MC's render
-                // exactly when the user is zooming (spyglass / Optifine zoom mod).
-                float fov = gr.getFov(cam, 1.0f, true);
+                float fov = gr.getFov(cam, pt, true);
                 if (!lc->env->ExceptionCheck() && fov > 0.0f) snap.cam.fov = fov;
             }
-        }
-        DeltaTracker dt = mc.GetDeltaTracker();
-        if (dt.GetInstance() != nullptr) {
-            float pt = dt.getPartialTick(true);
-            if (!lc->env->ExceptionCheck()) snap.partialTick = pt;
         }
     }
 
