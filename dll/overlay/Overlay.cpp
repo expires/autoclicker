@@ -1330,28 +1330,45 @@ static BOOL WINAPI hk_wglSwapBuffers(HDC hdc)
             s_visible = menuEdge ? !s_visible : false;
             ClipCursor(nullptr);
             ReleaseCapture();
+            // Track exactly how many ShowCursor(TRUE) calls we pumped on
+            // open so we can undo precisely on close. Without this the
+            // counter takes seconds to drain back via GLFW's per-frame
+            // ShowCursor(FALSE) (one decrement per frame), and the OS
+            // cursor lingers visibly for ~50 frames after the menu hides.
+            static int s_cursorPumpCount = 0;
             if (s_visible) {
                 // Pump ShowCursor counter to 0+. GLFW slammed it deeply
-                // negative pre-load; one ShowCursor(TRUE) bumps by 1 and
-                // the cursor stays invisible. Bypass our own hook via
-                // o_ShowCursor; safety-bounded so a stuck API can't hang.
-                //
-                // Mouse input gating happens automatically via the
-                // GetRawInputBuffer/Data hooks — they observe s_visible
-                // and return 0 events while the menu is up. No registration
-                // tampering means GLFW's state machine stays consistent
-                // and MC resumes cleanly on close, no alt-tab needed and
-                // no queued-event backlog to cause camera-pitch oscillation.
+                // negative pre-load; one ShowCursor(TRUE) bumps by 1.
                 int safety = 256;
-                while (safety-- > 0 && o_ShowCursor(TRUE) < 0) {}
+                int pumped = 0;
+                while (safety-- > 0 && o_ShowCursor(TRUE) < 0) { pumped++; }
+                s_cursorPumpCount = pumped;
 
-                // Explicit arrow on open so the first frame already shows
-                // a cursor — without this we wait for GLFW's next per-frame
-                // SetCursor(NULL) to trigger our hk_SetCursor substitution,
-                // which means one frame of invisible-cursor right after
-                // opening the menu.
+                // Sync ImGui's MousePos to the actual OS cursor position
+                // immediately. Without this, the first frame draws the
+                // software cursor at last menu session's MousePos; the
+                // moment the user nudges the mouse, ImGui_ImplWin32 polls
+                // GetCursorPos and io.MousePos snaps to wherever GLFW was
+                // centering the OS cursor (screen middle). Pre-syncing
+                // here means the first-frame cursor matches the actual
+                // mouse position, so no visible jump on first move.
+                POINT op;
+                if (GetCursorPos(&op) && s_hwnd) {
+                    ScreenToClient(s_hwnd, &op);
+                    ImGui::GetIO().AddMousePosEvent((float)op.x, (float)op.y);
+                }
+
                 if (o_SetCursor) {
                     o_SetCursor(LoadCursorW(nullptr, MAKEINTRESOURCEW(32512)));
+                }
+            } else if (wasVisible) {
+                // Undo exactly what we pumped on open. Each call decrements
+                // by 1; after this loop the counter is back at the value
+                // GLFW expects, so the OS cursor hides immediately instead
+                // of lingering for a second while GLFW slowly drains it.
+                while (s_cursorPumpCount > 0) {
+                    o_ShowCursor(FALSE);
+                    s_cursorPumpCount--;
                 }
             }
             if (s_visible && !wasVisible) ReleaseAllHeldInputs();
