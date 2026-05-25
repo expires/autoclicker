@@ -1339,13 +1339,13 @@ static BOOL WINAPI hk_wglSwapBuffers(HDC hdc)
                 ImGui::SetCursorPos(ImVec2(22, 22));
                 ImGui::PushFont(ImGui::GetIO().Fonts->Fonts[2]);
                 ImGui::TextUnformatted(
-                    s_currentTab == 0 ? "autoclicker" :
-                    s_currentTab == 1 ? "aim assist"  :
-                    s_currentTab == 2 ? "esp"         :
-                    s_currentTab == 3 ? "friends"     :
-                    s_currentTab == 4 ? "macros"      :
-                    s_currentTab == 5 ? "clans"       :
-                                        "settings");
+                    s_currentTab == 0 ? "Autoclicker" :
+                    s_currentTab == 1 ? "Aim Assist"  :
+                    s_currentTab == 2 ? "ESP"         :
+                    s_currentTab == 3 ? "Friends"     :
+                    s_currentTab == 4 ? "Macros"      :
+                    s_currentTab == 5 ? "Clans"       :
+                                        "Settings");
                 ImGui::PopFont();
 
                 // Body region. The Self-Destruct button lives inside the
