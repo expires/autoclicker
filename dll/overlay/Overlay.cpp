@@ -1046,10 +1046,11 @@ static fn_GetRawInputBuffer o_GetRawInputBuffer = nullptr;
 static fn_GetRawInputData   o_GetRawInputData   = nullptr;
 
 // NEXTRAWINPUTBLOCK isn't always exposed by winuser.h — define our own
-// QWORD-aligned advance so we can walk GetRawInputBuffer's variable-sized
-// packed buffer reliably.
+// 8-byte-aligned advance (the spec calls for QWORD alignment, but the
+// QWORD typedef isn't reliably present in MSVC's Windows headers across
+// SDK versions; 8 is the correct literal regardless).
 #ifndef NEXTRAWINPUTBLOCK
-#define NEXTRAWINPUTBLOCK(ptr) ((PRAWINPUT)(((ULONG_PTR)((PBYTE)(ptr) + (ptr)->header.dwSize) + sizeof(QWORD) - 1) & ~(sizeof(QWORD) - 1)))
+#define NEXTRAWINPUTBLOCK(ptr) ((PRAWINPUT)(((ULONG_PTR)((PBYTE)(ptr) + (ptr)->header.dwSize) + 7) & ~(ULONG_PTR)7))
 #endif
 
 // Filter-not-block strategy: let raw-input reads complete normally, but
