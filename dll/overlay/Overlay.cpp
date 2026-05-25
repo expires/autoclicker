@@ -1045,28 +1045,58 @@ typedef UINT(WINAPI* fn_GetRawInputData)(HRAWINPUT, UINT, LPVOID, PUINT, UINT);
 static fn_GetRawInputBuffer o_GetRawInputBuffer = nullptr;
 static fn_GetRawInputData   o_GetRawInputData   = nullptr;
 
+// NEXTRAWINPUTBLOCK isn't always exposed by winuser.h — define our own
+// QWORD-aligned advance so we can walk GetRawInputBuffer's variable-sized
+// packed buffer reliably.
+#ifndef NEXTRAWINPUTBLOCK
+#define NEXTRAWINPUTBLOCK(ptr) ((PRAWINPUT)(((ULONG_PTR)((PBYTE)(ptr) + (ptr)->header.dwSize) + sizeof(QWORD) - 1) & ~(sizeof(QWORD) - 1)))
+#endif
+
+// Filter-not-block strategy: let raw-input reads complete normally, but
+// zero out the mouse delta + button bits in any RIM_TYPEMOUSE records
+// while the menu is open. Earlier version returned 0 events for the
+// entire buffer — that backed up the kernel's input queue, caused MC's
+// input loop to busy-spin (no events but still polling), and stalled
+// OS-level cursor tracking → cursor freezes every few seconds. Letting
+// events through with zeroed motion drains the pump cleanly and the
+// OS keeps updating cursor position normally.
+
 static UINT WINAPI hk_GetRawInputBuffer(PRAWINPUT pData, PUINT pcbSize, UINT cbSizeHeader)
 {
-    if (s_visible) {
-        // Report "no input available". Callers loop until this returns 0,
-        // so reporting 0 here drains them cleanly without state mismatch.
-        return 0;
+    UINT count = o_GetRawInputBuffer(pData, pcbSize, cbSizeHeader);
+    if (s_visible && pData && count > 0 && count != (UINT)-1) {
+        PRAWINPUT cur = pData;
+        for (UINT i = 0; i < count; ++i) {
+            if (cur->header.dwType == RIM_TYPEMOUSE) {
+                cur->data.mouse.lLastX        = 0;
+                cur->data.mouse.lLastY        = 0;
+                cur->data.mouse.usButtonFlags = 0;
+                cur->data.mouse.usButtonData  = 0;
+                cur->data.mouse.ulRawButtons  = 0;
+            }
+            cur = NEXTRAWINPUTBLOCK(cur);
+        }
     }
-    return o_GetRawInputBuffer(pData, pcbSize, cbSizeHeader);
+    return count;
 }
 
 static UINT WINAPI hk_GetRawInputData(HRAWINPUT hRawInput, UINT uiCommand,
                                        LPVOID pData, PUINT pcbSize, UINT cbSizeHeader)
 {
-    if (s_visible) {
-        // For RID_INPUT (data read), 0 means "no bytes copied". GLFW
-        // treats that as "no event this frame" and moves on. For
-        // RID_HEADER size queries we still return 0 — GLFW just skips
-        // the message rather than crashing.
-        if (pcbSize) *pcbSize = 0;
-        return 0;
+    UINT result = o_GetRawInputData(hRawInput, uiCommand, pData, pcbSize, cbSizeHeader);
+    // Only mutate the actual data read (RID_INPUT). RID_HEADER size queries
+    // need to return the real size or callers fail to allocate the buffer.
+    if (s_visible && pData && uiCommand == RID_INPUT && result != (UINT)-1) {
+        PRAWINPUT ri = (PRAWINPUT)pData;
+        if (ri->header.dwType == RIM_TYPEMOUSE) {
+            ri->data.mouse.lLastX        = 0;
+            ri->data.mouse.lLastY        = 0;
+            ri->data.mouse.usButtonFlags = 0;
+            ri->data.mouse.usButtonData  = 0;
+            ri->data.mouse.ulRawButtons  = 0;
+        }
     }
-    return o_GetRawInputData(hRawInput, uiCommand, pData, pcbSize, cbSizeHeader);
+    return result;
 }
 
 // Synthesize key-up / button-up messages for everything currently pressed so
@@ -1495,7 +1525,7 @@ static BOOL WINAPI hk_wglSwapBuffers(HDC hdc)
                 ImGui::PushFont(ImGui::GetIO().Fonts->Fonts[2]);
                 ImGui::TextUnformatted(
                     s_currentTab == 0 ? "Autoclicker" :
-                    s_currentTab == 1 ? "Aim Assist"  :
+                    s_currentTab == 1 ? "Aimassist"  :
                     s_currentTab == 2 ? "ESP"         :
                     s_currentTab == 3 ? "Friends"     :
                     s_currentTab == 4 ? "Macros"      :
