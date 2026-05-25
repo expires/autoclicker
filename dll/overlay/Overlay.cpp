@@ -1047,15 +1047,19 @@ static void BorrowRawMouseInput()
 static void ReturnRawMouseInput()
 {
     if (!s_rawInputBorrowed) return;
-    // Re-register so MC's input pump comes back to life. INPUTSINK + the
-    // window we have on file matches what LWJGL3's glfwSetInputMode does
-    // in disabled-cursor mode on Win32 (delivers input even if focus has
-    // momentarily shifted to our overlay's modal frame).
+    // Re-register with the EXACT shape GLFW3 originally asks for in
+    // disabled-cursor mode: dwFlags=0 (foreground-only), hwndTarget=NULL
+    // (route to focused window). Earlier attempt used RIDEV_INPUTSINK +
+    // s_hwnd; that registers a different "shape" than GLFW expects, and
+    // MC's input pump stayed wedged — screen glitched and input was dead
+    // until WM_ACTIVATE forced re-init (alt-tab fixed it). Matching the
+    // original registration lets the pump resume on the next raw input
+    // without external nudging.
     RAWINPUTDEVICE rid = {};
     rid.usUsagePage = 0x01;
     rid.usUsage     = 0x02;
-    rid.dwFlags     = RIDEV_INPUTSINK;
-    rid.hwndTarget  = s_hwnd;
+    rid.dwFlags     = 0;
+    rid.hwndTarget  = nullptr;
     if (RegisterRawInputDevices(&rid, 1, sizeof(RAWINPUTDEVICE)))
         s_rawInputBorrowed = false;
 }
