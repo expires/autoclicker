@@ -1379,6 +1379,39 @@ static BOOL WINAPI hk_wglSwapBuffers(HDC hdc)
     {
         ImGui_ImplOpenGL3_NewFrame();
         ImGui_ImplWin32_NewFrame();
+
+        // Manual mouse-button polling. GLFW3 registers raw input with
+        // RIDEV_NOLEGACY, which tells Windows NOT to synthesize the
+        // legacy WM_MOUSEMOVE / WM_LBUTTONDOWN / WM_LBUTTONUP / etc.
+        // messages — they simply never fire, so ImGui's WndProc-backed
+        // mouse-button path receives nothing and clicks don't register
+        // (hover still works because ImGui_ImplWin32_NewFrame polls
+        // GetCursorPos for position). Poll GetAsyncKeyState and emit
+        // edge events into ImGui's input queue ourselves. Only feed
+        // events while the menu is visible so we don't accidentally
+        // route the user's MC left-click attacks through ImGui.
+        if (s_visible) {
+            ImGuiIO& io = ImGui::GetIO();
+            // Draw a software cursor — the OS cursor is unreliable while
+            // MC has the window in disabled-cursor mode, even after our
+            // ShowCursor pump (some GLFW configs / drivers blank the
+            // cursor at a lower layer than ShowCursor can reach).
+            io.MouseDrawCursor = true;
+
+            static bool s_imPrevBtn[5] = {};
+            const int  vks[5]   = { VK_LBUTTON, VK_RBUTTON, VK_MBUTTON,
+                                    VK_XBUTTON1, VK_XBUTTON2 };
+            for (int i = 0; i < 5; ++i) {
+                const bool down = (GetAsyncKeyState(vks[i]) & 0x8000) != 0;
+                if (down != s_imPrevBtn[i]) {
+                    io.AddMouseButtonEvent(i, down);
+                    s_imPrevBtn[i] = down;
+                }
+            }
+        } else {
+            ImGui::GetIO().MouseDrawCursor = false;
+        }
+
         ImGui::NewFrame();
 
         const ImVec2 display = ImGui::GetIO().DisplaySize;
