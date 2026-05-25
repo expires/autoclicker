@@ -1006,9 +1006,20 @@ static int WINAPI hk_ShowCursor(BOOL show)
 
 static HCURSOR WINAPI hk_SetCursor(HCURSOR cursor)
 {
-    // GLFW also calls SetCursor(NULL) to blank the cursor image. Refuse —
-    // keep whatever cursor is currently set so the arrow stays visible.
-    if (s_visible && cursor == nullptr) return ::GetCursor();
+    // GLFW calls SetCursor(NULL) every frame in disabled-cursor mode to
+    // blank the cursor image. While our menu is up we substitute IDC_ARROW
+    // so the cursor stays visibly drawn. Earlier version returned
+    // ::GetCursor() (the previous cursor), but if GLFW had already blanked
+    // the cursor before our DLL loaded, "previous" was also NULL — cursor
+    // moved invisibly. Calling o_SetCursor explicitly with the arrow
+    // resource forces a real cursor image regardless of prior state.
+    if (s_visible && cursor == nullptr) {
+        // IDC_ARROW = 32512. Use MAKEINTRESOURCEW because the LoadCursorW
+        // signature wants LPCWSTR, not the LPSTR that the IDC_ARROW macro
+        // expands to in non-UNICODE builds.
+        static HCURSOR s_arrow = LoadCursorW(nullptr, MAKEINTRESOURCEW(32512));
+        return o_SetCursor(s_arrow);
+    }
     return o_SetCursor(cursor);
 }
 
@@ -1303,6 +1314,15 @@ static BOOL WINAPI hk_wglSwapBuffers(HDC hdc)
                 // no queued-event backlog to cause camera-pitch oscillation.
                 int safety = 256;
                 while (safety-- > 0 && o_ShowCursor(TRUE) < 0) {}
+
+                // Explicit arrow on open so the first frame already shows
+                // a cursor — without this we wait for GLFW's next per-frame
+                // SetCursor(NULL) to trigger our hk_SetCursor substitution,
+                // which means one frame of invisible-cursor right after
+                // opening the menu.
+                if (o_SetCursor) {
+                    o_SetCursor(LoadCursorW(nullptr, MAKEINTRESOURCEW(32512)));
+                }
             }
             if (s_visible && !wasVisible) ReleaseAllHeldInputs();
             if (!s_visible && wasVisible) g_settings.Save();
