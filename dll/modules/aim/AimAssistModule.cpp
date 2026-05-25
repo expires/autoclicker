@@ -1,11 +1,14 @@
 #include "AimAssistModule.h"
 #include "../../Settings.h"
 #include "../../SDK/Minecraft.h"
+#include "../../SDK/BlockPos.h"
+#include "../../SDK/BlockState.h"
 #include "../autoclicker/AutoclickerModule.h"
 #include "../../overlay/Overlay.h"
 #include <cctype>
 #include <cfloat>
 #include <chrono>
+#include <climits>
 #include <cmath>
 #include <string>
 #include <thread>
@@ -36,6 +39,56 @@ namespace AimAssistModule
         while (d >  180.f) d -= 360.f;
         while (d < -180.f) d += 360.f;
         return d;
+    }
+
+    // Stepped block raycast from (sx,sy,sz) to (tx,ty,tz). Returns false the
+    // moment any sampled BlockPos along the ray has blocksMotion=true. We don't
+    // use MC's own Level.clip(ClipContext) because constructing ClipContext
+    // requires its inner Block/Fluid enums + Entity arg — significant JNI
+    // dance for the same answer this stepped check gives.
+    //
+    // Step size 0.30 blocks: small enough to catch a 1-thick wall reliably
+    // (any block whose face the ray crosses is sampled at least once) without
+    // exploding the JNI count. startOffset 0.30 skips the eye block (our own
+    // head is air but adjacent walls glued to us aren't worth false-negating
+    // on); endOffset 0.40 backs off short of the target body so we don't
+    // false-positive on the block their feet/torso occupies.
+    //
+    // Caller MUST PushLocalFrame around the call — each step allocates 2
+    // refs (BlockPos + BlockState), and a long ray could push tens of refs.
+    static bool isLineOfSightClear(Level& level,
+                                   double sx, double sy, double sz,
+                                   double tx, double ty, double tz)
+    {
+        const double dx = tx - sx, dy = ty - sy, dz = tz - sz;
+        const double dist = std::sqrt(dx*dx + dy*dy + dz*dz);
+        if (dist < 1e-3) return true;
+        const double inv = 1.0 / dist;
+        const double ux = dx * inv, uy = dy * inv, uz = dz * inv;
+
+        constexpr double STEP        = 0.30;
+        constexpr double START_OFF   = 0.30;
+        constexpr double END_OFF     = 0.40;
+        const double endD = dist - END_OFF;
+        if (endD <= START_OFF) return true;
+
+        int lastBx = INT_MIN, lastBy = INT_MIN, lastBz = INT_MIN;
+        for (double d = START_OFF; d <= endD; d += STEP) {
+            const int bx = (int)std::floor(sx + ux * d);
+            const int by = (int)std::floor(sy + uy * d);
+            const int bz = (int)std::floor(sz + uz * d);
+            // Skip if we landed in the same block we just tested — saves
+            // a JNI roundtrip when the ray is shallow / nearly axis-aligned.
+            if (bx == lastBx && by == lastBy && bz == lastBz) continue;
+            lastBx = bx; lastBy = by; lastBz = bz;
+
+            BlockPos bp = BlockPos::make(bx, by, bz);
+            if (!bp.GetInstance()) continue;
+            BlockState bs = level.getBlockState(bp);
+            const bool solid = bs.blocksMotion();
+            if (solid) return false;
+        }
+        return true;
     }
 
     // Push a raw mouse delta into the OS input stream. SendInput injected
@@ -189,6 +242,34 @@ namespace AimAssistModule
                 const double minX = box.minX(), maxX = box.maxX();
                 const double minY = box.minY(), maxY = box.maxY();
                 const double minZ = box.minZ(), maxZ = box.maxZ();
+
+                // Line-of-sight gate. We don't want to aim through walls — so
+                // sample three points spaced down the body (eye / chest / feet)
+                // and require at least one to be reachable. Single-point LoS
+                // false-negatives on tall walls where only the head pokes out;
+                // requiring all-three false-negatives on a fence post crossing
+                // the chest. "Any one of three" matches what a player can
+                // actually hit. Each raycast goes inside its own local frame
+                // so the per-step BlockPos / BlockState refs don't accumulate
+                // into the outer player-iter frame (which is sized for ~6
+                // players, not 6 × ~20 ray steps × 2 refs each).
+                {
+                    const double cxBody = (minX + maxX) * 0.5;
+                    const double czBody = (minZ + maxZ) * 0.5;
+                    const double bodyY  = (minY + maxY) * 0.5;
+                    const double eyeY   = maxY - 0.18;      // ~just below top of head
+                    const double feetY  = minY + 0.20;      // just above feet
+                    bool hasLos = false;
+                    if (lc->env->PushLocalFrame(64) == 0) {
+                        if (isLineOfSightClear(level, ex, ey, ez, cxBody, eyeY,  czBody) ||
+                            isLineOfSightClear(level, ex, ey, ez, cxBody, bodyY, czBody) ||
+                            isLineOfSightClear(level, ex, ey, ez, cxBody, feetY, czBody))
+                            hasLos = true;
+                        if (lc->env->ExceptionCheck()) lc->env->ExceptionClear();
+                        lc->env->PopLocalFrame(nullptr);
+                    }
+                    if (!hasLos) continue;
+                }
 
                 // Shrink the AABB to its inner core before projecting.
                 // The assist clamps the cursor into whatever box we feed

@@ -11,6 +11,9 @@
 #include "imgui_impl_opengl3.h"
 #include "../Settings.h"
 #include "../modules/esp/EspModule.h"
+#include "../SDK/Lunar.h"
+#include "../SDK/Minecraft.h"
+#include "../SDK/Vec3.h"
 #include <MinHook.h>
 
 #ifndef M_PI
@@ -686,6 +689,71 @@ static bool ProjectWorld(double wx, double wy, double wz,
     return true;
 }
 
+// MC's main render thread is already attached to the JVM (MC put it there).
+// We just need our thread_local lc->env populated so SDK calls work — grab
+// the existing env via GetEnv (which does NOT attach, so we can't accidentally
+// own / detach MC's thread). One-shot per thread; subsequent calls early-out
+// on the lc->env != nullptr check.
+static void EnsureRenderThreadEnv()
+{
+    if (lc->env != nullptr) return;
+    if (lc->vm  == nullptr) return;
+    if (!lc->classesLoaded.load(std::memory_order_acquire)) return;
+    JNIEnv* env = nullptr;
+    if (lc->vm->GetEnv(reinterpret_cast<void**>(&env), JNI_VERSION_1_6) == JNI_OK && env)
+        lc->env = env;
+}
+
+// Read camera position / rotation / FOV + partial tick live from MC's render
+// thread, overwriting the snapshot's cached values. The worker-thread snapshot
+// reads these at random times relative to MC's render frame, so during fast
+// camera motion (jumping, sprinting) the cached camera lags reality by a few
+// ms — the ESP boxes then appear to bob up/down because we're projecting
+// entities against a stale camera while MC draws the world against the fresh
+// one. Re-reading on the render thread closes that gap: snap.cam now matches
+// the exact camera state MC just used to render this frame.
+//
+// Entity positions stay snapshot-sourced (tick-domain, cheap to read async),
+// but we DO refresh partialTick — using fresh PT with stale xo/x lerps the
+// entity to where MC just rendered it, eliminating "jelly target" artifacts
+// where the box trails the actual player by a few frames.
+static void RefreshCameraFromRenderThread(EspModule::Snapshot& snap)
+{
+    EnsureRenderThreadEnv();
+    if (lc->env == nullptr) return;
+    if (lc->env->PushLocalFrame(32) != 0) { lc->env->ExceptionClear(); return; }
+
+    Minecraft mc;
+    if (jobject mcInst = mc.GetInstance()) {
+        GameRenderer gr = mc.GetGameRenderer();
+        if (gr.GetInstance() != nullptr) {
+            Camera cam = gr.getMainCamera();
+            if (cam.GetInstance() != nullptr) {
+                Vec3 cp = cam.getPosition();
+                if (cp.GetInstance() != nullptr) {
+                    snap.cam.x = cp.getX();
+                    snap.cam.y = cp.getY();
+                    snap.cam.z = cp.getZ();
+                }
+                snap.cam.yRot = cam.getYRot();
+                snap.cam.xRot = cam.getXRot();
+                // FOV mostly constant but cheap to refresh; matches MC's render
+                // exactly when the user is zooming (spyglass / Optifine zoom mod).
+                float fov = gr.getFov(cam, 1.0f, true);
+                if (!lc->env->ExceptionCheck() && fov > 0.0f) snap.cam.fov = fov;
+            }
+        }
+        DeltaTracker dt = mc.GetDeltaTracker();
+        if (dt.GetInstance() != nullptr) {
+            float pt = dt.getPartialTick(true);
+            if (!lc->env->ExceptionCheck()) snap.partialTick = pt;
+        }
+    }
+
+    if (lc->env->ExceptionCheck()) lc->env->ExceptionClear();
+    lc->env->PopLocalFrame(nullptr);
+}
+
 static void DrawEsp(float dispW, float dispH)
 {
     EspModule::Snapshot snap;
@@ -694,6 +762,10 @@ static void DrawEsp(float dispW, float dispH)
         if (!EspModule::snapshot.valid) return;
         snap = EspModule::snapshot;
     }
+
+    // Live camera read on the render thread — kills the jump-induced
+    // box-bobbing caused by snap.cam drift vs. MC's actual frame camera.
+    RefreshCameraFromRenderThread(snap);
 
     ImDrawList* dl = ImGui::GetBackgroundDrawList();
     const float maxDistSq = (float)g_settings.maxDistance * (float)g_settings.maxDistance;
