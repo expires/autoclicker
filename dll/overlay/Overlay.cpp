@@ -1195,11 +1195,27 @@ static BOOL WINAPI hk_wglSwapBuffers(HDC hdc)
             s_hwnd     = liveHwnd;
             s_origProc = reinterpret_cast<WNDPROC>(
                 SetWindowLongPtrW(s_hwnd, GWLP_WNDPROC, reinterpret_cast<LONG_PTR>(HookedWndProc)));
-            // ImGui's win32 backend caches the HWND it was initialized
-            // with; without re-init, ImGui still polls cursor / focus
-            // against the dead window.
             ImGui_ImplWin32_Shutdown();
             ImGui_ImplWin32_Init(s_hwnd);
+        }
+
+        // Same-HWND eviction guard. A Lunar mod (or any other code on the
+        // process) can SetWindowLongPtrW(GWLP_WNDPROC, ...) on our window
+        // and replace our HookedWndProc without the HWND itself changing —
+        // the HWND-change branch above wouldn't catch that. Symptoms are
+        // identical (menu draws, input bypasses our swallow). Cheap to
+        // verify each frame and re-install if needed.
+        if (s_hwnd) {
+            WNDPROC current = reinterpret_cast<WNDPROC>(
+                GetWindowLongPtrW(s_hwnd, GWLP_WNDPROC));
+            if (current && current != HookedWndProc) {
+                // Treat the now-active proc as our new origProc (it's the
+                // thing we need to call through to — whichever mod just
+                // installed itself) and re-chain on top.
+                s_origProc = current;
+                SetWindowLongPtrW(s_hwnd, GWLP_WNDPROC,
+                    reinterpret_cast<LONG_PTR>(HookedWndProc));
+            }
         }
     }
 
@@ -1226,7 +1242,29 @@ static BOOL WINAPI hk_wglSwapBuffers(HDC hdc)
             const bool wasVisible = s_visible;
             s_visible = menuEdge ? !s_visible : false;
             ClipCursor(nullptr);
-            ShowCursor(s_visible ? TRUE : FALSE);
+            // Release any mouse capture MC / GLFW grabbed — capture survives
+            // ShowCursor and means raw mouse keeps routing to MC's wndproc
+            // even after we un-hide the cursor.
+            ReleaseCapture();
+            if (s_visible) {
+                // Pump the show-counter all the way up to 0 (visible).
+                // GLFW slammed ShowCursor(FALSE) many times before our DLL
+                // loaded — counter is often at -50 or worse. A single
+                // ShowCursor(TRUE) only bumps it to -49 and the cursor
+                // stays hidden. Use the original to bypass our own gate
+                // (we know we want to show right now) and stop the moment
+                // the counter goes non-negative.
+                int safety = 256;
+                while (safety-- > 0 && o_ShowCursor(TRUE) < 0) {}
+            } else if (wasVisible) {
+                // Closing: don't try to drag the counter back to where
+                // GLFW expects it — GLFW re-asserts ShowCursor(FALSE) every
+                // frame in disabled-cursor mode and our hk_ShowCursor lets
+                // those through when !s_visible, so the counter settles
+                // back to its hidden state within a frame or two on its
+                // own. Manually decrementing here would race that and can
+                // overshoot, locking the cursor invisible permanently.
+            }
             if (s_visible && !wasVisible) ReleaseAllHeldInputs();
             // Persist settings every time the user closes the overlay.
             if (!s_visible && wasVisible) g_settings.Save();
