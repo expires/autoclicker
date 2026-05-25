@@ -1176,6 +1176,33 @@ static BOOL WINAPI hk_wglSwapBuffers(HDC hdc)
         s_initialized = true;
     }
 
+    // Re-hook on HWND change. Lunar / MC sometimes recreate the window
+    // (fullscreen toggle, some mod-driven swap-chain rebuilds, resolution
+    // change) — when that happens we keep drawing to the new window because
+    // o_wglSwapBuffers uses the live hdc, but our WndProc hook is stranded
+    // on the OLD window's GWLP_WNDPROC slot. Result: menu draws fine on
+    // the new window, but mouse / kbd events on the visible window bypass
+    // our swallow path and go straight to MC's GLFW, so the user's screen
+    // pans around while the menu sits there uninteractable.
+    {
+        HWND liveHwnd = WindowFromDC(hdc);
+        if (liveHwnd && liveHwnd != s_hwnd) {
+            // Best-effort restore on the dead window so we don't leave a
+            // function pointer into our DLL behind if the window happens
+            // to still be alive somewhere (we'd UAF on DLL unload).
+            if (s_hwnd && s_origProc)
+                SetWindowLongPtrW(s_hwnd, GWLP_WNDPROC, reinterpret_cast<LONG_PTR>(s_origProc));
+            s_hwnd     = liveHwnd;
+            s_origProc = reinterpret_cast<WNDPROC>(
+                SetWindowLongPtrW(s_hwnd, GWLP_WNDPROC, reinterpret_cast<LONG_PTR>(HookedWndProc)));
+            // ImGui's win32 backend caches the HWND it was initialized
+            // with; without re-init, ImGui still polls cursor / focus
+            // against the dead window.
+            ImGui_ImplWin32_Shutdown();
+            ImGui_ImplWin32_Init(s_hwnd);
+        }
+    }
+
     {
         // Snapshot the keybind-listening flag from the previous frame and
         // reset it; this frame's RowKeybind will set it again if any
