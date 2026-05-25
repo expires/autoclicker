@@ -1012,56 +1012,50 @@ static HCURSOR WINAPI hk_SetCursor(HCURSOR cursor)
     return o_SetCursor(cursor);
 }
 
-// Raw-input borrow. GLFW3 in disabled-cursor mode delivers mouse deltas via
-// WM_INPUT (registered with RegisterRawInputDevices). Some configurations of
-// LWJGL / Lunar appear to consume raw input via GetRawInputBuffer polling
-// rather than messages — that bypasses our WndProc swallow entirely, so the
-// user's mouse keeps rotating the camera even while our menu is on screen.
+// Raw-input read-time filter. GLFW3 in disabled-cursor mode delivers mouse
+// deltas via raw input — either as WM_INPUT messages (our WndProc swallows
+// those when s_visible) or via GetRawInputBuffer polling, which entirely
+// bypasses WndProc.
 //
-// The bulletproof workaround: unregister the mouse raw-input device for the
-// whole process when the menu opens. Without a registration, GetRawInputBuffer
-// has nothing to return and WM_INPUT stops firing — both paths go quiet. On
-// close we re-register with the standard GLFW flags so MC's input resumes.
+// First attempt was unregistering the mouse raw-input device on menu open
+// (RegisterRawInputDevices + RIDEV_REMOVE). That successfully blocked input,
+// but on close GLFW's internal state machine didn't notice that the device
+// had been yanked + restored — screen glitched and input was dead until an
+// alt-tab forced WM_ACTIVATE to re-init everything. Registration tampering
+// is the wrong layer.
 //
-// Stored flags let us round-trip without guessing MC's original config. We
-// re-register with INPUTSINK so MC keeps receiving input regardless of focus
-// state during the transition; 0 flags would be more correct but risks a
-// brief "mouse stops working" pause if the window momentarily loses focus.
-static bool  s_rawInputBorrowed = false;
-static DWORD s_origRawFlags     = 0;
-static HWND  s_origRawTarget    = nullptr;
+// Better: leave registrations alone, hook the read functions themselves. When
+// s_visible, GetRawInputBuffer reports zero pending events; GetRawInputData
+// returns 0 bytes. MC's GLFW still thinks it's registered (no state churn),
+// it just gets no input to act on. When the menu closes the hooks pass
+// through and the next raw event flows normally — no nudge required.
+typedef UINT(WINAPI* fn_GetRawInputBuffer)(PRAWINPUT, PUINT, UINT);
+typedef UINT(WINAPI* fn_GetRawInputData)(HRAWINPUT, UINT, LPVOID, PUINT, UINT);
+static fn_GetRawInputBuffer o_GetRawInputBuffer = nullptr;
+static fn_GetRawInputData   o_GetRawInputData   = nullptr;
 
-static void BorrowRawMouseInput()
+static UINT WINAPI hk_GetRawInputBuffer(PRAWINPUT pData, PUINT pcbSize, UINT cbSizeHeader)
 {
-    if (s_rawInputBorrowed) return;
-    // Unregister the generic-desktop mouse (UsagePage 0x01, Usage 0x02).
-    RAWINPUTDEVICE rid = {};
-    rid.usUsagePage = 0x01;
-    rid.usUsage     = 0x02;
-    rid.dwFlags     = RIDEV_REMOVE;
-    rid.hwndTarget  = nullptr;
-    if (RegisterRawInputDevices(&rid, 1, sizeof(RAWINPUTDEVICE)))
-        s_rawInputBorrowed = true;
+    if (s_visible) {
+        // Report "no input available". Callers loop until this returns 0,
+        // so reporting 0 here drains them cleanly without state mismatch.
+        return 0;
+    }
+    return o_GetRawInputBuffer(pData, pcbSize, cbSizeHeader);
 }
 
-static void ReturnRawMouseInput()
+static UINT WINAPI hk_GetRawInputData(HRAWINPUT hRawInput, UINT uiCommand,
+                                       LPVOID pData, PUINT pcbSize, UINT cbSizeHeader)
 {
-    if (!s_rawInputBorrowed) return;
-    // Re-register with the EXACT shape GLFW3 originally asks for in
-    // disabled-cursor mode: dwFlags=0 (foreground-only), hwndTarget=NULL
-    // (route to focused window). Earlier attempt used RIDEV_INPUTSINK +
-    // s_hwnd; that registers a different "shape" than GLFW expects, and
-    // MC's input pump stayed wedged — screen glitched and input was dead
-    // until WM_ACTIVATE forced re-init (alt-tab fixed it). Matching the
-    // original registration lets the pump resume on the next raw input
-    // without external nudging.
-    RAWINPUTDEVICE rid = {};
-    rid.usUsagePage = 0x01;
-    rid.usUsage     = 0x02;
-    rid.dwFlags     = 0;
-    rid.hwndTarget  = nullptr;
-    if (RegisterRawInputDevices(&rid, 1, sizeof(RAWINPUTDEVICE)))
-        s_rawInputBorrowed = false;
+    if (s_visible) {
+        // For RID_INPUT (data read), 0 means "no bytes copied". GLFW
+        // treats that as "no event this frame" and moves on. For
+        // RID_HEADER size queries we still return 0 — GLFW just skips
+        // the message rather than crashing.
+        if (pcbSize) *pcbSize = 0;
+        return 0;
+    }
+    return o_GetRawInputData(hRawInput, uiCommand, pData, pcbSize, cbSizeHeader);
 }
 
 // Synthesize key-up / button-up messages for everything currently pressed so
@@ -1296,26 +1290,19 @@ static BOOL WINAPI hk_wglSwapBuffers(HDC hdc)
             ClipCursor(nullptr);
             ReleaseCapture();
             if (s_visible) {
-                // Take raw mouse input away from MC at the registration
-                // layer — this is what actually stops the camera rotating,
-                // because polling consumers (GetRawInputBuffer) and message
-                // consumers (WM_INPUT via WndProc) both go quiet when no
-                // device is registered.
-                BorrowRawMouseInput();
-                // Pump the show-counter all the way up to 0 (visible).
-                // GLFW slammed ShowCursor(FALSE) many times before our DLL
-                // loaded — counter is often at -50 or worse. A single
-                // ShowCursor(TRUE) only bumps it to -49 and the cursor
-                // stays hidden. Bypass our own gate via o_ShowCursor and
-                // stop the moment the counter goes non-negative.
+                // Pump ShowCursor counter to 0+. GLFW slammed it deeply
+                // negative pre-load; one ShowCursor(TRUE) bumps by 1 and
+                // the cursor stays invisible. Bypass our own hook via
+                // o_ShowCursor; safety-bounded so a stuck API can't hang.
+                //
+                // Mouse input gating happens automatically via the
+                // GetRawInputBuffer/Data hooks — they observe s_visible
+                // and return 0 events while the menu is up. No registration
+                // tampering means GLFW's state machine stays consistent
+                // and MC resumes cleanly on close, no alt-tab needed and
+                // no queued-event backlog to cause camera-pitch oscillation.
                 int safety = 256;
                 while (safety-- > 0 && o_ShowCursor(TRUE) < 0) {}
-            } else if (wasVisible) {
-                // Closing: give raw input back to MC, otherwise the player
-                // can't look around once the menu is dismissed. Counter
-                // re-decays naturally via GLFW's per-frame ShowCursor(FALSE)
-                // calls (our hk_ShowCursor lets those through when !s_visible).
-                ReturnRawMouseInput();
             }
             if (s_visible && !wasVisible) ReleaseAllHeldInputs();
             if (!s_visible && wasVisible) g_settings.Save();
@@ -1901,16 +1888,21 @@ namespace Overlay
                       reinterpret_cast<void**>(&o_wglSwapBuffers));
         MH_EnableHook(tgtSwap);
 
-        // Hook the two user32 calls GLFW uses to keep the cursor centered
-        // in disabled-cursor mode. While the overlay is up, both no-op —
-        // killing the cursor-snap-back jitter.
+        // Hook the user32 calls GLFW uses to keep the cursor centered in
+        // disabled-cursor mode (cursor-snap-back jitter) PLUS the raw-input
+        // read functions (gates mouse delta delivery to MC when our menu is
+        // open — no registration tampering required). GetRawInputBuffer is
+        // the polling path; GetRawInputData is the WM_INPUT processing path.
+        // Both observe s_visible and short-circuit while the menu is up.
         HMODULE u32 = GetModuleHandleA("user32.dll");
         if (u32) {
             struct { const char* name; void* hook; void** orig; } hooks[] = {
-                { "SetCursorPos", reinterpret_cast<void*>(hk_SetCursorPos), reinterpret_cast<void**>(&o_SetCursorPos) },
-                { "ClipCursor",   reinterpret_cast<void*>(hk_ClipCursor),   reinterpret_cast<void**>(&o_ClipCursor)   },
-                { "ShowCursor",   reinterpret_cast<void*>(hk_ShowCursor),   reinterpret_cast<void**>(&o_ShowCursor)   },
-                { "SetCursor",    reinterpret_cast<void*>(hk_SetCursor),    reinterpret_cast<void**>(&o_SetCursor)    },
+                { "SetCursorPos",       reinterpret_cast<void*>(hk_SetCursorPos),       reinterpret_cast<void**>(&o_SetCursorPos)       },
+                { "ClipCursor",         reinterpret_cast<void*>(hk_ClipCursor),         reinterpret_cast<void**>(&o_ClipCursor)         },
+                { "ShowCursor",         reinterpret_cast<void*>(hk_ShowCursor),         reinterpret_cast<void**>(&o_ShowCursor)         },
+                { "SetCursor",          reinterpret_cast<void*>(hk_SetCursor),          reinterpret_cast<void**>(&o_SetCursor)          },
+                { "GetRawInputBuffer",  reinterpret_cast<void*>(hk_GetRawInputBuffer),  reinterpret_cast<void**>(&o_GetRawInputBuffer)  },
+                { "GetRawInputData",    reinterpret_cast<void*>(hk_GetRawInputData),    reinterpret_cast<void**>(&o_GetRawInputData)    },
             };
             for (auto& h : hooks) {
                 void* target = reinterpret_cast<void*>(GetProcAddress(u32, h.name));
