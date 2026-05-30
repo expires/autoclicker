@@ -1,21 +1,30 @@
 #include "Clicker.h"
 
+// Log-normal delays with OU-based CPS drift. Intervals cluster around
+// (1000/cps)*fraction but follow a right-skewed distribution: σ=0.18 gives
+// CV≈18% and excess kurtosis≈+0.5, matching real human click timing.
+// paceFactor shifts the effective mean ±35% on a ~5-click half-life so
+// different time windows produce genuinely different variances.
 int Clicker::randomDelay(double fraction)
 {
-    const double mean = (1000.0 / cps) * fraction;
-    const double stddev = mean * 0.2;
+    const double base      = (1000.0 / cps) * fraction;
+    const double effective = base * std::max(0.5, 1.0 + (double)paceFactor);
 
-    std::normal_distribution<> dist(mean, stddev);
-    int delay;
-    do {
-        delay = static_cast<int>(dist(gen));
-    } while (delay < 1 || delay > static_cast<int>(mean * 2.5));
+    const double sigma = 0.18;
+    const double mu    = std::log(effective) - 0.5 * sigma * sigma;
 
-    // 1% chance of a human-like extra pause
-    if (extremeDelayChance(gen) == 1)
-        delay += static_cast<int>(mean * 0.5 * jitterFactor(gen));
+    std::lognormal_distribution<double> dist(mu, sigma);
+    const int delay = static_cast<int>(dist(gen));
 
-    return delay;
+    return std::clamp(delay, 1, static_cast<int>(base * 4.5));
+}
+
+void Clicker::updatePace()
+{
+    // OU step: damp toward zero then add Gaussian impulse.
+    // 0.88^n = 0.5 → n ≈ 5.5 clicks half-life (≈460 ms at 12 CPS).
+    paceFactor = paceFactor * 0.88f + paceImpulse(gen);
+    paceFactor = std::clamp(paceFactor, -0.35f, 0.35f);
 }
 
 void Clicker::lclick(HWND hwnd, int jitterStrength)
@@ -25,24 +34,38 @@ void Clicker::lclick(HWND hwnd, int jitterStrength)
     if (GetAsyncKeyState(VK_LBUTTON) >= 0)
         return;
 
+    updatePace();
+
+    const double downFrac = downFracDist(gen);
+
     POINT pt;
     GetCursorPos(&pt);
     SendMessage(hwnd, WM_LBUTTONDOWN, MK_LBUTTON, MAKELPARAM(pt.x, pt.y));
-    jitterFor(randomDelay(0.3), jitterStrength);
+    jitterFor(randomDelay(downFrac), jitterStrength);
     SendMessage(hwnd, WM_LBUTTONUP, MK_LBUTTON, MAKELPARAM(pt.x, pt.y));
-    jitterFor(randomDelay(0.7), jitterStrength);
+
+    int gap = randomDelay(1.0 - downFrac);
+    // 4% chance of a human hesitation pause — extends the inter-click gap
+    // by 1.6x–3.0x to seed right-tail outliers and positive excess kurtosis.
+    if (pauseRoll(gen) == 1)
+        gap = static_cast<int>(gap * pauseMult(gen));
+    jitterFor(gap, jitterStrength);
 
     trackClick();
 }
 
 void Clicker::rclick(HWND hwnd)
 {
+    updatePace();
+
+    const double downFrac = downFracDist(gen);
+
     POINT pt;
     GetCursorPos(&pt);
     SendMessage(hwnd, WM_RBUTTONDOWN, MK_RBUTTON, MAKELPARAM(pt.x, pt.y));
-    DELAY(randomDelay(0.3));
+    DELAY(randomDelay(downFrac));
     SendMessage(hwnd, WM_RBUTTONUP, MK_RBUTTON, MAKELPARAM(pt.x, pt.y));
-    DELAY(randomDelay(0.7));
+    DELAY(randomDelay(1.0 - downFrac));
 
     trackClick();
 }
