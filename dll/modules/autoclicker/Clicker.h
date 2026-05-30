@@ -15,6 +15,9 @@ public:
         downFracDist(0.22, 0.38),
         pauseRoll(1, 25),
         pauseMult(1.6, 3.0),
+        slowTrigger(1, 15),
+        slowDuration(2, 5),
+        slowFactor(1.25, 1.67),
         isMouseDown(false) {}
     void setCPS(int newCps) { cps = newCps; }
 
@@ -43,9 +46,18 @@ private:
     std::uniform_real_distribution<double> downFracDist;
 
     // Occasional human hesitation: 4% chance (roll==1) extends the gap
-    // by 1.6x–3.0x, seeding real right-tail outliers and positive kurtosis.
+    // by 1.6x–3.0x, seeding right-tail outliers and positive kurtosis.
     std::uniform_int_distribution<> pauseRoll;
     std::uniform_real_distribution<double> pauseMult;
+
+    // Discrete slow phase: ~6.7% chance per click (slowTrigger==1) of
+    // entering a 2–5 click window at 20–40% reduced CPS. Breaks the
+    // constant-rate signature that consistency checks look for.
+    int slowPhaseClicks = 0;
+    float slowMultiplier = 1.0f;
+    std::uniform_int_distribution<> slowTrigger;
+    std::uniform_int_distribution<> slowDuration;
+    std::uniform_real_distribution<double> slowFactor;
 
     // Ornstein-Uhlenbeck state for the jitter random walk. Velocity is the
     // OU variable (random impulse + damping toward zero); sub-pixel position

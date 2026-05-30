@@ -9,7 +9,7 @@ int Clicker::randomDelay(double fraction)
 {
     const double base  = (1000.0 / cps) * fraction;
     const double drift = 1.0 + (double)paceFactor;
-    const double effective = base * (drift < 0.5 ? 0.5 : drift);
+    const double effective = base * (drift < 0.5 ? 0.5 : drift) * (double)slowMultiplier;
 
     const double sigma = 0.18;
     const double mu    = std::log(effective) - 0.5 * sigma * sigma;
@@ -28,6 +28,17 @@ void Clicker::updatePace()
     paceFactor = paceFactor * 0.88f + paceImpulse(gen);
     if (paceFactor >  0.35f) paceFactor =  0.35f;
     if (paceFactor < -0.35f) paceFactor = -0.35f;
+
+    // Discrete slow phase: ~6.7% chance per click of dropping 20–40% in CPS
+    // for the next 2–5 clicks. The abrupt onset + decay breaks the flat
+    // inter-click distribution that consistency checks flag.
+    if (slowPhaseClicks > 0) {
+        if (--slowPhaseClicks == 0)
+            slowMultiplier = 1.0f;
+    } else if (slowTrigger(gen) == 1) {
+        slowPhaseClicks = slowDuration(gen);
+        slowMultiplier  = static_cast<float>(slowFactor(gen));
+    }
 }
 
 void Clicker::lclick(HWND hwnd, int jitterStrength)
