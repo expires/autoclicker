@@ -7,8 +7,9 @@
 // different time windows produce genuinely different variances.
 int Clicker::randomDelay(double fraction)
 {
-    const double base      = (1000.0 / cps) * fraction;
-    const double effective = base * std::max(0.5, 1.0 + (double)paceFactor);
+    const double base  = (1000.0 / cps) * fraction;
+    const double drift = 1.0 + (double)paceFactor;
+    const double effective = base * (drift < 0.5 ? 0.5 : drift);
 
     const double sigma = 0.18;
     const double mu    = std::log(effective) - 0.5 * sigma * sigma;
@@ -16,7 +17,8 @@ int Clicker::randomDelay(double fraction)
     std::lognormal_distribution<double> dist(mu, sigma);
     const int delay = static_cast<int>(dist(gen));
 
-    return std::clamp(delay, 1, static_cast<int>(base * 4.5));
+    const int maxDelay = static_cast<int>(base * 4.5);
+    return delay < 1 ? 1 : (delay > maxDelay ? maxDelay : delay);
 }
 
 void Clicker::updatePace()
@@ -24,7 +26,8 @@ void Clicker::updatePace()
     // OU step: damp toward zero then add Gaussian impulse.
     // 0.88^n = 0.5 → n ≈ 5.5 clicks half-life (≈460 ms at 12 CPS).
     paceFactor = paceFactor * 0.88f + paceImpulse(gen);
-    paceFactor = std::clamp(paceFactor, -0.35f, 0.35f);
+    if (paceFactor >  0.35f) paceFactor =  0.35f;
+    if (paceFactor < -0.35f) paceFactor = -0.35f;
 }
 
 void Clicker::lclick(HWND hwnd, int jitterStrength)
