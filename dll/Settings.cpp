@@ -40,6 +40,7 @@ void Settings::Save()
     fprintf(f, "drawDistance=%d\n", drawDistance ? 1 : 0);
     fprintf(f, "drawHealth=%d\n",     drawHealth       ? 1 : 0);
     fprintf(f, "highlightFriends=%d\n", highlightFriends ? 1 : 0);
+    fprintf(f, "teamsByColor=%d\n",     teamsByColor ? 1 : 0);
     fprintf(f, "menuKey=%d\n",         menuKey);
     fprintf(f, "acKey=%d\n",           acKey);
     fprintf(f, "espKey=%d\n",          espKey);
@@ -126,6 +127,7 @@ void Settings::Load()
         else if (k == "drawDistance") drawDistance = (val != 0);
         else if (k == "drawHealth")       drawHealth       = (val != 0);
         else if (k == "highlightFriends") highlightFriends = (val != 0);
+        else if (k == "teamsByColor")     teamsByColor     = (val != 0);
         else if (k == "menuKey")         menuKey         = val;
         else if (k == "acKey")           acKey           = val;
         else if (k == "espKey")          espKey          = val;

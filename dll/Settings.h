@@ -40,6 +40,10 @@ struct Settings
     // override of the team-derived color — disable to keep team colors but
     // still see the friend list in the Friends tab.
     bool highlightFriends = true;
+    // Colour each ESP box by the player's team colour (the existing, crash-free
+    // team-colour read from the formatted name). Off = plain white boxes.
+    // Toggled from the Friends tab.
+    bool teamsByColor = true;
     // 8 chunks (128 blocks). Fixed — no UI slider for this anymore.
     int  maxDistance  = 128;
 

@@ -1623,6 +1623,13 @@ static BOOL WINAPI hk_wglSwapBuffers(HDC hdc)
                     // room than chained into a continuous border list.
                     ImGui::PopStyleVar();
 
+                    // Teams by Colour — colour ESP boxes by team colour. Lives at
+                    // the top of the Friends tab since it's about telling players
+                    // apart, same as the friend list.
+                    dirty |= RowCheckbox("Teams by Colour", &g_settings.teamsByColor);
+
+                    ImGui::Dummy(ImVec2(0, 6));
+
                     // Pass allowMouse=true so the user can bind MMB (the
                     // asking use-case: middle-click a player to friend
                     // them). The friends module already gates on

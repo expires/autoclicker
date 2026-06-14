@@ -184,15 +184,18 @@ namespace EspModule
                     }
                 }
 
-                // formatNameForTeam emits chunks in order: [prefix] name [suffix].
-                // The team's own color is applied to every chunk that doesn't
-                // explicitly override it — guild prefixes override, the bare
-                // player name does not. The last non-empty chunk is therefore
-                // either the suffix or the name; either way it carries the
-                // team color, which is what we want for the box.
+                // "Teams by Colour": colour the box by the team colour. This is
+                // the exact same read that already works crash-free — formatName-
+                // ForTeam emits chunks [prefix] name [suffix], the team's own
+                // colour is applied to every chunk that doesn't override it
+                // (guild prefixes override, the bare name does not), so the last
+                // non-empty chunk carries the team colour. When the toggle is
+                // off the box stays plain white.
                 t.boxColor = 0xFFFFFFFFu;
-                for (auto it = t.nameChunks.rbegin(); it != t.nameChunks.rend(); ++it) {
-                    if (!it->first.empty()) { t.boxColor = it->second; break; }
+                if (g_settings.teamsByColor) {
+                    for (auto it = t.nameChunks.rbegin(); it != t.nameChunks.rend(); ++it) {
+                        if (!it->first.empty()) { t.boxColor = it->second; break; }
+                    }
                 }
 
                 back.targets.push_back(std::move(t));

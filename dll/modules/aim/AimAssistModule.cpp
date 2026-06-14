@@ -106,6 +106,19 @@ namespace AimAssistModule
         SendInput(1, &in, sizeof(INPUT));
     }
 
+    // Team colour read the EXACT same way ESP colours its boxes: the last
+    // non-empty chunk of the team-formatted name carries the team colour.
+    // Returns white (0xFFFFFFFF) when there's no name / no team colour. This is
+    // the same crash-free path ESP runs every frame — reused here so aim's
+    // teammate test agrees with what the boxes show.
+    static uint32_t teamColorOf(Entity& e)
+    {
+        auto chunks = e.getFormattedNameChunks();
+        for (auto it = chunks.rbegin(); it != chunks.rend(); ++it)
+            if (!it->first.empty()) return it->second;
+        return 0xFFFFFFFFu;
+    }
+
     DWORD WINAPI init(LPVOID /*lpParam*/)
     {
         // Wait for the autoclicker thread to attach + populate the class map.
@@ -137,8 +150,9 @@ namespace AimAssistModule
                 !(GetAsyncKeyState(VK_LBUTTON) & 0x8000)) continue;
 
             // Bound JNI local refs to this iteration so the per-player team /
-            // position refs don't leak across ticks.
-            if (lc->env->PushLocalFrame(128) != 0) {
+            // position refs don't leak across ticks. 256 to match ESP, which
+            // does the same per-player name read every frame without issue.
+            if (lc->env->PushLocalFrame(256) != 0) {
                 lc->env->ExceptionClear();
                 continue;
             }
@@ -173,9 +187,11 @@ namespace AimAssistModule
             const float  curYaw   = local.getYRot();
             const float  curPitch = local.getXRot();
 
-            // Snapshot the scoreboard team. PlayerTeams are singletons per
-            // team name, so JNI ref-equality is the same as name-equality.
-            const jobject myTeam = local.getTeamRaw();
+            // Local player's team colour, read the exact same way ESP colours
+            // its boxes. Gated by the "Teams by Colour" toggle; white means
+            // "no team colour" → don't treat anyone as a teammate.
+            const uint32_t myTeamColor =
+                g_settings.teamsByColor ? teamColorOf(local) : 0xFFFFFFFFu;
 
             auto players = level.players();
             const jobject localInst = local.GetInstance();
@@ -197,17 +213,6 @@ namespace AimAssistModule
             for (auto& p : players)
             {
                 if (lc->env->IsSameObject(p.GetInstance(), localInst)) continue;
-
-                // Same-team skip. If I have no team, never skip — vanilla MC
-                // doesn't treat "no team" as an alliance and neither do we.
-                if (myTeam != nullptr) {
-                    jobject pt = p.getTeamRaw();
-                    if (pt != nullptr) {
-                        const bool same = (lc->env->IsSameObject(pt, myTeam) == JNI_TRUE);
-                        lc->env->DeleteLocalRef(pt);
-                        if (same) continue;
-                    }
-                }
 
                 // Friend skip. Mirrors the team-skip policy: a player you've
                 // marked as a friend should never be a valid aim target,
@@ -247,6 +252,13 @@ namespace AimAssistModule
                 const double ddx0 = tx - ex;
                 const double ddz0 = tz - ez;
                 if (ddx0 * ddx0 + ddz0 * ddz0 > maxDistSq) continue;
+
+                // Same-colour (same team) skip — done after the cheap distance
+                // gate so the per-player name read (the exact one ESP uses) is
+                // only paid for in-range players, not the whole server. White =
+                // no team colour = attack everyone.
+                if (myTeamColor != 0xFFFFFFFFu && teamColorOf(p) == myTeamColor)
+                    continue;
 
                 AABB box = p.getBoundingBox();
                 if (box.GetInstance() == nullptr) continue;
