@@ -1623,7 +1623,8 @@ static BOOL WINAPI hk_wglSwapBuffers(HDC hdc)
                     // room than chained into a continuous border list.
                     ImGui::PopStyleVar();
 
-                    // Teams by Colour — colour ESP boxes by team colour. Lives at
+                    // Teams by Colour — colour ESP boxes by team colour AND make
+                    // aim assist skip same-colour (same team) players. Lives at
                     // the top of the Friends tab since it's about telling players
                     // apart, same as the friend list.
                     dirty |= RowCheckbox("Teams by Colour", &g_settings.teamsByColor);

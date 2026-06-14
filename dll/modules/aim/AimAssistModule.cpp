@@ -188,8 +188,9 @@ namespace AimAssistModule
             const float  curPitch = local.getXRot();
 
             // Local player's team colour, read the exact same way ESP colours
-            // its boxes. Gated by the "Teams by Colour" toggle; white means
-            // "no team colour" → don't treat anyone as a teammate.
+            // its boxes. Gated by the "Teams by Colour" toggle (on = colour
+            // boxes AND skip teammates); white means "no team colour" → don't
+            // treat anyone as a teammate.
             const uint32_t myTeamColor =
                 g_settings.teamsByColor ? teamColorOf(local) : 0xFFFFFFFFu;
 
