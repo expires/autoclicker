@@ -291,76 +291,76 @@ static void ApplyStyle()
     ImGuiStyle& s = ImGui::GetStyle();
 
     s.WindowPadding      = {12.0f, 12.0f};
-    s.FramePadding       = { 6.0f,  3.0f};
+    s.FramePadding       = { 7.0f,  4.0f};
     s.ItemSpacing        = { 8.0f,  7.0f};
     s.ItemInnerSpacing   = { 6.0f,  4.0f};
     s.IndentSpacing      = 14.0f;
-    s.WindowRounding     = 8.0f;
-    s.FrameRounding      = 4.0f;
-    s.GrabRounding       = 6.0f;
-    s.TabRounding        = 8.0f;
+    s.WindowRounding     = 13.0f;
+    s.FrameRounding      = 8.0f;
+    s.GrabRounding       = 10.0f;
+    s.TabRounding        = 10.0f;
     s.TabBarBorderSize   = 0.0f;
     s.TabBorderSize      = 0.0f;
-    s.ScrollbarRounding  = 4.0f;
-    s.ScrollbarSize      = 10.0f;
-    s.ChildRounding      = 6.0f;
-    s.PopupRounding      = 4.0f;
+    s.ScrollbarRounding  = 6.0f;
+    s.ScrollbarSize      = 9.0f;
+    s.ChildRounding      = 10.0f;
+    s.PopupRounding      = 8.0f;
     s.WindowBorderSize   = 1.0f;
-    s.ChildBorderSize    = 1.0f;
-    s.FrameBorderSize    = 0.0f;
+    s.ChildBorderSize    = 0.0f;
+    s.FrameBorderSize    = 1.0f;
     s.WindowMinSize      = {220.0f, 80.0f};
 
     ImVec4* c = s.Colors;
 
-    c[ImGuiCol_WindowBg]              = FromHex(0x0b0f17);
-    c[ImGuiCol_ChildBg]               = FromHex(0x10151f);
-    c[ImGuiCol_PopupBg]               = FromHex(0x10151f);
+    c[ImGuiCol_WindowBg]              = FromHex(0x0c1220, 0.74f);
+    c[ImGuiCol_ChildBg]               = FromHex(0x141d30, 0.40f);
+    c[ImGuiCol_PopupBg]               = FromHex(0x0e1626, 0.94f);
 
-    c[ImGuiCol_Border]                = FromHex(0x1e2535);
+    c[ImGuiCol_Border]                = FromHex(0x6f82ad, 0.30f);
     c[ImGuiCol_BorderShadow]          = ImVec4(0, 0, 0, 0);
 
-    c[ImGuiCol_FrameBg]               = FromHex(0x161d2e);
-    c[ImGuiCol_FrameBgHovered]        = FromHex(0x1d2438);
-    c[ImGuiCol_FrameBgActive]         = FromHex(0x232b42);
+    c[ImGuiCol_FrameBg]               = FromHex(0x1c2740, 0.55f);
+    c[ImGuiCol_FrameBgHovered]        = FromHex(0x263454, 0.66f);
+    c[ImGuiCol_FrameBgActive]         = FromHex(0x2e3e63, 0.78f);
 
-    c[ImGuiCol_TitleBg]               = FromHex(0x0b0f17);
-    c[ImGuiCol_TitleBgActive]         = FromHex(0x10151f);
-    c[ImGuiCol_TitleBgCollapsed]      = FromHex(0x0b0f17);
+    c[ImGuiCol_TitleBg]               = FromHex(0x0c1220, 0.0f);
+    c[ImGuiCol_TitleBgActive]         = FromHex(0x141d30, 0.0f);
+    c[ImGuiCol_TitleBgCollapsed]      = FromHex(0x0c1220, 0.0f);
 
     c[ImGuiCol_CheckMark]             = FromHex(0xffffff);
-    c[ImGuiCol_SliderGrab]            = FromHex(0x5865f2);
-    c[ImGuiCol_SliderGrabActive]      = FromHex(0x6b76f3);
+    c[ImGuiCol_SliderGrab]            = FromHex(0xb9c1ff);
+    c[ImGuiCol_SliderGrabActive]      = FromHex(0xd7dbff);
 
-    c[ImGuiCol_Button]                = FromHex(0x1a2138);
-    c[ImGuiCol_ButtonHovered]         = FromHex(0x202845);
-    c[ImGuiCol_ButtonActive]          = FromHex(0x2a3358);
+    c[ImGuiCol_Button]                = FromHex(0x2a3a5e, 0.50f);
+    c[ImGuiCol_ButtonHovered]         = FromHex(0x35487a, 0.66f);
+    c[ImGuiCol_ButtonActive]          = FromHex(0x405594, 0.80f);
 
-    c[ImGuiCol_Header]                = FromHex(0x5865f2, 0.30f);
-    c[ImGuiCol_HeaderHovered]         = FromHex(0x5865f2, 0.50f);
-    c[ImGuiCol_HeaderActive]          = FromHex(0x5865f2, 0.70f);
+    c[ImGuiCol_Header]                = FromHex(0x6573f5, 0.32f);
+    c[ImGuiCol_HeaderHovered]         = FromHex(0x6573f5, 0.50f);
+    c[ImGuiCol_HeaderActive]          = FromHex(0x6573f5, 0.70f);
 
-    c[ImGuiCol_Separator]             = FromHex(0x1e2535);
-    c[ImGuiCol_SeparatorHovered]      = FromHex(0x5865f2, 0.40f);
-    c[ImGuiCol_SeparatorActive]       = FromHex(0x5865f2, 0.80f);
+    c[ImGuiCol_Separator]             = FromHex(0x6f82ad, 0.22f);
+    c[ImGuiCol_SeparatorHovered]      = FromHex(0x6573f5, 0.40f);
+    c[ImGuiCol_SeparatorActive]       = FromHex(0x6573f5, 0.80f);
 
-    c[ImGuiCol_Tab]                   = FromHex(0x0b0f17);
-    c[ImGuiCol_TabHovered]            = FromHex(0x1d2438);
-    c[ImGuiCol_TabActive]             = FromHex(0x161d2e);
-    c[ImGuiCol_TabUnfocused]          = FromHex(0x0b0f17);
-    c[ImGuiCol_TabUnfocusedActive]    = FromHex(0x161d2e);
+    c[ImGuiCol_Tab]                   = FromHex(0x0c1220, 0.0f);
+    c[ImGuiCol_TabHovered]            = FromHex(0x263454, 0.5f);
+    c[ImGuiCol_TabActive]             = FromHex(0x1c2740, 0.6f);
+    c[ImGuiCol_TabUnfocused]          = FromHex(0x0c1220, 0.0f);
+    c[ImGuiCol_TabUnfocusedActive]    = FromHex(0x1c2740, 0.6f);
     c[ImGuiCol_TabSelectedOverline]   = ImVec4(0, 0, 0, 0);
 
-    c[ImGuiCol_ScrollbarBg]           = FromHex(0x0b0f17);
-    c[ImGuiCol_ScrollbarGrab]         = FromHex(0x1e2535);
-    c[ImGuiCol_ScrollbarGrabHovered]  = FromHex(0x5865f2, 0.40f);
-    c[ImGuiCol_ScrollbarGrabActive]   = FromHex(0x5865f2, 0.60f);
+    c[ImGuiCol_ScrollbarBg]           = FromHex(0x0c1220, 0.0f);
+    c[ImGuiCol_ScrollbarGrab]         = FromHex(0x6f82ad, 0.28f);
+    c[ImGuiCol_ScrollbarGrabHovered]  = FromHex(0x6573f5, 0.45f);
+    c[ImGuiCol_ScrollbarGrabActive]   = FromHex(0x6573f5, 0.65f);
 
-    c[ImGuiCol_ResizeGrip]            = FromHex(0x5865f2, 0.15f);
-    c[ImGuiCol_ResizeGripHovered]     = FromHex(0x5865f2, 0.50f);
-    c[ImGuiCol_ResizeGripActive]      = FromHex(0x5865f2, 0.80f);
+    c[ImGuiCol_ResizeGrip]            = FromHex(0x6573f5, 0.15f);
+    c[ImGuiCol_ResizeGripHovered]     = FromHex(0x6573f5, 0.50f);
+    c[ImGuiCol_ResizeGripActive]      = FromHex(0x6573f5, 0.80f);
 
-    c[ImGuiCol_Text]                  = FromHex(0xc5cdd9);
-    c[ImGuiCol_TextDisabled]          = FromHex(0x606878);
+    c[ImGuiCol_Text]                  = FromHex(0xd6dcea);
+    c[ImGuiCol_TextDisabled]          = FromHex(0x6b7790);
 }
 
 static BOOL WINAPI hk_SetCursorPos(int x, int y)
@@ -692,7 +692,7 @@ static BOOL WINAPI hk_wglSwapBuffers(HDC hdc)
         if (s_visible)
         {
             ImGui::GetBackgroundDrawList()->AddRectFilled(
-                ImVec2(0, 0), display, IM_COL32(0, 0, 0, 140));
+                ImVec2(0, 0), display, IM_COL32(5, 7, 13, 150));
 
             ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
             ImGui::SetNextWindowPos (ImVec2(display.x * 0.5f, display.y * 0.5f),
@@ -709,6 +709,20 @@ static BOOL WINAPI hk_wglSwapBuffers(HDC hdc)
             const float   SIDEBAR_W = 150.0f;
             const ImVec2  winSize   = ImGui::GetWindowSize();
             const ImVec2  winPos    = ImGui::GetWindowPos();
+
+            {
+                ImDrawList* wdl = ImGui::GetWindowDrawList();
+                const float R = ImGui::GetStyle().WindowRounding;
+                wdl->AddRectFilledMultiColor(
+                    ImVec2(winPos.x + R, winPos.y + 1.0f),
+                    ImVec2(winPos.x + winSize.x - R, winPos.y + 48.0f),
+                    IM_COL32(255, 255, 255, 24), IM_COL32(255, 255, 255, 24),
+                    IM_COL32(255, 255, 255, 0),  IM_COL32(255, 255, 255, 0));
+                wdl->AddLine(
+                    ImVec2(winPos.x + R, winPos.y + 1.0f),
+                    ImVec2(winPos.x + winSize.x - R, winPos.y + 1.0f),
+                    IM_COL32(255, 255, 255, 64), 1.0f);
+            }
 
             ImGui::BeginChild("##sidebar", ImVec2(SIDEBAR_W, winSize.y),
                 false, ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoScrollbar);
