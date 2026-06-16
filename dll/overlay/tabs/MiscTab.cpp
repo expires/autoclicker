@@ -10,17 +10,6 @@ namespace OverlayTabs
         using namespace OverlayWidgets;
         bool dirty = false;
 
-        ImGui::PopStyleVar();
-        ImGui::PushStyleColor(ImGuiCol_Text, FromHex(0xf2c14e));
-        ImGui::TextUnformatted("EXPERIMENTAL");
-        ImGui::PopStyleColor();
-        ImGui::PushStyleColor(ImGuiCol_Text, FromHex(0x808086));
-        ImGui::TextWrapped("Right-click ability exploits.");
-        ImGui::PopStyleColor();
-        ImGui::Dummy(ImVec2(0, 6));
-
-        ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0, 0));
-
         ImGui::PushID("autoblock");
         ImGui::PushFont(ImGui::GetIO().Fonts->Fonts[2]);
         ImGui::TextUnformatted("Autoblock");

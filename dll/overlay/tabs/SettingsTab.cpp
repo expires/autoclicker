@@ -18,7 +18,7 @@ namespace OverlayTabs
         std::shared_ptr<const EspModule::Snapshot> snapPtr = EspModule::Acquire();
         EspModule::Snapshot snap = snapPtr ? *snapPtr : EspModule::Snapshot{};
 
-        ImGui::PushStyleColor(ImGuiCol_Text, FromHex(0x808086));
+        ImGui::PushStyleColor(ImGuiCol_Text, FromHex(Theme::TextDim));
         ImGui::Text("valid=%d  mc=%d  lp=%d  lvl=%d  gr=%d  cam=%d",
             snap.valid, snap.gotMinecraft, snap.gotLocalPlayer,
             snap.gotLevel, snap.gotGameRenderer, snap.gotCamera);
@@ -32,10 +32,10 @@ namespace OverlayTabs
         ImGui::PopStyleVar();
         ImGui::Dummy(ImVec2(0, 8));
         ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 4.0f);
-        ImGui::PushStyleColor(ImGuiCol_Button,        FromHex(0x9b1c1c));
-        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, FromHex(0xb91c1c));
-        ImGui::PushStyleColor(ImGuiCol_ButtonActive,  FromHex(0x7a1414));
-        ImGui::PushStyleColor(ImGuiCol_Text,          FromHex(0xffffff));
+        ImGui::PushStyleColor(ImGuiCol_Button,        FromHex(Theme::Danger));
+        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, FromHex(Theme::DangerHovered));
+        ImGui::PushStyleColor(ImGuiCol_ButtonActive,  FromHex(Theme::DangerActive));
+        ImGui::PushStyleColor(ImGuiCol_Text,          FromHex(Theme::White));
         if (ImGui::Button("Self-Destruct",
                 ImVec2(ImGui::GetContentRegionAvail().x, 32)))
             g_settings.selfDestruct = true;

@@ -1,10 +1,12 @@
 #pragma once
 #include <cstdint>
 #include "imgui.h"
+#include "Theme.h"
 
 namespace OverlayWidgets
 {
     ImVec4 FromHex(uint32_t hex, float alpha = 1.0f);
+    ImVec4 FromHex(const Theme::Col& c);
 
     bool RowCheckbox(const char* label, bool* v);
     bool RowSlider(const char* label, int* v, int v_min, int v_max, const char* fmt = "%d");

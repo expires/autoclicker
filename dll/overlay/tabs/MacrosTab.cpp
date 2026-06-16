@@ -28,9 +28,9 @@ namespace OverlayTabs
             const float availX = ImGui::GetContentRegionAvail().x;
             ImGui::SameLine(availX - delW);
             ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 0.0f);
-            ImGui::PushStyleColor(ImGuiCol_Button,        FromHex(0x000000, 0.0f));
-            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, FromHex(0x9a9aa2, 0.18f));
-            ImGui::PushStyleColor(ImGuiCol_ButtonActive,  FromHex(0x9a9aa2, 0.28f));
+            ImGui::PushStyleColor(ImGuiCol_Button,        FromHex(Theme::Transparent));
+            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, FromHex(Theme::ListBtnHovered));
+            ImGui::PushStyleColor(ImGuiCol_ButtonActive,  FromHex(Theme::ListBtnActive));
             if (ImGui::Button("##del", ImVec2(delW, 24)))
                 toDelete = i;
             ImGui::PopStyleColor(3);
@@ -75,9 +75,9 @@ namespace OverlayTabs
         }
 
         if (g_settings.macroCount < Settings::MAX_MACROS) {
-            ImGui::PushStyleColor(ImGuiCol_Button,        FromHex(0x9a9aa2, 0.18f));
-            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, FromHex(0x9a9aa2, 0.34f));
-            ImGui::PushStyleColor(ImGuiCol_ButtonActive,  FromHex(0x9a9aa2, 0.52f));
+            ImGui::PushStyleColor(ImGuiCol_Button,        FromHex(Theme::AddBtn));
+            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, FromHex(Theme::AddBtnHovered));
+            ImGui::PushStyleColor(ImGuiCol_ButtonActive,  FromHex(Theme::AddBtnActive));
             if (ImGui::Button("+ Add Macro",
                     ImVec2(ImGui::GetContentRegionAvail().x, 32))) {
                 g_settings.macros[g_settings.macroCount] = Macro{};

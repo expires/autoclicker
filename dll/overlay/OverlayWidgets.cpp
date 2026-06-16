@@ -24,6 +24,11 @@ namespace OverlayWidgets
             alpha);
     }
 
+    ImVec4 FromHex(const Theme::Col& c)
+    {
+        return FromHex(c.hex, c.a);
+    }
+
     static ImU32 LerpU32(ImU32 a, ImU32 b, float t)
     {
         if (t <= 0.0f) return a;
@@ -76,7 +81,7 @@ namespace OverlayWidgets
         ImDrawList* dl = window->DrawList;
 
         const ImU32 trackOff = GetColorU32(ImGuiCol_FrameBg);
-        const ImU32 trackOn  = ColorConvertFloat4ToU32(FromHex(0x9aa0a8, 0.95f));
+        const ImU32 trackOn  = ColorConvertFloat4ToU32(FromHex(Theme::AccentTrack));
         const ImU32 track    = LerpU32(trackOff, trackOn, anim);
         dl->AddRectFilled(pMin, pMax, track, rad);
         dl->AddRect(pMin, pMax, GetColorU32(ImGuiCol_Border), rad, 0, 1.0f);
@@ -202,7 +207,7 @@ namespace OverlayWidgets
 
         const float pr = 6.0f;
         const ImU32 pillBg = listening
-            ? ColorConvertFloat4ToU32(FromHex(0x4a4a50, 0.95f))
+            ? ColorConvertFloat4ToU32(FromHex(Theme::KeybindListening))
             : (hovered ? GetColorU32(ImGuiCol_FrameBgHovered)
                        : GetColorU32(ImGuiCol_FrameBg));
         ImDrawList* dl = window->DrawList;
@@ -273,7 +278,7 @@ namespace OverlayWidgets
 
         const float fillW  = anim * frame.GetWidth();
         const float trackR = frame.GetHeight() * 0.5f;
-        const ImU32 accent = ColorConvertFloat4ToU32(FromHex(0x9aa0a8));
+        const ImU32 accent = ColorConvertFloat4ToU32(FromHex(Theme::Accent));
 
         ImDrawList* dl = window->DrawList;
         dl->AddRectFilled(frame.Min, frame.Max, GetColorU32(ImGuiCol_FrameBg), trackR);
@@ -285,7 +290,7 @@ namespace OverlayWidgets
                     IM_COL32(255, 255, 255, 20), 1.0f);
 
         const ImVec2 knob(frame.Min.x + fillW, frame.GetCenter().y);
-        dl->AddCircleFilled(knob, 9.5f, ColorConvertFloat4ToU32(FromHex(0xb7bac1, 0.30f)));
+        dl->AddCircleFilled(knob, 9.5f, ColorConvertFloat4ToU32(FromHex(Theme::AccentGlow)));
         dl->AddCircleFilled(ImVec2(knob.x, knob.y + 1.0f), 6.5f, IM_COL32(0, 0, 0, 55));
         dl->AddCircleFilled(knob, 6.5f, GetColorU32(ImGuiCol_SliderGrab));
 
@@ -402,17 +407,17 @@ namespace OverlayWidgets
         const float  rr = 7.0f;
 
         if (selected) {
-            dl->AddRectFilled(rMin, rMax, ColorConvertFloat4ToU32(FromHex(0x9a9aa2, 0.18f)), rr);
-            dl->AddRect(rMin, rMax, ColorConvertFloat4ToU32(FromHex(0xc4c6cc, 0.20f)), rr, 0, 1.0f);
+            dl->AddRectFilled(rMin, rMax, ColorConvertFloat4ToU32(FromHex(Theme::TabSelectedFill)), rr);
+            dl->AddRect(rMin, rMax, ColorConvertFloat4ToU32(FromHex(Theme::TabSelectedBorder)), rr, 0, 1.0f);
             dl->AddLine(ImVec2(rMin.x + rr, rMin.y + 1.0f),
                         ImVec2(rMax.x - rr, rMin.y + 1.0f),
                         IM_COL32(255, 255, 255, 26), 1.0f);
         } else if (hovered) {
-            dl->AddRectFilled(rMin, rMax, ColorConvertFloat4ToU32(FromHex(0x9a9aa2, 0.10f)), rr);
+            dl->AddRectFilled(rMin, rMax, ColorConvertFloat4ToU32(FromHex(Theme::TabHover)), rr);
         }
 
         const ImU32 textCol = ColorConvertFloat4ToU32(
-            selected ? FromHex(0xffffff) : FromHex(0x8c8c93));
+            selected ? FromHex(Theme::TabTextActive) : FromHex(Theme::TabTextInactive));
 
         PushStyleColor(ImGuiCol_Text, textCol);
 

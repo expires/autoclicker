@@ -291,7 +291,7 @@ static void ApplyStyle()
     ImGuiStyle& s = ImGui::GetStyle();
 
     s.WindowPadding      = {12.0f, 12.0f};
-    s.FramePadding       = { 7.0f,  4.0f};
+    s.FramePadding       = {11.0f,  4.0f};
     s.ItemSpacing        = { 8.0f,  7.0f};
     s.ItemInnerSpacing   = { 6.0f,  4.0f};
     s.IndentSpacing      = 14.0f;
@@ -312,55 +312,55 @@ static void ApplyStyle()
 
     ImVec4* c = s.Colors;
 
-    c[ImGuiCol_WindowBg]              = FromHex(0x19191c, 0.55f);
-    c[ImGuiCol_ChildBg]               = FromHex(0x19191c, 0.22f);
-    c[ImGuiCol_PopupBg]               = FromHex(0x101012, 0.96f);
+    c[ImGuiCol_WindowBg]              = FromHex(Theme::WindowBg);
+    c[ImGuiCol_ChildBg]               = FromHex(Theme::ChildBg);
+    c[ImGuiCol_PopupBg]               = FromHex(Theme::PopupBg);
 
-    c[ImGuiCol_Border]                = FromHex(0xffffff, 0.08f);
+    c[ImGuiCol_Border]                = FromHex(Theme::Border);
     c[ImGuiCol_BorderShadow]          = ImVec4(0, 0, 0, 0);
 
-    c[ImGuiCol_FrameBg]               = FromHex(0x2a2a2e, 0.58f);
-    c[ImGuiCol_FrameBgHovered]        = FromHex(0x35353a, 0.68f);
-    c[ImGuiCol_FrameBgActive]         = FromHex(0x3f3f45, 0.80f);
+    c[ImGuiCol_FrameBg]               = FromHex(Theme::FrameBg);
+    c[ImGuiCol_FrameBgHovered]        = FromHex(Theme::FrameBgHovered);
+    c[ImGuiCol_FrameBgActive]         = FromHex(Theme::FrameBgActive);
 
-    c[ImGuiCol_TitleBg]               = FromHex(0x18181a, 0.0f);
-    c[ImGuiCol_TitleBgActive]         = FromHex(0x202023, 0.0f);
-    c[ImGuiCol_TitleBgCollapsed]      = FromHex(0x18181a, 0.0f);
+    c[ImGuiCol_TitleBg]               = FromHex(Theme::Transparent);
+    c[ImGuiCol_TitleBgActive]         = FromHex(Theme::Transparent);
+    c[ImGuiCol_TitleBgCollapsed]      = FromHex(Theme::Transparent);
 
-    c[ImGuiCol_CheckMark]             = FromHex(0xffffff);
-    c[ImGuiCol_SliderGrab]            = FromHex(0xf0f0f2);
-    c[ImGuiCol_SliderGrabActive]      = FromHex(0xffffff);
+    c[ImGuiCol_CheckMark]             = FromHex(Theme::White);
+    c[ImGuiCol_SliderGrab]            = FromHex(Theme::Knob);
+    c[ImGuiCol_SliderGrabActive]      = FromHex(Theme::KnobActive);
 
-    c[ImGuiCol_Button]                = FromHex(0x36363b, 0.52f);
-    c[ImGuiCol_ButtonHovered]         = FromHex(0x434348, 0.68f);
-    c[ImGuiCol_ButtonActive]          = FromHex(0x4f4f56, 0.82f);
+    c[ImGuiCol_Button]                = FromHex(Theme::Button);
+    c[ImGuiCol_ButtonHovered]         = FromHex(Theme::ButtonHovered);
+    c[ImGuiCol_ButtonActive]          = FromHex(Theme::ButtonActive);
 
-    c[ImGuiCol_Header]                = FromHex(0x9a9a9f, 0.22f);
-    c[ImGuiCol_HeaderHovered]         = FromHex(0x9a9a9f, 0.40f);
-    c[ImGuiCol_HeaderActive]          = FromHex(0x9a9a9f, 0.60f);
+    c[ImGuiCol_Header]                = FromHex(Theme::Header);
+    c[ImGuiCol_HeaderHovered]         = FromHex(Theme::HeaderHovered);
+    c[ImGuiCol_HeaderActive]          = FromHex(Theme::HeaderActive);
 
-    c[ImGuiCol_Separator]             = FromHex(0x9a9a9f, 0.20f);
-    c[ImGuiCol_SeparatorHovered]      = FromHex(0xb5b5bb, 0.40f);
-    c[ImGuiCol_SeparatorActive]       = FromHex(0xcfcfd4, 0.70f);
+    c[ImGuiCol_Separator]             = FromHex(Theme::Separator);
+    c[ImGuiCol_SeparatorHovered]      = FromHex(Theme::SeparatorHovered);
+    c[ImGuiCol_SeparatorActive]       = FromHex(Theme::SeparatorActive);
 
-    c[ImGuiCol_Tab]                   = FromHex(0x18181a, 0.0f);
-    c[ImGuiCol_TabHovered]            = FromHex(0x2c2c31, 0.5f);
-    c[ImGuiCol_TabActive]             = FromHex(0x2a2a2e, 0.6f);
-    c[ImGuiCol_TabUnfocused]          = FromHex(0x18181a, 0.0f);
-    c[ImGuiCol_TabUnfocusedActive]    = FromHex(0x2a2a2e, 0.6f);
+    c[ImGuiCol_Tab]                   = FromHex(Theme::Transparent);
+    c[ImGuiCol_TabHovered]            = FromHex(Theme::TabBarHovered);
+    c[ImGuiCol_TabActive]             = FromHex(Theme::TabBarActive);
+    c[ImGuiCol_TabUnfocused]          = FromHex(Theme::Transparent);
+    c[ImGuiCol_TabUnfocusedActive]    = FromHex(Theme::TabBarActive);
     c[ImGuiCol_TabSelectedOverline]   = ImVec4(0, 0, 0, 0);
 
-    c[ImGuiCol_ScrollbarBg]           = FromHex(0x18181a, 0.0f);
-    c[ImGuiCol_ScrollbarGrab]         = FromHex(0x9a9a9f, 0.28f);
-    c[ImGuiCol_ScrollbarGrabHovered]  = FromHex(0xb5b5bb, 0.45f);
-    c[ImGuiCol_ScrollbarGrabActive]   = FromHex(0xcfcfd4, 0.65f);
+    c[ImGuiCol_ScrollbarBg]           = FromHex(Theme::Transparent);
+    c[ImGuiCol_ScrollbarGrab]         = FromHex(Theme::ScrollGrab);
+    c[ImGuiCol_ScrollbarGrabHovered]  = FromHex(Theme::ScrollGrabHovered);
+    c[ImGuiCol_ScrollbarGrabActive]   = FromHex(Theme::ScrollGrabActive);
 
-    c[ImGuiCol_ResizeGrip]            = FromHex(0x9a9a9f, 0.15f);
-    c[ImGuiCol_ResizeGripHovered]     = FromHex(0xb5b5bb, 0.50f);
-    c[ImGuiCol_ResizeGripActive]      = FromHex(0xcfcfd4, 0.80f);
+    c[ImGuiCol_ResizeGrip]            = FromHex(Theme::ResizeGrip);
+    c[ImGuiCol_ResizeGripHovered]     = FromHex(Theme::ResizeGripHovered);
+    c[ImGuiCol_ResizeGripActive]      = FromHex(Theme::ResizeGripActive);
 
-    c[ImGuiCol_Text]                  = FromHex(0xdadade);
-    c[ImGuiCol_TextDisabled]          = FromHex(0x808086);
+    c[ImGuiCol_Text]                  = FromHex(Theme::Text);
+    c[ImGuiCol_TextDisabled]          = FromHex(Theme::TextDim);
 }
 
 static BOOL WINAPI hk_SetCursorPos(int x, int y)
@@ -709,16 +709,6 @@ static BOOL WINAPI hk_wglSwapBuffers(HDC hdc)
             const float   SIDEBAR_W = 150.0f;
             const ImVec2  winSize   = ImGui::GetWindowSize();
             const ImVec2  winPos    = ImGui::GetWindowPos();
-
-            {
-                ImDrawList* wdl = ImGui::GetWindowDrawList();
-                const float R = ImGui::GetStyle().WindowRounding;
-                wdl->AddRectFilledMultiColor(
-                    ImVec2(winPos.x + R, winPos.y + 1.0f),
-                    ImVec2(winPos.x + winSize.x - R, winPos.y + 40.0f),
-                    IM_COL32(255, 255, 255, 8), IM_COL32(255, 255, 255, 8),
-                    IM_COL32(255, 255, 255, 0), IM_COL32(255, 255, 255, 0));
-            }
 
             ImGui::BeginChild("##sidebar", ImVec2(SIDEBAR_W, winSize.y),
                 false, ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoScrollbar);
