@@ -25,7 +25,6 @@ std::string Component::getString()
 {
     jclass cls = lc->env->GetObjectClass(this->GetInstance());
     jmethodID getStringMethod = lc->env->GetMethodID(cls, MTD_Component_getString, "()Ljava/lang/String;");
-    lc->env->DeleteLocalRef(cls);
     if (!getStringMethod || lc->env->ExceptionCheck())
     {
         lc->env->ExceptionClear();
@@ -42,7 +41,6 @@ std::string Component::getString()
     const char *strChars = lc->env->GetStringUTFChars(javaString, nullptr);
     std::string result(strChars ? strChars : "");
     lc->env->ReleaseStringUTFChars(javaString, strChars);
-    lc->env->DeleteLocalRef(javaString);
 
     return result;
 }
