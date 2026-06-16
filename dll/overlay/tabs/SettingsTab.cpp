@@ -18,7 +18,7 @@ namespace OverlayTabs
         std::shared_ptr<const EspModule::Snapshot> snapPtr = EspModule::Acquire();
         EspModule::Snapshot snap = snapPtr ? *snapPtr : EspModule::Snapshot{};
 
-        ImGui::PushStyleColor(ImGuiCol_Text, FromHex(0x707a8c));
+        ImGui::PushStyleColor(ImGuiCol_Text, FromHex(0x808086));
         ImGui::Text("valid=%d  mc=%d  lp=%d  lvl=%d  gr=%d  cam=%d",
             snap.valid, snap.gotMinecraft, snap.gotLocalPlayer,
             snap.gotLevel, snap.gotGameRenderer, snap.gotCamera);

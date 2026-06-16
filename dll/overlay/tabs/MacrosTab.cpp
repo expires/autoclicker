@@ -65,9 +65,9 @@ namespace OverlayTabs
         }
 
         if (g_settings.macroCount < Settings::MAX_MACROS) {
-            ImGui::PushStyleColor(ImGuiCol_Button,        FromHex(0x5865f2, 0.18f));
-            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, FromHex(0x5865f2, 0.35f));
-            ImGui::PushStyleColor(ImGuiCol_ButtonActive,  FromHex(0x5865f2, 0.55f));
+            ImGui::PushStyleColor(ImGuiCol_Button,        FromHex(0x9a9aa2, 0.18f));
+            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, FromHex(0x9a9aa2, 0.34f));
+            ImGui::PushStyleColor(ImGuiCol_ButtonActive,  FromHex(0x9a9aa2, 0.52f));
             if (ImGui::Button("+ Add Macro",
                     ImVec2(ImGui::GetContentRegionAvail().x, 32))) {
                 g_settings.macros[g_settings.macroCount] = Macro{};

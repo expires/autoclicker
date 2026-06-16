@@ -14,7 +14,7 @@ namespace OverlayTabs
         ImGui::PushStyleColor(ImGuiCol_Text, FromHex(0xf2c14e));
         ImGui::TextUnformatted("EXPERIMENTAL");
         ImGui::PopStyleColor();
-        ImGui::PushStyleColor(ImGuiCol_Text, FromHex(0x707a8c));
+        ImGui::PushStyleColor(ImGuiCol_Text, FromHex(0x808086));
         ImGui::TextWrapped("Right-click ability exploits.");
         ImGui::PopStyleColor();
         ImGui::Dummy(ImVec2(0, 6));

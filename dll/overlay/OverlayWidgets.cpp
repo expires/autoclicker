@@ -49,10 +49,10 @@ namespace OverlayWidgets
         ImGuiWindow* window = GetCurrentWindow();
         if (window->SkipItems) return false;
 
-        const float w         = GetContentRegionAvail().x;
-        const float square_sz = 20.0f;
-        const ImVec2 pos      = window->DC.CursorPos;
-        const ImRect bb(pos, ImVec2(pos.x + w, pos.y + square_sz + 10.0f));
+        const float  w    = GetContentRegionAvail().x;
+        const float  rowH = 30.0f;
+        const ImVec2 pos  = window->DC.CursorPos;
+        const ImRect bb(pos, ImVec2(pos.x + w, pos.y + rowH));
 
         ImGuiID id = window->GetID(label);
         ItemSize(bb);
@@ -64,26 +64,34 @@ namespace OverlayWidgets
 
         ImGuiStorage* storage = &window->StateStorage;
         float anim = storage->GetFloat(id, *v ? 1.0f : 0.0f);
-        anim = ImLerp(anim, *v ? 1.0f : 0.0f, 0.18f);
+        anim = ImLerp(anim, *v ? 1.0f : 0.0f, 0.20f);
         storage->SetFloat(id, anim);
 
-        const ImU32 colOff = GetColorU32(ImGuiCol_FrameBg);
-        const ImU32 colOn  = ColorConvertFloat4ToU32(FromHex(0x5865f2));
-        const ImU32 fill   = LerpU32(colOff, colOn, anim);
+        const float  pillW = 42.0f;
+        const float  pillH = 22.0f;
+        const ImVec2 pMin(bb.Max.x - pillW, bb.Min.y + (rowH - pillH) * 0.5f);
+        const ImVec2 pMax(bb.Max.x, pMin.y + pillH);
+        const float  rad = pillH * 0.5f;
 
-        ImVec2 sqMin(bb.Max.x - square_sz, bb.Min.y);
-        ImVec2 sqMax(bb.Max.x,             bb.Min.y + square_sz);
-        window->DrawList->AddRectFilled(sqMin, sqMax, fill, 2.0f);
+        ImDrawList* dl = window->DrawList;
 
-        if (anim > 0.01f) {
-            ImU32 cm = IM_COL32(255, 255, 255, (int)(255.0f * anim));
-            RenderCheckMark(window->DrawList,
-                ImVec2(sqMax.x - square_sz * 0.5f - 3.5f, bb.Min.y + square_sz * 0.5f - 3.5f),
-                cm, 7.0f);
-        }
+        const ImU32 trackOff = GetColorU32(ImGuiCol_FrameBg);
+        const ImU32 trackOn  = ColorConvertFloat4ToU32(FromHex(0x9aa0a8, 0.95f));
+        const ImU32 track    = LerpU32(trackOff, trackOn, anim);
+        dl->AddRectFilled(pMin, pMax, track, rad);
+        dl->AddRect(pMin, pMax, GetColorU32(ImGuiCol_Border), rad, 0, 1.0f);
+        dl->AddLine(ImVec2(pMin.x + rad, pMin.y + 1.0f),
+                    ImVec2(pMax.x - rad, pMin.y + 1.0f),
+                    IM_COL32(255, 255, 255, 26), 1.0f);
+
+        const float knobX = pMin.x + rad + anim * (pillW - pillH);
+        const float knobY = pMin.y + rad;
+        const float knobR = rad - 3.0f;
+        dl->AddCircleFilled(ImVec2(knobX, knobY + 1.0f), knobR, IM_COL32(0, 0, 0, 60));
+        dl->AddCircleFilled(ImVec2(knobX, knobY), knobR, IM_COL32(255, 255, 255, 236));
 
         ImVec2 labelSz = CalcTextSize(label, nullptr, true);
-        RenderText(ImVec2(bb.Min.x, bb.Max.y - labelSz.y - 13.0f), label);
+        RenderText(ImVec2(bb.Min.x, bb.GetCenter().y - labelSz.y * 0.5f), label);
 
         return pressed;
     }
@@ -192,11 +200,17 @@ namespace OverlayWidgets
         RenderText(ImVec2(bb.Min.x, bb.GetCenter().y - labelSz.y * 0.5f), label);
         PopStyleColor();
 
+        const float pr = 6.0f;
         const ImU32 pillBg = listening
-            ? ColorConvertFloat4ToU32(FromHex(0x5865f2))
+            ? ColorConvertFloat4ToU32(FromHex(0x4a4a50, 0.95f))
             : (hovered ? GetColorU32(ImGuiCol_FrameBgHovered)
                        : GetColorU32(ImGuiCol_FrameBg));
-        window->DrawList->AddRectFilled(pill.Min, pill.Max, pillBg, 4.0f);
+        ImDrawList* dl = window->DrawList;
+        dl->AddRectFilled(pill.Min, pill.Max, pillBg, pr);
+        dl->AddRect(pill.Min, pill.Max, GetColorU32(ImGuiCol_Border), pr, 0, 1.0f);
+        dl->AddLine(ImVec2(pill.Min.x + pr, pill.Min.y + 1.0f),
+                    ImVec2(pill.Max.x - pr, pill.Min.y + 1.0f),
+                    IM_COL32(255, 255, 255, 22), 1.0f);
 
         const char* pillText = listening
             ? "press a key..."
@@ -256,16 +270,23 @@ namespace OverlayWidgets
         ImVec2 valSz = CalcTextSize(buf);
         RenderText(ImVec2(total.Max.x - valSz.x, total.Min.y), buf);
 
-        const float fillW = anim * frame.GetWidth();
-        const ImU32 accent = ColorConvertFloat4ToU32(FromHex(0x5865f2));
+        const float fillW  = anim * frame.GetWidth();
+        const float trackR = frame.GetHeight() * 0.5f;
+        const ImU32 accent = ColorConvertFloat4ToU32(FromHex(0x9aa0a8));
 
-        window->DrawList->AddRectFilled(frame.Min, frame.Max,
-            GetColorU32(ImGuiCol_FrameBg), 2.0f);
-        window->DrawList->AddRectFilled(frame.Min,
-            ImVec2(frame.Min.x + fillW, frame.Max.y), accent, 2.0f);
-        window->DrawList->AddCircleFilled(
-            ImVec2(frame.Min.x + fillW, frame.GetCenter().y), 8.0f,
-            GetColorU32(ImGuiCol_SliderGrab));
+        ImDrawList* dl = window->DrawList;
+        dl->AddRectFilled(frame.Min, frame.Max, GetColorU32(ImGuiCol_FrameBg), trackR);
+        if (fillW > trackR)
+            dl->AddRectFilled(frame.Min,
+                ImVec2(frame.Min.x + fillW, frame.Max.y), accent, trackR);
+        dl->AddLine(ImVec2(frame.Min.x + trackR, frame.Min.y + 0.5f),
+                    ImVec2(frame.Max.x - trackR, frame.Min.y + 0.5f),
+                    IM_COL32(255, 255, 255, 20), 1.0f);
+
+        const ImVec2 knob(frame.Min.x + fillW, frame.GetCenter().y);
+        dl->AddCircleFilled(knob, 9.5f, ColorConvertFloat4ToU32(FromHex(0xb7bac1, 0.30f)));
+        dl->AddCircleFilled(ImVec2(knob.x, knob.y + 1.0f), 6.5f, IM_COL32(0, 0, 0, 55));
+        dl->AddCircleFilled(knob, 6.5f, GetColorU32(ImGuiCol_SliderGrab));
 
         return changed;
     }
@@ -373,20 +394,24 @@ namespace OverlayWidgets
         bool pressed = ButtonBehavior(bb, id, &hovered, &held);
 
         ImDrawList* dl = window->DrawList;
-        if (hovered && !selected)
-            dl->AddRectFilled(bb.Min, bb.Max,
-                ColorConvertFloat4ToU32(FromHex(0x161d2e, 0.5f)));
+        const float  mx = 10.0f;
+        const float  my = 3.0f;
+        const ImVec2 rMin(bb.Min.x + mx, bb.Min.y + my);
+        const ImVec2 rMax(bb.Max.x - mx, bb.Max.y - my);
+        const float  rr = 7.0f;
 
-        static float line_pos = 0.f;
-        if (selected) line_pos = ImLerp(line_pos, bb.Min.y - window->Pos.y, 0.20f);
-        dl->AddRectFilled(
-            ImVec2(bb.Max.x - 2.0f, window->Pos.y + line_pos),
-            ImVec2(bb.Max.x,        window->Pos.y + line_pos + size.y),
-            ColorConvertFloat4ToU32(FromHex(0x5865f2)),
-            2.0f, ImDrawFlags_RoundCornersLeft);
+        if (selected) {
+            dl->AddRectFilled(rMin, rMax, ColorConvertFloat4ToU32(FromHex(0x9a9aa2, 0.18f)), rr);
+            dl->AddRect(rMin, rMax, ColorConvertFloat4ToU32(FromHex(0xc4c6cc, 0.20f)), rr, 0, 1.0f);
+            dl->AddLine(ImVec2(rMin.x + rr, rMin.y + 1.0f),
+                        ImVec2(rMax.x - rr, rMin.y + 1.0f),
+                        IM_COL32(255, 255, 255, 26), 1.0f);
+        } else if (hovered) {
+            dl->AddRectFilled(rMin, rMax, ColorConvertFloat4ToU32(FromHex(0x9a9aa2, 0.10f)), rr);
+        }
 
         const ImU32 textCol = ColorConvertFloat4ToU32(
-            selected ? FromHex(0xffffff) : FromHex(0x707a8c));
+            selected ? FromHex(0xffffff) : FromHex(0x8c8c93));
 
         PushStyleColor(ImGuiCol_Text, textCol);
 
