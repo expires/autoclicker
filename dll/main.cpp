@@ -13,24 +13,32 @@
 
 using namespace std::chrono;
 
+static HINSTANCE g_instance = nullptr;
+
+static DWORD WINAPI Bootstrap(LPVOID)
+{
+    g_settings.Load();
+    Overlay::Init();
+
+    Teardown::RegisterWorker(CreateThread(nullptr, 0, AutoclickerModule::init, g_instance, 0, nullptr));
+    Teardown::RegisterWorker(CreateThread(nullptr, 0, EspModule::init,         g_instance, 0, nullptr));
+    Teardown::RegisterWorker(CreateThread(nullptr, 0, MacrosModule::init,      g_instance, 0, nullptr));
+    Teardown::RegisterWorker(CreateThread(nullptr, 0, AimAssistModule::init,   g_instance, 0, nullptr));
+    Teardown::RegisterWorker(CreateThread(nullptr, 0, AutoblockModule::init,   g_instance, 0, nullptr));
+    Teardown::RegisterWorker(CreateThread(nullptr, 0, FriendsModule::init,     g_instance, 0, nullptr));
+    return 0;
+}
+
 BOOL APIENTRY DllMain(const HINSTANCE instance, const DWORD reason, LPVOID reserved)
 {
     if (reason == DLL_PROCESS_ATTACH)
     {
         DisableThreadLibraryCalls(instance);
-        g_settings.Load();
-        Overlay::Init();
-
-        Teardown::RegisterWorker(CreateThread(nullptr, 0, AutoclickerModule::init, instance, 0, nullptr));
-        Teardown::RegisterWorker(CreateThread(nullptr, 0, EspModule::init,         instance, 0, nullptr));
-        Teardown::RegisterWorker(CreateThread(nullptr, 0, MacrosModule::init,      instance, 0, nullptr));
-        Teardown::RegisterWorker(CreateThread(nullptr, 0, AimAssistModule::init,   instance, 0, nullptr));
-        Teardown::RegisterWorker(CreateThread(nullptr, 0, AutoblockModule::init, instance, 0, nullptr));
-        Teardown::RegisterWorker(CreateThread(nullptr, 0, FriendsModule::init,     instance, 0, nullptr));
+        g_instance = instance;
+        CreateThread(nullptr, 0, Bootstrap, nullptr, 0, nullptr);
     }
     else if (reason == DLL_PROCESS_DETACH)
     {
-
         g_settings.Save();
         Overlay::Shutdown();
     }
