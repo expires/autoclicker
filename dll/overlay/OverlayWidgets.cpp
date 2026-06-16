@@ -235,11 +235,12 @@ namespace OverlayWidgets
         const ImRect total(window->DC.CursorPos,
                            ImVec2(window->DC.CursorPos.x + w,
                                   window->DC.CursorPos.y + labelSz.y + 30.0f));
-        const ImRect frame(ImVec2(total.Min.x, total.Min.y + labelSz.y + 12.0f),
-                           ImVec2(total.Max.x, total.Max.y - 13.0f));
+        const float  knobPad = 11.0f;
+        const ImRect frame(ImVec2(total.Min.x + knobPad, total.Min.y + labelSz.y + 12.0f),
+                           ImVec2(total.Max.x - knobPad, total.Max.y - 13.0f));
 
-        const ImRect hitFrame(ImVec2(total.Min.x, total.Min.y + labelSz.y + 4.0f),
-                              ImVec2(total.Max.x, total.Max.y - 4.0f));
+        const ImRect hitFrame(ImVec2(total.Min.x + knobPad, total.Min.y + labelSz.y + 4.0f),
+                              ImVec2(total.Max.x - knobPad, total.Max.y - 4.0f));
 
         ImGuiID id = window->GetID(label);
         ItemSize(total, g.Style.FramePadding.y);

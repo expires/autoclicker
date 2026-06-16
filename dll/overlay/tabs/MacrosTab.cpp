@@ -27,12 +27,22 @@ namespace OverlayTabs
             const float delW   = 24.0f;
             const float availX = ImGui::GetContentRegionAvail().x;
             ImGui::SameLine(availX - delW);
-            ImGui::PushStyleColor(ImGuiCol_Button,        FromHex(0x161d2e, 0.0f));
-            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, FromHex(0x9b1c1c, 0.6f));
-            ImGui::PushStyleColor(ImGuiCol_ButtonActive,  FromHex(0x7a1414, 0.8f));
-            if (ImGui::Button("x##del", ImVec2(delW, 24)))
+            ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 0.0f);
+            ImGui::PushStyleColor(ImGuiCol_Button,        FromHex(0x000000, 0.0f));
+            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, FromHex(0x9a9aa2, 0.18f));
+            ImGui::PushStyleColor(ImGuiCol_ButtonActive,  FromHex(0x9a9aa2, 0.28f));
+            if (ImGui::Button("##del", ImVec2(delW, 24)))
                 toDelete = i;
             ImGui::PopStyleColor(3);
+            ImGui::PopStyleVar();
+            {
+                const ImVec2 bmin = ImGui::GetItemRectMin();
+                const ImVec2 bmax = ImGui::GetItemRectMax();
+                const ImVec2 ctr((bmin.x + bmax.x) * 0.5f, (bmin.y + bmax.y) * 0.5f);
+                ImGui::GetWindowDrawList()->AddLine(
+                    ImVec2(ctr.x - 5.0f, ctr.y), ImVec2(ctr.x + 5.0f, ctr.y),
+                    ImGui::GetColorU32(ImGuiCol_Text), 2.0f);
+            }
 
             ImGui::SetNextItemWidth(-FLT_MIN);
             if (ImGui::InputTextWithHint("##name",

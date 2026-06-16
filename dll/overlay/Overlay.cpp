@@ -312,11 +312,11 @@ static void ApplyStyle()
 
     ImVec4* c = s.Colors;
 
-    c[ImGuiCol_WindowBg]              = FromHex(0x18181a, 0.80f);
-    c[ImGuiCol_ChildBg]               = FromHex(0x202023, 0.42f);
-    c[ImGuiCol_PopupBg]               = FromHex(0x1b1b1d, 0.95f);
+    c[ImGuiCol_WindowBg]              = FromHex(0x19191c, 0.55f);
+    c[ImGuiCol_ChildBg]               = FromHex(0x19191c, 0.22f);
+    c[ImGuiCol_PopupBg]               = FromHex(0x101012, 0.96f);
 
-    c[ImGuiCol_Border]                = FromHex(0x9a9a9f, 0.26f);
+    c[ImGuiCol_Border]                = FromHex(0xffffff, 0.08f);
     c[ImGuiCol_BorderShadow]          = ImVec4(0, 0, 0, 0);
 
     c[ImGuiCol_FrameBg]               = FromHex(0x2a2a2e, 0.58f);
@@ -715,13 +715,9 @@ static BOOL WINAPI hk_wglSwapBuffers(HDC hdc)
                 const float R = ImGui::GetStyle().WindowRounding;
                 wdl->AddRectFilledMultiColor(
                     ImVec2(winPos.x + R, winPos.y + 1.0f),
-                    ImVec2(winPos.x + winSize.x - R, winPos.y + 48.0f),
-                    IM_COL32(255, 255, 255, 24), IM_COL32(255, 255, 255, 24),
-                    IM_COL32(255, 255, 255, 0),  IM_COL32(255, 255, 255, 0));
-                wdl->AddLine(
-                    ImVec2(winPos.x + R, winPos.y + 1.0f),
-                    ImVec2(winPos.x + winSize.x - R, winPos.y + 1.0f),
-                    IM_COL32(255, 255, 255, 64), 1.0f);
+                    ImVec2(winPos.x + winSize.x - R, winPos.y + 40.0f),
+                    IM_COL32(255, 255, 255, 8), IM_COL32(255, 255, 255, 8),
+                    IM_COL32(255, 255, 255, 0), IM_COL32(255, 255, 255, 0));
             }
 
             ImGui::BeginChild("##sidebar", ImVec2(SIDEBAR_W, winSize.y),
@@ -744,6 +740,7 @@ static BOOL WINAPI hk_wglSwapBuffers(HDC hdc)
                 ImGui::PopFont();
 
                 ImGui::SetCursorPos(ImVec2(0, 76));
+                ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0, 0));
                 using OverlayWidgets::SidebarTab;
                 if (SidebarTab("Autoclicker", s_currentTab == 0)) s_currentTab = 0;
                 if (SidebarTab("Aim",         s_currentTab == 1)) s_currentTab = 1;
@@ -752,6 +749,7 @@ static BOOL WINAPI hk_wglSwapBuffers(HDC hdc)
                 if (SidebarTab("Macros",      s_currentTab == 4)) s_currentTab = 4;
                 if (SidebarTab("Misc",        s_currentTab == 5)) s_currentTab = 5;
                 if (SidebarTab("Settings",    s_currentTab == 6)) s_currentTab = 6;
+                ImGui::PopStyleVar();
             }
             ImGui::EndChild();
 
