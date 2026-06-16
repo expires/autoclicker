@@ -128,9 +128,11 @@ static uint32_t readLocalColor(jobject component)
 }
 
 static void flattenComponent(jobject component, uint32_t inheritedColor,
-                             std::vector<std::pair<std::string, uint32_t>>& out)
+                             std::vector<std::pair<std::string, uint32_t>>& out,
+                             int depth = 0)
 {
     if (!component) return;
+    if (depth > 32) return;
 
     const uint32_t local     = readLocalColor(component);
     const uint32_t effective = local ? local : inheritedColor;
@@ -173,7 +175,7 @@ static void flattenComponent(jobject component, uint32_t inheritedColor,
         for (jint i = 0; i < n; ++i) {
             jobject sib = lc->env->CallObjectMethod(siblings, getM, i);
             if (sib) {
-                flattenComponent(sib, effective, out);
+                flattenComponent(sib, effective, out, depth + 1);
                 lc->env->DeleteLocalRef(sib);
             }
         }
@@ -188,8 +190,16 @@ std::vector<std::pair<std::string, uint32_t>> Entity::getFormattedNameChunks()
     std::vector<std::pair<std::string, uint32_t>> chunks;
     const uint32_t DEFAULT_COLOR = 0xFFFFFFFFu;
 
+    if (lc->env->PushLocalFrame(256) != 0) {
+        lc->env->ExceptionClear();
+        return chunks;
+    }
+
     Component nameC = getName();
-    if (nameC.GetInstance() == nullptr) return chunks;
+    if (nameC.GetInstance() == nullptr) {
+        lc->env->PopLocalFrame(nullptr);
+        return chunks;
+    }
 
     jobject formatted = nullptr;
     jmethodID getTeamM = lc->env->GetMethodID(this->GetClass(),
@@ -225,6 +235,7 @@ std::vector<std::pair<std::string, uint32_t>> Entity::getFormattedNameChunks()
     flattenComponent(root, DEFAULT_COLOR, chunks);
 
     if (formatted) lc->env->DeleteLocalRef(formatted);
+    lc->env->PopLocalFrame(nullptr);
     return chunks;
 }
 
