@@ -408,10 +408,6 @@ namespace OverlayWidgets
 
         if (selected) {
             dl->AddRectFilled(rMin, rMax, ColorConvertFloat4ToU32(FromHex(Theme::TabSelectedFill)), rr);
-            dl->AddRect(rMin, rMax, ColorConvertFloat4ToU32(FromHex(Theme::TabSelectedBorder)), rr, 0, 1.0f);
-            dl->AddLine(ImVec2(rMin.x + rr, rMin.y + 1.0f),
-                        ImVec2(rMax.x - rr, rMin.y + 1.0f),
-                        IM_COL32(255, 255, 255, 26), 1.0f);
         } else if (hovered) {
             dl->AddRectFilled(rMin, rMax, ColorConvertFloat4ToU32(FromHex(Theme::TabHover)), rr);
         }

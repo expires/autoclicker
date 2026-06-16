@@ -377,16 +377,11 @@ static BOOL WINAPI hk_ClipCursor(const RECT* r)
 
 static int WINAPI hk_ShowCursor(BOOL show)
 {
-    if (s_visible && !show) return 0;
     return o_ShowCursor(show);
 }
 
 static HCURSOR WINAPI hk_SetCursor(HCURSOR cursor)
 {
-    if (s_visible && cursor == nullptr) {
-        static HCURSOR s_arrow = LoadCursorW(nullptr, MAKEINTRESOURCEW(32512));
-        return o_SetCursor(s_arrow);
-    }
     return o_SetCursor(cursor);
 }
 
@@ -598,26 +593,11 @@ static BOOL WINAPI hk_wglSwapBuffers(HDC hdc)
             s_visible = menuEdge ? !s_visible : false;
             ClipCursor(nullptr);
             ReleaseCapture();
-            static int s_cursorPumpCount = 0;
             if (s_visible) {
-                int safety = 256;
-                int pumped = 0;
-                while (safety-- > 0 && o_ShowCursor(TRUE) < 0) { pumped++; }
-                s_cursorPumpCount = pumped;
-
                 POINT op;
                 if (GetCursorPos(&op) && s_hwnd) {
                     ScreenToClient(s_hwnd, &op);
                     ImGui::GetIO().AddMousePosEvent((float)op.x, (float)op.y);
-                }
-
-                if (o_SetCursor) {
-                    o_SetCursor(LoadCursorW(nullptr, MAKEINTRESOURCEW(32512)));
-                }
-            } else if (wasVisible) {
-                while (s_cursorPumpCount > 0) {
-                    o_ShowCursor(FALSE);
-                    s_cursorPumpCount--;
                 }
             }
             if (s_visible && !wasVisible) ReleaseAllHeldInputs();
