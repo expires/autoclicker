@@ -17,4 +17,4 @@ namespace AutoclickerModule
     DWORD WINAPI init(const LPVOID lpParam);
 }
 
-#endif // AutoclickerModule_H
+#endif 

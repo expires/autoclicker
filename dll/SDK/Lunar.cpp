@@ -2,44 +2,77 @@
 
 thread_local JNIEnv *Lunar::env = nullptr;
 
-void Lunar::GetLoadedClasses()
+void Lunar::RefreshLocked()
 {
-    jvmtiEnv *jvmti;
-    if (vm->GetEnv((void **)&jvmti, JVMTI_VERSION_1_2) != JNI_OK)
+    if (env == nullptr || vm == nullptr)
+        return;
+
+    jvmtiEnv *jvmti = nullptr;
+    if (vm->GetEnv((void **)&jvmti, JVMTI_VERSION_1_2) != JNI_OK || jvmti == nullptr)
+        return;
+
+    jclass lang = env->FindClass("java/lang/Class");
+    if (lang == nullptr) { env->ExceptionClear(); jvmti->DisposeEnvironment(); return; }
+    jmethodID getName = env->GetMethodID(lang, "getName", "()Ljava/lang/String;");
+    if (getName == nullptr) { env->ExceptionClear(); jvmti->DisposeEnvironment(); return; }
+
+    jclass *classesPtr = nullptr;
+    jint amount = 0;
+    if (jvmti->GetLoadedClasses(&amount, &classesPtr) != JVMTI_ERROR_NONE || classesPtr == nullptr)
     {
-        printf("[AC] Failed to get JVMTI env\n");
+        jvmti->DisposeEnvironment();
         return;
     }
 
-    jclass lang = env->FindClass("java/lang/Class");
-    jmethodID getName = env->GetMethodID(lang, "getName", "()Ljava/lang/String;");
-
-    jclass *classesPtr;
-    jint amount;
-
-    jvmti->GetLoadedClasses(&amount, &classesPtr);
-    printf("[AC] Loaded %d classes\n", amount);
-
-    for (int i = 0; i < amount; i++)
+    for (jint i = 0; i < amount; i++)
     {
         jstring name = (jstring)env->CallObjectMethod(classesPtr[i], getName);
-        const char *className = env->GetStringUTFChars(name, 0);
-        // Promote to global so the ref stays valid across threads + JNI frames.
-        // JVMTI returns local refs that would otherwise die when our outermost
-        // frame ends; we also need to share these with the ESP thread.
-        jclass global = (jclass)env->NewGlobalRef(classesPtr[i]);
-        classes.emplace(std::make_pair((std::string)className, global));
-        env->ReleaseStringUTFChars(name, className);
+        if (name != nullptr)
+        {
+            const char *className = env->GetStringUTFChars(name, nullptr);
+            if (className != nullptr)
+            {
+                std::string key = className;
+                if (classes.find(key) == classes.end())
+                    classes.emplace(std::move(key), (jclass)env->NewGlobalRef(classesPtr[i]));
+                env->ReleaseStringUTFChars(name, className);
+            }
+            env->DeleteLocalRef(name);
+        }
         env->DeleteLocalRef(classesPtr[i]);
     }
+
+    jvmti->Deallocate(reinterpret_cast<unsigned char *>(classesPtr));
+    jvmti->DisposeEnvironment();
+    if (env->ExceptionCheck())
+        env->ExceptionClear();
+}
+
+void Lunar::GetLoadedClasses()
+{
+    std::lock_guard<std::mutex> lk(classesMutex);
+    RefreshLocked();
+    lastRefresh = std::chrono::steady_clock::now();
     classesLoaded.store(true, std::memory_order_release);
 }
 
-jclass Lunar::GetClass(std::string classname)
+jclass Lunar::GetClass(const std::string &classname)
 {
-    if (classes.contains(classname))
-        return classes.at(classname);
+    std::lock_guard<std::mutex> lk(classesMutex);
 
-    printf("[AC] Class not found: %s\n", classname.c_str());
-    return NULL;
+    auto it = classes.find(classname);
+    if (it != classes.end())
+        return it->second;
+
+    const auto now = std::chrono::steady_clock::now();
+    if (now - lastRefresh >= std::chrono::milliseconds(250))
+    {
+        lastRefresh = now;
+        RefreshLocked();
+        it = classes.find(classname);
+        if (it != classes.end())
+            return it->second;
+    }
+
+    return nullptr;
 }

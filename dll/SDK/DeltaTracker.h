@@ -9,8 +9,6 @@ public:
     jobject GetInstance() { return instance; }
     jclass  GetClass();
 
-    // MC's render-time partial tick. Passing true returns the value that
-    // tracks normal game ticks (matches what EntityRenderer uses).
     float getPartialTick(bool runsNormally);
 
 private:

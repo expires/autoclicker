@@ -9,9 +9,6 @@
 
 #pragma comment(lib, "shell32.lib")
 
-// Resolves %APPDATA%\manuclicker\config.cfg, creating the directory if needed.
-// Returns "" on any failure — Save/Load then become silent no-ops, which is
-// the right behavior since this is best-effort persistence, not load-bearing.
 static std::string ConfigPath()
 {
     char path[MAX_PATH] = {};
@@ -62,21 +59,14 @@ void Settings::Save()
     fprintf(f, "aimRange=%d\n",      aimRange);
     fprintf(f, "aimKey=%d\n",        aimKey);
 
-    fprintf(f, "leapEnabled=%d\n",    leapEnabled    ? 1 : 0);
-    fprintf(f, "leapRequireAxe=%d\n", leapRequireAxe ? 1 : 0);
-    fprintf(f, "leapInterval=%d\n",   leapInterval);
-    fprintf(f, "leapKey=%d\n",        leapKey);
-
-    fprintf(f, "autoAbilityEnabled=%d\n",      autoAbilityEnabled      ? 1 : 0);
-    fprintf(f, "autoAbilityRequireSword=%d\n", autoAbilityRequireSword ? 1 : 0);
-    fprintf(f, "autoAbilityDelay=%d\n",        autoAbilityDelay);
-    fprintf(f, "autoAbilityCooldown=%d\n",     autoAbilityCooldown);
-    fprintf(f, "autoAbilityKey=%d\n",          autoAbilityKey);
+    fprintf(f, "autoblockEnabled=%d\n",      autoblockEnabled      ? 1 : 0);
+    fprintf(f, "autoblockRequireSword=%d\n", autoblockRequireSword ? 1 : 0);
+    fprintf(f, "autoblockDelay=%d\n",        autoblockDelay);
+    fprintf(f, "autoblockCooldown=%d\n",     autoblockCooldown);
+    fprintf(f, "autoblockKey=%d\n",          autoblockKey);
 
     fprintf(f, "friendKey=%d\n", friendKey);
-    // Snapshot the friends list under lock — the friends-module / overlay
-    // could be appending mid-Save. Worst case without the lock is a torn
-    // string in mid-resize, which corrupts the on-disk list.
+
     {
         std::lock_guard<std::mutex> lk(friendsMutex);
         fprintf(f, "friendCount=%d\n", (int)friends.size());
@@ -94,22 +84,17 @@ void Settings::Load()
     FILE* f = nullptr;
     if (fopen_s(&f, path.c_str(), "r") != 0 || !f) return;
 
-    // Assume legacy / pre-versioned until proven otherwise; a missing
-    // `version=` line then triggers the migration block below.
     version = 0;
 
     char line[256];
     while (fgets(line, sizeof(line), f)) {
-        // Hand-rolled key=value parser. sscanf_s with `%[^=]` was failing
-        // silently on x64 — its size argument is variadic and width
-        // mismatches between sizeof() and rsize_t made the parser return 0
-        // matches without telling us. strchr is unambiguous.
+
         char* eq = strchr(line, '=');
         if (!eq) continue;
         *eq = '\0';
         const char* keyStr = line;
         char*       valStr = eq + 1;
-        // Strip trailing CR/LF so macro names don't pick them up.
+
         size_t vlen = strlen(valStr);
         while (vlen > 0 && (valStr[vlen-1] == '\n' || valStr[vlen-1] == '\r'))
             valStr[--vlen] = '\0';
@@ -141,20 +126,14 @@ void Settings::Load()
         else if (k == "aimFov")        aimFov        = val;
         else if (k == "aimRange")      aimRange      = val;
         else if (k == "aimKey")        aimKey        = val;
-        else if (k == "leapEnabled")    leapEnabled    = (val != 0);
-        else if (k == "leapRequireAxe") leapRequireAxe = (val != 0);
-        else if (k == "leapInterval")   leapInterval   = val;
-        else if (k == "leapKey")        leapKey        = val;
-        else if (k == "autoAbilityEnabled")      autoAbilityEnabled      = (val != 0);
-        else if (k == "autoAbilityRequireSword") autoAbilityRequireSword = (val != 0);
-        else if (k == "autoAbilityDelay")        autoAbilityDelay        = val;
-        else if (k == "autoAbilityCooldown")     autoAbilityCooldown     = val;
-        else if (k == "autoAbilityKey")          autoAbilityKey          = val;
+        else if (k == "autoblockEnabled")      autoblockEnabled      = (val != 0);
+        else if (k == "autoblockRequireSword") autoblockRequireSword = (val != 0);
+        else if (k == "autoblockDelay")        autoblockDelay        = val;
+        else if (k == "autoblockCooldown")     autoblockCooldown     = val;
+        else if (k == "autoblockKey")          autoblockKey          = val;
         else if (k == "friendKey")               friendKey               = val;
         else if (k == "friendCount") {
-            // Reset before reading entries so a partial older list doesn't
-            // leak stale tail names. The actual content arrives in subsequent
-            // friend<i>=name lines handled below.
+
             std::lock_guard<std::mutex> lk(friendsMutex);
             friends.clear();
             int n = val;
@@ -163,24 +142,20 @@ void Settings::Load()
         }
         else if (k.rfind("friend", 0) == 0 && k.size() > 6 &&
                  isdigit((unsigned char)k[6])) {
-            // friend<i>=<name>. We don't trust <i> to be contiguous (a hand-
-            // edited config could skip indices), so just append in file order.
+
             std::string name = valStr;
-            // Lowercase for case-insensitive matching — MC usernames are
-            // case-insensitive on the server, and the ESP-side lookup will
-            // also lowercase before comparing.
+
             for (char& c : name) c = (char)tolower((unsigned char)c);
             if (!name.empty()) {
                 std::lock_guard<std::mutex> lk(friendsMutex);
-                // Soft de-dup so a hand-edited config can't grow the list
-                // forever with copies of the same name.
+
                 bool exists = false;
                 for (const auto& f : friends) if (f == name) { exists = true; break; }
                 if (!exists) friends.push_back(std::move(name));
             }
         }
         else if (k.rfind("macro", 0) == 0) {
-            // macro<i>_{name,delay,key}
+
             for (int i = 0; i < MAX_MACROS; ++i) {
                 char buf[24];
                 snprintf(buf, sizeof(buf), "macro%d_name", i);
@@ -195,16 +170,12 @@ void Settings::Load()
 
     fclose(f);
 
-    // Defensive: clamp keybinds to the valid VK range so a corrupt config
-    // (or one written by a future build with a different schema) can never
-    // feed an out-of-range vKey to GetAsyncKeyState.
     auto clampVK = [](int v) { return (v >= 0 && v <= 0xFE) ? v : 0; };
     menuKey         = clampVK(menuKey);
     acKey           = clampVK(acKey);
     espKey          = clampVK(espKey);
     selfDestructKey = clampVK(selfDestructKey);
 
-    // Sanity-clamp CPS and bools.
     if (cps < 1)  cps = 1;
     if (cps > 50) cps = 50;
 
@@ -219,49 +190,23 @@ void Settings::Load()
         if (macros[i].delay > 2000) macros[i].delay = 2000;
     }
 
-    // Aim-assist clamps. Sliders pin their own range in the UI, but a
-    // hand-edited config can poke arbitrary integers in here — clamp before
-    // they reach the aim thread (out-of-range speed → pixel overflow on the
-    // SendInput delta, out-of-range FOV → wraparound on the cone check).
     if (aimSpeedH < 0)  aimSpeedH = 0;  if (aimSpeedH > 10) aimSpeedH = 10;
     if (aimSpeedV < 0)  aimSpeedV = 0;  if (aimSpeedV > 10) aimSpeedV = 10;
     if (aimFov    < 1)  aimFov    = 1;  if (aimFov    > 180) aimFov   = 180;
     if (aimRange  < 1)  aimRange  = 1;  if (aimRange  > 64)  aimRange = 64;
     aimKey = clampVK(aimKey);
 
-    // Leap clamps. Interval floor of 50ms guards against accidentally
-    // spamming right-clicks faster than MC's per-tick input handler can
-    // service them (a high-rate spam looks more obviously botted in the
-    // server's interaction packet stream anyway). 1000ms ceiling because
-    // any slower than that and the cheat is uselessly sluggish.
-    if (leapInterval < 50)   leapInterval = 50;
-    if (leapInterval > 1000) leapInterval = 1000;
-    leapKey = clampVK(leapKey);
+    if (autoblockDelay    < 30)   autoblockDelay    = 30;
+    if (autoblockDelay    > 1000) autoblockDelay    = 1000;
 
-    // Auto-ability clamps. Delay floor of 30ms keeps the right-click rate
-    // below MC's per-tick interaction handler (which services use-item once
-    // per 50ms tick anyway — finer pacing just wastes attempts). Cooldown
-    // floor of 50ms because anything tighter is effectively no cooldown.
-    if (autoAbilityDelay    < 30)   autoAbilityDelay    = 30;
-    if (autoAbilityDelay    > 1000) autoAbilityDelay    = 1000;
-    // Floor 0 — cooldown UI is a 0-30s slider; "0" is meaningful (means
-    // "no extra gap beyond Delay") so the floor can't be a positive number.
-    // Ceiling clamped to 30s (30000ms) to match the slider's max, so a
-    // hand-edited config can't push the value off the slider track and
-    // become un-adjustable from the UI.
-    if (autoAbilityCooldown < 0)     autoAbilityCooldown = 0;
-    if (autoAbilityCooldown > 30000) autoAbilityCooldown = 30000;
-    autoAbilityKey = clampVK(autoAbilityKey);
+    if (autoblockCooldown < 0)     autoblockCooldown = 0;
+    if (autoblockCooldown > 30000) autoblockCooldown = 30000;
+    autoblockKey = clampVK(autoblockKey);
 
     friendKey = clampVK(friendKey);
 
-    // Migration: any config older than the current schema gets its
-    // keybinds force-cleared. Catches the historical CapsLock→ESP default
-    // that users had previously committed to disk; v3 also rolls the menu
-    // key forward to VK_RSHIFT (0xA1) so existing users pick up the new
-    // explicit default rather than the implicit VK_INSERT fallback.
     if (version < CURRENT_VERSION) {
-        menuKey = 0xA1; // VK_RSHIFT
+        menuKey = 0xA1;
         acKey   = 0;
         espKey  = 0;
         version = CURRENT_VERSION;

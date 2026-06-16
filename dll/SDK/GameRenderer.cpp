@@ -18,7 +18,7 @@ float GameRenderer::getFov(Camera cam, float partialTicks, bool useFOVSetting)
     if (!m)
     {
         lc->env->ExceptionClear();
-        return 70.0f; // fallback to default vanilla FOV
+        return 70.0f;
     }
     return lc->env->CallFloatMethod(this->instance, m,
         cam.GetInstance(), partialTicks, (jboolean)useFOVSetting);

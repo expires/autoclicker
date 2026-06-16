@@ -9,15 +9,9 @@
 #pragma comment(lib, "urlmon.lib")
 #pragma comment(lib, "advapi32.lib")
 
-// Rolling release URL — references the release tagged `latest`, which our CI
-// republishes on every push to main. Uses /releases/download/latest/<file>
-// rather than /releases/latest/download/<file> because the latter only
-// resolves to *non-prerelease* releases, and our rolling release is marked
-// prerelease so it doesn't steal the "Latest" badge from tagged v* releases.
 static const char* DLL_URL =
     "https://github.com/expires/autoclicker/releases/download/latest/ac.dll";
 
-// ─── ANSI escape codes ─────────────────────────────────────────────────────
 #define ANSI_RESET   "\x1b[0m"
 #define ANSI_BOLD    "\x1b[1m"
 #define ANSI_DIM     "\x1b[2m"
@@ -29,10 +23,9 @@ static const char* DLL_URL =
 
 static void SetupConsole()
 {
-    // UTF-8 so the box-drawing + checkmark characters render correctly.
+
     SetConsoleOutputCP(CP_UTF8);
 
-    // Enable ANSI escape sequence processing (Windows 10 1607+).
     HANDLE h = GetStdHandle(STD_OUTPUT_HANDLE);
     DWORD  mode = 0;
     if (GetConsoleMode(h, &mode))
@@ -83,7 +76,6 @@ static void WaitForKey()
     printf("\n");
 }
 
-// ─── Injection plumbing ────────────────────────────────────────────────────
 DWORD GetProcessId(const wchar_t* procName)
 {
     HANDLE snap = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
@@ -192,7 +184,6 @@ int main()
     PrintStep("Injecting...");
     InjectDLL(pid, dllPath);
 
-    // Belt-and-braces deletion fallback in case nothing sweeps the file later.
     MoveFileExA(dllPath, nullptr, MOVEFILE_DELAY_UNTIL_REBOOT);
 
     PrintSuccess();

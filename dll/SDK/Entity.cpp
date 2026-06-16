@@ -74,10 +74,6 @@ Component Entity::getTypeName()
     return Component(rtn);
 }
 
-// Returns ImGui-format ABGR (alpha 0xFF) if the component's Style has an
-// explicit color set, or 0 (alpha 0 = sentinel "no color") if the color is
-// inherited from an ancestor. The caller uses the zero-alpha to fall back to
-// the inherited color, the same way MC's renderer resolves Style inheritance.
 static uint32_t readLocalColor(jobject component)
 {
     if (!component) return 0;
@@ -125,19 +121,12 @@ static uint32_t readLocalColor(jobject component)
     lc->env->DeleteLocalRef(textColor);
     if (lc->env->ExceptionCheck()) { lc->env->ExceptionClear(); return 0; }
 
-    // MC stores 0x00RRGGBB. ImGui's ImU32 is ABGR — swap R and B.
     uint32_t r = (uint32_t)((rgb >> 16) & 0xFFu);
     uint32_t g = (uint32_t)((rgb >>  8) & 0xFFu);
     uint32_t b = (uint32_t)( rgb        & 0xFFu);
     return (0xFFu << 24) | (b << 16) | (g << 8) | r;
 }
 
-// Recursively flattens a Component tree into (text, color) chunks the same
-// way MC's renderer composes nametags: each node's effective color is its
-// own Style.color if set, otherwise inherited from its parent. Leaves emit
-// their full recursive text; interior nodes recurse into siblings so deeply
-// nested prefix structures (e.g. empty().append(coloredText)) resolve
-// correctly to the coloredText's color rather than the parent's fallback.
 static void flattenComponent(jobject component, uint32_t inheritedColor,
                              std::vector<std::pair<std::string, uint32_t>>& out)
 {
@@ -175,14 +164,12 @@ static void flattenComponent(jobject component, uint32_t inheritedColor,
     }
 
     if (n == 0) {
-        // Leaf — emit this node's recursive text with effective color.
+
         Component c(component);
         std::string s = c.getString();
         if (!s.empty()) out.emplace_back(std::move(s), effective);
     } else {
-        // Interior node — walk children with our effective color as their
-        // inherited fallback. The root's own text is skipped because for
-        // formatNameForTeam's structure the root is Component.empty().
+
         for (jint i = 0; i < n; ++i) {
             jobject sib = lc->env->CallObjectMethod(siblings, getM, i);
             if (sib) {
@@ -196,17 +183,14 @@ static void flattenComponent(jobject component, uint32_t inheritedColor,
     if (siblings) lc->env->DeleteLocalRef(siblings);
 }
 
-
 std::vector<std::pair<std::string, uint32_t>> Entity::getFormattedNameChunks()
 {
     std::vector<std::pair<std::string, uint32_t>> chunks;
-    const uint32_t DEFAULT_COLOR = 0xFFFFFFFFu; // white
+    const uint32_t DEFAULT_COLOR = 0xFFFFFFFFu;
 
     Component nameC = getName();
     if (nameC.GetInstance() == nullptr) return chunks;
 
-    // Resolve team + run formatNameForTeam. On any failure we fall through
-    // with formatted=nullptr and flatten the bare name instead.
     jobject formatted = nullptr;
     jmethodID getTeamM = lc->env->GetMethodID(this->GetClass(),
         MTD_Entity_getTeam, DESC_Entity_getTeam);
@@ -244,8 +228,6 @@ std::vector<std::pair<std::string, uint32_t>> Entity::getFormattedNameChunks()
     return chunks;
 }
 
-// 1.21.11+: Entity.x/y/z no longer exist as primitive fields; position is a
-// Vec3 reference on Entity. Each accessor reads the Vec3 and pulls a coord.
 Vec3 Entity::getPosition()
 {
     jfieldID f = lc->env->GetFieldID(this->GetClass(), FLD_Entity_position, DESC_Entity_position);

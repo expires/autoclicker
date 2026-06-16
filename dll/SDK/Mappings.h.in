@@ -1,7 +1,6 @@
-// Auto-generated from @MAPPING_VERSION@.json — do not edit
+
 #pragma once
 
-// Classes
 #define MC_Minecraft            "@class_Minecraft@"
 #define MC_LocalPlayer          "@class_LocalPlayer@"
 #define MC_Screen               "@class_Screen@"
@@ -19,7 +18,6 @@
 #define MC_EntityHitResult      "@class_EntityHitResult@"
 #define MC_Item                 "@class_Item@"
 
-// Fields
 #define FLD_Minecraft_instance      "@fld_Minecraft_instance@"
 #define DESC_Minecraft_instance     "@desc_Minecraft_instance@"
 #define FLD_Minecraft_player        "@fld_Minecraft_player@"
@@ -35,7 +33,6 @@
 #define FLD_InteractionHand_MAIN    "@fld_InteractionHand_MAIN@"
 #define DESC_InteractionHand_MAIN   "@desc_InteractionHand_MAIN@"
 
-// Methods
 #define MTD_Minecraft_isPaused          "@mtd_Minecraft_isPaused@"
 #define MTD_Gui_getChat                 "@mtd_Gui_getChat@"
 #define DESC_Gui_getChat                "@desc_Gui_getChat@"
@@ -66,7 +63,6 @@
 #define MTD_Item_getName                "@mtd_Item_getName@"
 #define DESC_Item_getName               "@desc_Item_getName@"
 
-// ESP additions
 #define MC_ClientLevel             "@class_ClientLevel@"
 #define MC_AbstractClientPlayer    "@class_AbstractClientPlayer@"
 #define MC_Camera                  "@class_Camera@"
@@ -141,7 +137,6 @@
 #define MTD_Minecraft_pauseGame       "@mtd_Minecraft_pauseGame@"
 #define DESC_Minecraft_pauseGame      "@desc_Minecraft_pauseGame@"
 
-// Macros: read hotbar contents + held slot, switch by simulated key press
 #define MC_Inventory                  "@class_Inventory@"
 #define MTD_Player_getInventory       "@mtd_Player_getInventory@"
 #define DESC_Player_getInventory      "@desc_Player_getInventory@"
@@ -152,8 +147,6 @@
 #define DESC_ItemStack_getHoverName   "@desc_ItemStack_getHoverName@"
 #define MTD_ItemStack_isEmpty         "@mtd_ItemStack_isEmpty@"
 
-// Leap module — block sampling around the player to mirror the server's
-// wall-kick check (block behind = solid, block ahead = air).
 #define MC_BlockPos                   "@class_BlockPos@"
 #define MC_BlockState                 "@class_BlockState@"
 #define MTD_Level_getBlockState       "@mtd_Level_getBlockState@"

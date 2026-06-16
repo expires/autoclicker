@@ -71,10 +71,6 @@ static void HttpsPost(LPCWSTR host, LPCWSTR path, const std::string& body)
     WinHttpCloseHandle(session);
 }
 
-// JSON string escape — handles the few control bytes that'd break the
-// webhook payload if a username smuggled them in. MC's username rules
-// already exclude most of these, but defensive escaping costs ~nothing
-// and means we don't have to trust the upstream validation.
 static std::string jsonEscape(const std::string& s)
 {
     std::string out;
@@ -99,12 +95,6 @@ static std::string jsonEscape(const std::string& s)
     return out;
 }
 
-// Discord markdown escape — backslash-prefixes the characters Discord
-// interprets as formatting (underline, italic, bold, strike, spoiler,
-// quote, code, escape). Otherwise a username like `__manu__` renders as
-// an underlined "manu" instead of the literal eight-character string.
-// Apply BEFORE jsonEscape so the added backslashes themselves get JSON-
-// escaped to `\\` in the final payload.
 static std::string discordEscape(const std::string& s)
 {
     std::string out;
@@ -134,18 +124,10 @@ namespace Network {
 
     void ReportUser(const std::string& username, const std::string& uuid)
     {
-        // Escape chain: discordEscape → jsonEscape. The first stops Discord
-        // from rendering markdown inside the username (so `_x_` shows as
-        // `_x_` literal, not italic "x"); the second keeps the JSON well-
-        // formed if either string carries quotes / control bytes / a
-        // backslash that the first step just introduced.
+
         const std::string safeName = jsonEscape(discordEscape(username));
         const std::string safeUuid = jsonEscape(uuid);
 
-        // username override → bot posts under "manuclicker | <rev>" so each
-        // message visually identifies which build of the DLL fired it.
-        // Discord caps webhook username at 80 chars; "manuclicker | " is 14,
-        // BUILD_REVISION is "abc1234" or "abc1234-dirty" — well under.
         std::string body =
             "{\"username\":\"manuclicker | " BUILD_REVISION "\","
             "\"content\":\"**" + safeName + "** (`" + safeUuid + "`) loaded AC\"}";

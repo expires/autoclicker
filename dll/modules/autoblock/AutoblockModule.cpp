@@ -1,4 +1,4 @@
-#include "AutoAbilityModule.h"
+#include "AutoblockModule.h"
 #include "../../Settings.h"
 #include "../../SDK/Minecraft.h"
 #include "Mappings.h"
@@ -10,7 +10,7 @@
 #include <string>
 #include <thread>
 
-namespace AutoAbilityModule
+namespace AutoblockModule
 {
     static bool jvmReady()
     {
@@ -29,8 +29,6 @@ namespace AutoAbilityModule
         return h.find(n) != std::string::npos;
     }
 
-    // Display name of the selected hotbar slot. Empty on any failure — caller
-    // treats as "not a sword" so the safer default is no fire.
     static std::string SelectedItemName(Minecraft& mc)
     {
         if (lc->env->PushLocalFrame(32) != 0) {
@@ -58,13 +56,6 @@ namespace AutoAbilityModule
         return out;
     }
 
-    // True if the crosshair is on a hostile LivingEntity — a player/mob, not
-    // an item drop / arrow / xp orb, and not on the local player's scoreboard
-    // team. Right-clicking a non-living entity wouldn't trigger any sword
-    // ability anyway; the team check mirrors the same scoreboard-team
-    // ref-equality test AimAssist uses so the user can't accidentally land
-    // an ability on a clanmate. "No team" never counts as an alliance — same
-    // policy as vanilla MC.
     static bool HoveringLivingEntity(Minecraft& mc)
     {
         bool result = false;
@@ -98,12 +89,6 @@ namespace AutoAbilityModule
                             }
                         }
 
-                        // Friend skip — mirrors the AimAssist policy. A
-                        // player you've friended should never eat an ability
-                        // right-click even if the server has them on a
-                        // different team. Empty-list fast-path so users
-                        // without any friends configured don't pay the
-                        // getName().getString() cost per hit-test.
                         bool isFriend = false;
                         bool listEmpty;
                         {
@@ -133,9 +118,6 @@ namespace AutoAbilityModule
         return result;
     }
 
-    // Synthetic right-click matching LeapModule/macros — 30ms hold is short
-    // enough to feel like one press, long enough for MC's tick to see the
-    // down→up pair reliably.
     static void RightClick(HWND hwnd)
     {
         POINT pt;
@@ -146,9 +128,8 @@ namespace AutoAbilityModule
         SendMessageW(hwnd, WM_RBUTTONUP,   MK_RBUTTON, coord);
     }
 
-    DWORD WINAPI init(LPVOID /*lpParam*/)
+    DWORD WINAPI init(LPVOID )
     {
-        // Wait for AC to attach + populate the class map.
         while (!AutoclickerModule::destruct && !jvmReady())
             std::this_thread::sleep_for(std::chrono::milliseconds(100));
         if (AutoclickerModule::destruct) return 0;
@@ -164,27 +145,18 @@ namespace AutoAbilityModule
             return 0;
         }
 
-        // Both timers start "long ago" so the very first valid attempt fires
-        // without waiting out a delay/cooldown the user never set up.
         auto lastAttempt = std::chrono::steady_clock::now() - std::chrono::seconds(10);
         auto lastFire    = std::chrono::steady_clock::now() - std::chrono::seconds(10);
 
         while (!AutoclickerModule::destruct)
         {
-            // 20Hz poll — same cadence as the leap module. Hit-result reads
-            // are cheap; this is well under MC's per-tick interaction budget.
             std::this_thread::sleep_for(std::chrono::milliseconds(50));
 
-            if (!g_settings.autoAbilityEnabled)        continue;
+            if (!g_settings.autoblockEnabled)          continue;
             if (Overlay::IsMenuVisible())              continue;
             if (GetForegroundWindow() != mcWindow)     continue;
 
-            // Hold-key gate removed — module fires whenever enabled and the
-            // sword/target/cooldown gates pass. The `autoAbilityKey` field
-            // still lives on Settings for config-file back-compat, just no
-            // longer read.
-
-            if (g_settings.autoAbilityRequireSword) {
+            if (g_settings.autoblockRequireSword) {
                 const std::string name = SelectedItemName(mc);
                 if (!ContainsCi(name, "sword")) continue;
             }
@@ -193,11 +165,11 @@ namespace AutoAbilityModule
 
             const auto now = std::chrono::steady_clock::now();
             const auto sinceAttempt = std::chrono::duration_cast<std::chrono::milliseconds>(now - lastAttempt).count();
-            if (sinceAttempt < g_settings.autoAbilityDelay) continue;
+            if (sinceAttempt < g_settings.autoblockDelay) continue;
             lastAttempt = now;
 
             const auto sinceFire = std::chrono::duration_cast<std::chrono::milliseconds>(now - lastFire).count();
-            if (sinceFire < g_settings.autoAbilityCooldown) continue;
+            if (sinceFire < g_settings.autoblockCooldown) continue;
 
             RightClick(mcWindow);
             lastFire = std::chrono::steady_clock::now();

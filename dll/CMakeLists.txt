@@ -197,14 +197,12 @@ file(GLOB MACROS_HEADERS       "modules/macros/*.h")
 file(GLOB MACROS_SOURCES       "modules/macros/*.cpp")
 file(GLOB AIM_HEADERS          "modules/aim/*.h")
 file(GLOB AIM_SOURCES          "modules/aim/*.cpp")
-file(GLOB LEAP_HEADERS         "modules/leap/*.h")
-file(GLOB LEAP_SOURCES         "modules/leap/*.cpp")
-file(GLOB AUTOABILITY_HEADERS  "modules/autoability/*.h")
-file(GLOB AUTOABILITY_SOURCES  "modules/autoability/*.cpp")
+file(GLOB AUTOBLOCK_HEADERS    "modules/autoblock/*.h")
+file(GLOB AUTOBLOCK_SOURCES    "modules/autoblock/*.cpp")
 file(GLOB FRIENDS_HEADERS      "modules/friends/*.h")
 file(GLOB FRIENDS_SOURCES      "modules/friends/*.cpp")
-file(GLOB OVERLAY_HEADERS      "overlay/*.h")
-file(GLOB OVERLAY_SOURCES      "overlay/*.cpp")
+file(GLOB OVERLAY_HEADERS      "overlay/*.h" "overlay/tabs/*.h")
+file(GLOB OVERLAY_SOURCES      "overlay/*.cpp" "overlay/tabs/*.cpp")
 file(GLOB NETWORK_HEADERS      "network/*.h")
 file(GLOB NETWORK_SOURCES      "network/*.cpp")
 
@@ -222,10 +220,8 @@ add_library(${PROJECT_NAME} SHARED
     ${MACROS_SOURCES}
     ${AIM_HEADERS}
     ${AIM_SOURCES}
-    ${LEAP_HEADERS}
-    ${LEAP_SOURCES}
-    ${AUTOABILITY_HEADERS}
-    ${AUTOABILITY_SOURCES}
+    ${AUTOBLOCK_HEADERS}
+    ${AUTOBLOCK_SOURCES}
     ${FRIENDS_HEADERS}
     ${FRIENDS_SOURCES}
     ${SDK_SOURCES}
@@ -249,10 +245,8 @@ source_group("Header Files\\Macros"      FILES ${MACROS_HEADERS})
 source_group("Source Files\\Macros"      FILES ${MACROS_SOURCES})
 source_group("Header Files\\Aim"         FILES ${AIM_HEADERS})
 source_group("Source Files\\Aim"         FILES ${AIM_SOURCES})
-source_group("Header Files\\Leap"        FILES ${LEAP_HEADERS})
-source_group("Source Files\\Leap"        FILES ${LEAP_SOURCES})
-source_group("Header Files\\AutoAbility" FILES ${AUTOABILITY_HEADERS})
-source_group("Source Files\\AutoAbility" FILES ${AUTOABILITY_SOURCES})
+source_group("Header Files\\Autoblock" FILES ${AUTOBLOCK_HEADERS})
+source_group("Source Files\\Autoblock" FILES ${AUTOBLOCK_SOURCES})
 source_group("Header Files\\Friends"     FILES ${FRIENDS_HEADERS})
 source_group("Source Files\\Friends"     FILES ${FRIENDS_SOURCES})
 source_group("Header Files\\Overlay"     FILES ${OVERLAY_HEADERS})

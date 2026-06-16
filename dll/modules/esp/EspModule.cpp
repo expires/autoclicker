@@ -4,13 +4,26 @@
 #include "Mappings.h"
 #include "../autoclicker/AutoclickerModule.h"
 #include <cctype>
-#include <thread>
 #include <chrono>
+#include <mutex>
+#include <thread>
 
 namespace EspModule
 {
-    std::mutex snapMutex;
-    Snapshot   snapshot;
+    static std::mutex                       s_mutex;
+    static std::shared_ptr<const Snapshot>  s_snapshot;
+
+    std::shared_ptr<const Snapshot> Acquire()
+    {
+        std::lock_guard<std::mutex> lk(s_mutex);
+        return s_snapshot;
+    }
+
+    static void Publish(std::shared_ptr<const Snapshot> snap)
+    {
+        std::lock_guard<std::mutex> lk(s_mutex);
+        s_snapshot = std::move(snap);
+    }
 
     static bool jvmReady()
     {
@@ -19,103 +32,79 @@ namespace EspModule
 
     DWORD WINAPI init(LPVOID lpParam)
     {
-        // Wait for the autoclicker thread to attach + populate the class map.
         while (!AutoclickerModule::destruct && !jvmReady())
             std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
         if (AutoclickerModule::destruct) return 0;
 
-        // Attach this thread to the JVM. lc->env is thread_local, so this gives
-        // *us* an env without disturbing the autoclicker thread's.
         if (lc->vm->AttachCurrentThread(reinterpret_cast<void**>(&lc->env), nullptr) != JNI_OK)
             return 0;
         if (lc->env == nullptr) return 0;
 
         Minecraft mc;
-        Snapshot back;
 
         while (!AutoclickerModule::destruct)
         {
             if (!g_settings.espEnabled)
             {
-                {
-                    std::lock_guard<std::mutex> lk(snapMutex);
-                    snapshot.valid = false;
-                }
+                Publish(std::make_shared<Snapshot>());
                 std::this_thread::sleep_for(std::chrono::milliseconds(50));
                 continue;
             }
 
-            // PushLocalFrame bounds the local refs we create this iteration so
-            // they all die at PopLocalFrame — no slow leak across iterations.
-            if (lc->env->PushLocalFrame(256) != 0)
+            if (lc->env->PushLocalFrame(2048) != 0)
             {
                 lc->env->ExceptionClear();
                 std::this_thread::sleep_for(std::chrono::milliseconds(50));
                 continue;
             }
 
-            back.targets.clear();
-            back.valid           = false;
-            back.rawPlayerCount  = -1;
-            back.gotMinecraft    = false;
-            back.gotLocalPlayer  = false;
-            back.gotLevel        = false;
-            back.gotGameRenderer = false;
-            back.gotCamera       = false;
+            auto back = std::make_shared<Snapshot>();
 
-            auto publishDiag = [&]() {
-                std::lock_guard<std::mutex> lk(snapMutex);
-                std::swap(snapshot, back);
-            };
+            auto publishDiag = [&]() { Publish(back); };
 
             jobject mcInst = mc.GetInstance();
             if (mcInst == nullptr) { lc->env->PopLocalFrame(nullptr); publishDiag(); std::this_thread::yield(); continue; }
-            back.gotMinecraft = true;
+            back->gotMinecraft = true;
 
             Player localPlayer = mc.GetLocalPlayer();
             if (localPlayer.GetInstance() == nullptr) { lc->env->PopLocalFrame(nullptr); publishDiag(); std::this_thread::yield(); continue; }
-            back.gotLocalPlayer = true;
+            back->gotLocalPlayer = true;
 
             Level level = mc.GetLevel();
             if (level.GetInstance() == nullptr) { lc->env->PopLocalFrame(nullptr); publishDiag(); std::this_thread::yield(); continue; }
-            back.gotLevel = true;
+            back->gotLevel = true;
 
             GameRenderer gr = mc.GetGameRenderer();
             if (gr.GetInstance() == nullptr) { lc->env->PopLocalFrame(nullptr); publishDiag(); std::this_thread::yield(); continue; }
-            back.gotGameRenderer = true;
+            back->gotGameRenderer = true;
 
             Camera cam = gr.getMainCamera();
             if (cam.GetInstance() == nullptr) { lc->env->PopLocalFrame(nullptr); publishDiag(); std::this_thread::yield(); continue; }
-            back.gotCamera = true;
+            back->gotCamera = true;
 
-            // Partial tick — the render-time interpolation factor MC uses for
-            // entity positions and the camera. We read entity positions at the
-            // tick boundary (xo / current); the overlay lerps using this value.
             DeltaTracker dt = mc.GetDeltaTracker();
             if (dt.GetInstance() != nullptr)
-                back.partialTick = dt.getPartialTick(true);
+                back->partialTick = dt.getPartialTick(true);
             else
-                back.partialTick = 1.0f;
+                back->partialTick = 1.0f;
 
-            // Camera snapshot. Camera.position is already interpolated to the
-            // current render's partial tick by Camera.setup(), so we use it
-            // as-is without further lerping.
             Vec3 camPos = cam.getPosition();
-            back.cam.x    = camPos.getX();
-            back.cam.y    = camPos.getY();
-            back.cam.z    = camPos.getZ();
-            back.cam.yRot = cam.getYRot();
-            back.cam.xRot = cam.getXRot();
-            back.cam.fov  = gr.getFov(cam, back.partialTick, true);
-            if (lc->env->ExceptionCheck()) { lc->env->ExceptionClear(); back.cam.fov = 70.0f; }
+            back->cam.x    = camPos.getX();
+            back->cam.y    = camPos.getY();
+            back->cam.z    = camPos.getZ();
+            back->cam.yRot = cam.getYRot();
+            back->cam.xRot = cam.getXRot();
+            back->cam.fov  = gr.getFov(cam, back->partialTick, true);
+            if (lc->env->ExceptionCheck()) { lc->env->ExceptionClear(); back->cam.fov = 70.0f; }
 
-            // Players
             auto players = level.players();
-            back.rawPlayerCount = (int)players.size();
+            back->rawPlayerCount = (int)players.size();
             jobject localInst = localPlayer.GetInstance();
             const double maxDistSq =
                 (double)g_settings.maxDistance * (double)g_settings.maxDistance;
+
+            back->targets.reserve(players.size());
 
             for (auto& p : players)
             {
@@ -131,16 +120,13 @@ namespace EspModule
                 t.prevY = p.getYo();
                 t.prevZ = p.getZo();
 
-                double dx = t.x - back.cam.x, dy = t.y - back.cam.y, dz = t.z - back.cam.z;
+                double dx = t.x - back->cam.x, dy = t.y - back->cam.y, dz = t.z - back->cam.z;
                 double distSq = dx*dx + dy*dy + dz*dz;
                 if (distSq > maxDistSq) continue;
 
                 AABB box = p.getBoundingBox();
                 if (box.GetInstance() != nullptr)
                 {
-                    // Convert absolute AABB to extents centered on feet. Width
-                    // and depth are symmetrical around the entity's X/Z; height
-                    // is the full Y span from feet upward.
                     t.halfWidth = (box.maxX() - box.minX()) * 0.5;
                     t.height    =  box.maxY() - box.minY();
                     t.halfDepth = (box.maxZ() - box.minZ()) * 0.5;
@@ -152,14 +138,8 @@ namespace EspModule
                     t.halfDepth = 0.3;
                 }
 
-                // Pull team-formatted name with per-chunk colors so the
-                // overlay can paint each Style-span (prefix / name / suffix)
-                // in its own color the same way MC's renderer does.
                 t.nameChunks = p.getFormattedNameChunks();
 
-                // Bare GameProfile username for friend matching. Entity.getName()
-                // on a Player returns a Component wrapping gameProfile.getName(),
-                // so .getString() gives the raw "Notch" with no team prefix.
                 {
                     Component bare = p.getName();
                     if (bare.GetInstance() != nullptr) {
@@ -169,14 +149,9 @@ namespace EspModule
                     }
                 }
 
-                // HP — for the nametag readout. Negative on failure; overlay
-                // suppresses the chunk so a lookup hiccup doesn't print "-1/-1".
                 t.health    = p.getHealth();
                 t.maxHealth = p.getMaxHealth();
 
-                // Friend lookup under the friends-list mutex. Hold the lock
-                // for the linear scan only; the per-target bool then rides
-                // with the snapshot so the overlay can render lock-free.
                 if (!t.playerName.empty()) {
                     std::lock_guard<std::mutex> lk(g_settings.friendsMutex);
                     for (const auto& f : g_settings.friends) {
@@ -184,13 +159,6 @@ namespace EspModule
                     }
                 }
 
-                // "Teams by Colour": colour the box by the team colour. This is
-                // the exact same read that already works crash-free — formatName-
-                // ForTeam emits chunks [prefix] name [suffix], the team's own
-                // colour is applied to every chunk that doesn't override it
-                // (guild prefixes override, the bare name does not), so the last
-                // non-empty chunk carries the team colour. When the toggle is
-                // off the box stays plain white.
                 t.boxColor = 0xFFFFFFFFu;
                 if (g_settings.teamsByColor) {
                     for (auto it = t.nameChunks.rbegin(); it != t.nameChunks.rend(); ++it) {
@@ -198,19 +166,16 @@ namespace EspModule
                     }
                 }
 
-                back.targets.push_back(std::move(t));
+                back->targets.push_back(std::move(t));
             }
 
             if (lc->env->ExceptionCheck()) lc->env->ExceptionClear();
 
-            back.valid = true;
+            back->valid = true;
 
             lc->env->PopLocalFrame(nullptr);
 
-            {
-                std::lock_guard<std::mutex> lk(snapMutex);
-                std::swap(snapshot, back);
-            }
+            Publish(back);
         }
 
         lc->vm->DetachCurrentThread();
