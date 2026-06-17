@@ -514,9 +514,22 @@ static BOOL WINAPI hk_wglSwapBuffers(HDC hdc)
         return o_wglSwapBuffers(hdc);
     }
 
+    const HWND swapWnd = WindowFromDC(hdc);
+    {
+        static HWND s_gameWnd = nullptr;
+        if (s_gameWnd == nullptr || !IsWindow(s_gameWnd)) {
+            HWND g = FindWindowW(L"GLFW30", nullptr);
+            s_gameWnd = g ? g : swapWnd;
+            AC_LOG("overlay: pinned render window=%p (first swap caller window=%p)",
+                   (void*)s_gameWnd, (void*)swapWnd);
+        }
+        if (s_gameWnd && swapWnd != s_gameWnd)
+            return o_wglSwapBuffers(hdc);
+    }
+
     if (!s_initialized)
     {
-        s_hwnd = WindowFromDC(hdc);
+        s_hwnd = swapWnd;
 
         IMGUI_CHECKVERSION();
         ImGui::CreateContext();
