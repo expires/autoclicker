@@ -354,9 +354,6 @@ static void ApplyStyle()
     s.FrameBorderSize    = 1.0f;
     s.WindowMinSize      = {220.0f, 80.0f};
 
-    // Scale every metric above (padding, rounding, borders, ...) by the
-    // global UI scale in one shot. Custom draws that read GetStyle()
-    // rounding values stay consistent with Theme::M after this.
     s.ScaleAllSizes(Theme::Scale);
 
     ImVec4* c = s.Colors;

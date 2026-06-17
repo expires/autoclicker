@@ -5,17 +5,10 @@ namespace Theme
 {
     struct Col { uint32_t hex; float a; };
 
-    // ── Layout scale ─────────────────────────────────────────────────
-    // Single source of truth for GUI size. Every pixel metric below is
-    // multiplied by this, so changing it grows/shrinks the whole menu.
     inline constexpr float Scale = 1.2f;
 
-    // Bakes the scale into a logical pixel value at compile time. Use for
-    // incidental geometry (icon points, line thickness) that doesn't earn
-    // a named metric.
     inline constexpr float px(float v) { return v * Scale; }
 
-    // ── Pixel metrics (already scaled) ───────────────────────────────
     namespace M
     {
         // Window
