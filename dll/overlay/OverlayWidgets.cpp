@@ -103,7 +103,7 @@ namespace OverlayWidgets
 
     static const char* GetKeyName(int vk)
     {
-        if (vk == 0) return "none";
+        if (vk == 0) return "NONE";
         static char buf[32];
         UINT scan = MapVirtualKeyW((UINT)vk, MAPVK_VK_TO_VSC);
         LONG lp   = (LONG)(scan << 16);
@@ -211,7 +211,7 @@ namespace OverlayWidgets
         dl->AddRectFilled(pill.Min, pill.Max, pillBg, pr);
         dl->AddRect(pill.Min, pill.Max, GetColorU32(ImGuiCol_Border), pr, 0, 1.0f);
 
-        const char* pillText = listening ? "press a key..." : (*vk ? GetKeyName(*vk) : "none");
+        const char* pillText = listening ? "press a key..." : (*vk ? GetKeyName(*vk) : "NONE");
         ImVec2 textSz = CalcTextSize(pillText);
         RenderText(ImVec2(pill.GetCenter().x - textSz.x * 0.5f, pill.GetCenter().y - textSz.y * 0.5f), pillText);
 
