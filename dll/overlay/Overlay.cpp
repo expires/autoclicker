@@ -771,7 +771,6 @@ static BOOL WINAPI hk_wglSwapBuffers(HDC hdc)
             const ImVec2  winPos    = ImGui::GetWindowPos();
             ImDrawList*   dl        = ImGui::GetWindowDrawList();
 
-            // ── Top Navigation Bar ──────────────────────────────────────────
             dl->AddRectFilled(
                 ImVec2(winPos.x + MARGIN,             winPos.y + MARGIN),
                 ImVec2(winPos.x + winSize.x - MARGIN, winPos.y + MARGIN + TOPBAR_H),
@@ -779,21 +778,18 @@ static BOOL WINAPI hk_wglSwapBuffers(HDC hdc)
                 ImGui::GetStyle().WindowRounding,
                 ImDrawFlags_RoundCornersAll);
 
-            // Title
             ImGui::PushFont(ImGui::GetIO().Fonts->Fonts[1]);
             const float titleY = MARGIN + (TOPBAR_H - ImGui::GetFontSize()) * 0.5f;
             ImGui::SetCursorPos(ImVec2(MARGIN + Theme::M::TitlePadX, titleY));
             ImGui::TextUnformatted("manuclicker");
             ImGui::PopFont();
 
-            // Revision
             const std::string revStr = "v" + std::string(BUILD_REVISION);
             const ImVec2 revSz = ImGui::CalcTextSize(revStr.c_str());
             ImGui::SetCursorPos(ImVec2(winSize.x - MARGIN - revSz.x - Theme::M::TitlePadX,
                                        MARGIN + (TOPBAR_H - revSz.y) * 0.5f));
             ImGui::TextDisabled("%s", revStr.c_str());
 
-            // ── Sidebar ─────────────────────────────────────────────────────
             ImGui::SetCursorPos(ImVec2(0, BODY_Y));
             ImGui::BeginChild("##sidebar", ImVec2(SIDEBAR_W, winSize.y - BODY_Y),
                 false, ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoScrollbar);
