@@ -617,8 +617,11 @@ static BOOL WINAPI hk_wglSwapBuffers(HDC hdc)
         AC_LOG("overlay: init win32 begin");
         ImGui_ImplWin32_Init(s_hwnd);
         AC_LOG("overlay: init opengl3 begin");
-        ImGui_ImplOpenGL3_Init(nullptr);
+        ImGui_ImplOpenGL3_Init("#version 150");
         AC_LOG("overlay: init opengl3 done");
+        AC_LOG("overlay: create device objects begin");
+        ImGui_ImplOpenGL3_CreateDeviceObjects();
+        AC_LOG("overlay: create device objects done");
 
         s_origProc = reinterpret_cast<WNDPROC>(
             SetWindowLongPtrW(s_hwnd, GWLP_WNDPROC, reinterpret_cast<LONG_PTR>(HookedWndProc)));
