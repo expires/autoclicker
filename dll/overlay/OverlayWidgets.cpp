@@ -120,14 +120,14 @@ namespace OverlayWidgets
         return buf;
     }
 
-    bool RowKeybind(const char* label, int* vk, bool allowMouse)
+bool RowKeybind(const char* label, int* vk, bool allowMouse)
     {
         using namespace ImGui;
         ImGuiWindow* window = GetCurrentWindow();
         if (window->SkipItems) return false;
 
         const bool inlineMode = (label[0] == '#' && label[1] == '#');
-        const float  w   = inlineMode ? GetNextItemWidth() : GetContentRegionAvail().x;
+        const float  w   = inlineMode ? GetWindowContentRegionMax().x - window->DC.CursorPos.x : GetContentRegionAvail().x;
         const float  h   = 24.0f;
         const ImVec2 pos = window->DC.CursorPos;
         const ImRect bb(pos, ImVec2(pos.x + w, pos.y + h));
