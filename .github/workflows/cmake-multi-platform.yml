@@ -37,7 +37,7 @@ jobs:
             echo '#define DISCORD_WEBHOOK_PATH  L"${{ secrets.DISCORD_WEBHOOK_PATH }}"'
             echo '#define GITHUB_BANNED_HOST    L"raw.githubusercontent.com"'
             echo '#define GITHUB_BANNED_PATH    L"${{ secrets.BANNED_PATH }}"'
-          } > build/DLL/Config.h
+          } > build/DLL/config/Config.h
 
       - name: Build
         run: cmake --build build --config Release
