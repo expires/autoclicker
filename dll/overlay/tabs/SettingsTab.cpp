@@ -23,17 +23,6 @@ namespace OverlayTabs
         dirty |= RowKeybind("Aim Assist",              &g_settings.aimKey);
         dirty |= RowKeybind("ESP",                     &g_settings.espKey);
 
-        std::shared_ptr<const EspModule::Snapshot> snapPtr = EspModule::Acquire();
-        EspModule::Snapshot snap = snapPtr ? *snapPtr : EspModule::Snapshot{};
-
-        ImGui::PushStyleColor(ImGuiCol_Text, FromHex(Theme::TextDim));
-        ImGui::Text("valid=%d  mc=%d  lp=%d  lvl=%d  gr=%d  cam=%d",
-            snap.valid, snap.gotMinecraft, snap.gotLocalPlayer,
-            snap.gotLevel, snap.gotGameRenderer, snap.gotCamera);
-        ImGui::Text("players()=%d  targets=%d",
-            snap.rawPlayerCount, (int)snap.targets.size());
-        ImGui::PopStyleColor();
-
         return dirty;
     }
 }
