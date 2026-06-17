@@ -1,6 +1,6 @@
 #pragma once
 
-#define AC_ENABLE_LOGGING
+// #define AC_ENABLE_LOGGING
 
 #ifdef AC_ENABLE_LOGGING
 
