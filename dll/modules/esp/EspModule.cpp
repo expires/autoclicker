@@ -3,6 +3,7 @@
 #include "../../SDK/Minecraft.h"
 #include "Mappings.h"
 #include "../autoclicker/AutoclickerModule.h"
+#include "../../Logger.h"
 #include <cctype>
 #include <chrono>
 #include <mutex>
@@ -32,6 +33,7 @@ namespace EspModule
 
     DWORD WINAPI init(LPVOID lpParam)
     {
+        AC_LOG("esp: thread start");
         while (!AutoclickerModule::destruct && !jvmReady())
             std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
@@ -40,6 +42,7 @@ namespace EspModule
         if (lc->vm->AttachCurrentThread(reinterpret_cast<void**>(&lc->env), nullptr) != JNI_OK)
             return 0;
         if (lc->env == nullptr) return 0;
+        AC_LOG("esp: attached; entering loop");
 
         Minecraft mc;
 
@@ -178,6 +181,7 @@ namespace EspModule
             Publish(back);
         }
 
+        AC_LOG("esp: loop exit; detaching");
         lc->vm->DetachCurrentThread();
         return 0;
     }

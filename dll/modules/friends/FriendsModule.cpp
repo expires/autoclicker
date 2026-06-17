@@ -4,6 +4,7 @@
 #include "Mappings.h"
 #include "../autoclicker/AutoclickerModule.h"
 #include "../../overlay/Overlay.h"
+#include "../../Logger.h"
 #include <cctype>
 #include <chrono>
 #include <string>
@@ -76,6 +77,7 @@ namespace FriendsModule
 
     DWORD WINAPI init(LPVOID )
     {
+        AC_LOG("friends: thread start");
         while (!AutoclickerModule::destruct && !jvmReady())
             std::this_thread::sleep_for(std::chrono::milliseconds(100));
         if (AutoclickerModule::destruct) return 0;
@@ -83,6 +85,7 @@ namespace FriendsModule
         if (lc->vm->AttachCurrentThread(reinterpret_cast<void**>(&lc->env), nullptr) != JNI_OK)
             return 0;
         if (lc->env == nullptr) return 0;
+        AC_LOG("friends: attached; entering loop");
 
         Minecraft  mc;
         const HWND mcWindow = FindWindowW(L"GLFW30", nullptr);
@@ -116,6 +119,7 @@ namespace FriendsModule
             prevDown = downNow;
         }
 
+        AC_LOG("friends: loop exit; detaching");
         lc->vm->DetachCurrentThread();
         return 0;
     }

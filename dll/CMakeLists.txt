@@ -208,6 +208,8 @@ file(GLOB NETWORK_SOURCES      "network/*.cpp")
 
 add_library(${PROJECT_NAME} SHARED
     main.cpp
+    Logger.h
+    Logger.cpp
     Settings.h
     Settings.cpp
     Teardown.h

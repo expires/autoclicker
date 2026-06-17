@@ -12,6 +12,7 @@
 #include "OverlayWidgets.h"
 #include "tabs/Tabs.h"
 #include "../Settings.h"
+#include "../Logger.h"
 #include "../modules/esp/EspModule.h"
 #include "../SDK/Lunar.h"
 #include "../SDK/Minecraft.h"
@@ -42,6 +43,9 @@ static int     s_currentTab         = 0;
 static HWND    s_hwnd               = nullptr;
 static WNDPROC s_origProc           = nullptr;
 static bool    s_eatEscUntilRelease = false;
+
+static volatile bool s_shutdownRequested = false;
+static volatile bool s_renderDrained     = false;
 
 static bool ProjectWorld(double wx, double wy, double wz,
                          const EspModule::CameraState& cam,
@@ -491,6 +495,25 @@ static LRESULT CALLBACK HookedWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM
 
 static BOOL WINAPI hk_wglSwapBuffers(HDC hdc)
 {
+    if (s_shutdownRequested)
+    {
+        if (!s_renderDrained)
+        {
+            AC_LOG("overlay: render thread draining");
+            if (s_initialized)
+            {
+                if (s_hwnd && s_origProc)
+                    SetWindowLongPtrW(s_hwnd, GWLP_WNDPROC, reinterpret_cast<LONG_PTR>(s_origProc));
+                ImGui_ImplOpenGL3_Shutdown();
+                ImGui_ImplWin32_Shutdown();
+                ImGui::DestroyContext();
+            }
+            s_renderDrained = true;
+            AC_LOG("overlay: render thread drained");
+        }
+        return o_wglSwapBuffers(hdc);
+    }
+
     if (!s_initialized)
     {
         s_hwnd = WindowFromDC(hdc);
@@ -815,18 +838,27 @@ namespace Overlay
         }
     }
 
+    void BeginTeardown()
+    {
+        s_shutdownRequested = true;
+    }
+
     void Shutdown()
     {
+        s_shutdownRequested = true;
+
+        if (s_initialized && !s_renderDrained)
+        {
+            for (int i = 0; i < 100 && !s_renderDrained; ++i)
+                Sleep(2);
+
+            if (!s_renderDrained && s_hwnd && s_origProc)
+                SetWindowLongPtrW(s_hwnd, GWLP_WNDPROC, reinterpret_cast<LONG_PTR>(s_origProc));
+        }
+
+        AC_LOG("overlay: disabling hooks");
         MH_DisableHook(MH_ALL_HOOKS);
         MH_Uninitialize();
-
-        if (s_initialized)
-        {
-            if (s_hwnd && s_origProc)
-                SetWindowLongPtrW(s_hwnd, GWLP_WNDPROC, reinterpret_cast<LONG_PTR>(s_origProc));
-            ImGui_ImplOpenGL3_Shutdown();
-            ImGui_ImplWin32_Shutdown();
-            ImGui::DestroyContext();
-        }
+        AC_LOG("overlay: hooks disabled");
     }
 }
