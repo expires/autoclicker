@@ -20,10 +20,19 @@
 #include "../SDK/Minecraft.h"
 #include "../SDK/Vec3.h"
 #include "Revision.h"
+#include "LogoData.h"
 #include <MinHook.h>
+#define STB_IMAGE_IMPLEMENTATION
+#define STBI_ONLY_PNG
+#define STBI_NO_STDIO
+#include "stb_image.h"
 
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
+#endif
+
+#ifndef GL_CLAMP_TO_EDGE
+#define GL_CLAMP_TO_EDGE 0x812F
 #endif
 
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
@@ -68,6 +77,30 @@ static void ResetUnpackState()
     glPixelStorei(GL_UNPACK_ALIGNMENT,   1);
 }
 
+static void LoadLogoTexture()
+{
+    if (s_logoTex != 0 || g_logoPngSize == 0) return;
+
+    int ch = 0;
+    unsigned char* pixels = stbi_load_from_memory(
+        g_logoPng, (int)g_logoPngSize, &s_logoW, &s_logoH, &ch, 4);
+    if (!pixels) {
+        AC_LOG("overlay: logo decode failed: %s", stbi_failure_reason());
+        return;
+    }
+
+    ResetUnpackState();
+    glGenTextures(1, &s_logoTex);
+    glBindTexture(GL_TEXTURE_2D, s_logoTex);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, s_logoW, s_logoH, 0,
+                 GL_RGBA, GL_UNSIGNED_BYTE, pixels);
+    stbi_image_free(pixels);
+}
+
 typedef BOOL    (WINAPI* fn_SetCursorPos)(int, int);
 typedef BOOL    (WINAPI* fn_ClipCursor)(const RECT*);
 typedef int     (WINAPI* fn_ShowCursor)(BOOL);
@@ -86,6 +119,10 @@ static bool    s_eatEscUntilRelease = false;
 
 static volatile bool s_shutdownRequested = false;
 static volatile bool s_renderDrained     = false;
+
+static GLuint s_logoTex = 0;
+static int    s_logoW   = 0;
+static int    s_logoH   = 0;
 
 static bool ProjectWorld(double wx, double wy, double wz,
                          const EspModule::CameraState& cam,
@@ -546,6 +583,7 @@ static BOOL WINAPI hk_wglSwapBuffers(HDC hdc)
             {
                 if (s_hwnd && s_origProc)
                     SetWindowLongPtrW(s_hwnd, GWLP_WNDPROC, reinterpret_cast<LONG_PTR>(s_origProc));
+                if (s_logoTex) { glDeleteTextures(1, &s_logoTex); s_logoTex = 0; }
                 ImGui_ImplOpenGL3_Shutdown();
                 ImGui_ImplWin32_Shutdown();
                 ImGui::DestroyContext();
@@ -624,6 +662,7 @@ static BOOL WINAPI hk_wglSwapBuffers(HDC hdc)
         ResetUnpackState();
         ImGui_ImplOpenGL3_CreateFontsTexture();
         ImGui_ImplOpenGL3_CreateDeviceObjects();
+        LoadLogoTexture();
 
         s_origProc = reinterpret_cast<WNDPROC>(
             SetWindowLongPtrW(s_hwnd, GWLP_WNDPROC, reinterpret_cast<LONG_PTR>(HookedWndProc)));
@@ -778,9 +817,18 @@ static BOOL WINAPI hk_wglSwapBuffers(HDC hdc)
                 ImGui::GetStyle().WindowRounding,
                 ImDrawFlags_RoundCornersAll);
 
+            float titleX = MARGIN + Theme::M::TitlePadX;
+            if (s_logoTex) {
+                const float logoH = Theme::M::LogoH;
+                const float logoW = logoH * ((float)s_logoW / (float)s_logoH);
+                ImGui::SetCursorPos(ImVec2(titleX, MARGIN + (TOPBAR_H - logoH) * 0.5f));
+                ImGui::Image((ImTextureID)(intptr_t)s_logoTex, ImVec2(logoW, logoH));
+                titleX += logoW + Theme::M::LogoGap;
+            }
+
             ImGui::PushFont(ImGui::GetIO().Fonts->Fonts[1]);
             const float titleY = MARGIN + (TOPBAR_H - ImGui::GetFontSize()) * 0.5f;
-            ImGui::SetCursorPos(ImVec2(MARGIN + Theme::M::TitlePadX, titleY));
+            ImGui::SetCursorPos(ImVec2(titleX, titleY));
             ImGui::TextUnformatted("manuclicker");
             ImGui::PopFont();
 

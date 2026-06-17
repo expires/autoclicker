@@ -113,6 +113,27 @@ message(STATUS "DISCORD_WEBHOOK_PATH length: ${_webhook_len}")
 message(STATUS "BANNED_PATH length: ${_banned_len}")
 configure_file(Config.h.in ${CMAKE_CURRENT_BINARY_DIR}/Config.h @ONLY)
 
+# ── Embedded logo ────────────────────────────────────────────────────────────
+# The DLL is injected, so it can't rely on a disk path; bake data/logo.png into
+# the binary as a byte array. Regenerated at configure time.
+set(LOGO_SRC    "${CMAKE_SOURCE_DIR}/data/logo.png")
+set(LOGO_HEADER "${CMAKE_CURRENT_BINARY_DIR}/LogoData.h")
+if(EXISTS "${LOGO_SRC}")
+    file(READ "${LOGO_SRC}" LOGO_HEX HEX)
+    string(REGEX REPLACE "(..)" "0x\\1," LOGO_BYTES "${LOGO_HEX}")
+    string(LENGTH "${LOGO_HEX}" _logo_hexlen)
+    math(EXPR LOGO_LEN "${_logo_hexlen} / 2")
+    file(WRITE "${LOGO_HEADER}"
+        "#pragma once\n// Auto-generated from data/logo.png — do not edit.\n"
+        "inline const unsigned char g_logoPng[] = { ${LOGO_BYTES} };\n"
+        "inline const unsigned int  g_logoPngSize = ${LOGO_LEN};\n")
+else()
+    message(WARNING "data/logo.png not found; logo will be disabled")
+    file(WRITE "${LOGO_HEADER}"
+        "#pragma once\ninline const unsigned char g_logoPng[] = { 0 };\n"
+        "inline const unsigned int  g_logoPngSize = 0;\n")
+endif()
+
 # Build-time Revision.h — re-runs every build via a phony custom target so
 # the embedded BUILD_REVISION matches the current HEAD SHA (+ -dirty if the
 # working tree has uncommitted changes). The helper script writes the file
@@ -186,6 +207,17 @@ add_library(minhook STATIC
 )
 target_include_directories(minhook PUBLIC ${minhook_SOURCE_DIR}/include)
 
+# ── stb (header-only, for stb_image PNG decode) ──────────────────────────────
+FetchContent_Declare(stb
+    GIT_REPOSITORY https://github.com/nothings/stb.git
+    GIT_TAG        master
+    GIT_SHALLOW    TRUE
+)
+FetchContent_GetProperties(stb)
+if(NOT stb_POPULATED)
+    FetchContent_Populate(stb)
+endif()
+
 # ── Sources ──────────────────────────────────────────────────────────────────
 file(GLOB SDK_HEADERS          "SDK/*.h")
 file(GLOB SDK_SOURCES          "SDK/*.cpp")
@@ -235,6 +267,7 @@ add_library(${PROJECT_NAME} SHARED
 )
 
 target_link_libraries(${PROJECT_NAME} PRIVATE ${JVM_LIB} imgui minhook winhttp)
+target_include_directories(${PROJECT_NAME} PRIVATE ${stb_SOURCE_DIR})
 add_dependencies(${PROJECT_NAME} generate_revision_h)
 
 source_group("Header Files\\SDK"         FILES ${SDK_HEADERS})

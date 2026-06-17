@@ -24,6 +24,8 @@ namespace Theme
         inline constexpr float TopbarH       = px(52.0f);
         inline constexpr float SidebarW      = px(150.0f);
         inline constexpr float TitlePadX     = px(15.0f);
+        inline constexpr float LogoH         = px(26.0f);
+        inline constexpr float LogoGap       = px(9.0f);
         inline constexpr float SidebarTopPad = px(20.0f);
         inline constexpr float BodyPad       = px(22.0f);
 
