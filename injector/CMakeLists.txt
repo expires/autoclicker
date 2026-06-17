@@ -15,8 +15,8 @@ add_executable(${PROJECT_NAME}
     main.cpp 
 )
 
-# Link necessary libraries
-target_link_libraries(${PROJECT_NAME} PRIVATE ${JVM_LIB} urlmon)
+# Link necessary libraries (e.g., JVM_LIB, if required)
+target_link_libraries(${PROJECT_NAME} PRIVATE ${JVM_LIB})
 
 # Treat the source as UTF-8 so the box-drawing / check-mark characters in the
 # banner and success box round-trip correctly to the console (which we set to

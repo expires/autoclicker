@@ -234,7 +234,7 @@ add_library(${PROJECT_NAME} SHARED
     ${NETWORK_SOURCES}
 )
 
-target_link_libraries(${PROJECT_NAME} PRIVATE ${JVM_LIB} imgui minhook winhttp dwmapi)
+target_link_libraries(${PROJECT_NAME} PRIVATE ${JVM_LIB} imgui minhook winhttp)
 add_dependencies(${PROJECT_NAME} generate_revision_h)
 
 source_group("Header Files\\SDK"         FILES ${SDK_HEADERS})
