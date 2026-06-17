@@ -120,7 +120,7 @@ namespace OverlayWidgets
         return buf;
     }
 
-    bool RowKeybind(const char* label, int* vk, float customWidth = 0.0f, bool allowMouse = false)
+    bool RowKeybind(const char* label, int* vk, float customWidth, bool allowMouse)
     {
         using namespace ImGui;
         ImGuiWindow* window = GetCurrentWindow();
@@ -219,6 +219,11 @@ namespace OverlayWidgets
         RenderText(ImVec2(pill.GetCenter().x - textSz.x * 0.5f, pill.GetCenter().y - textSz.y * 0.5f), pillText);
 
         return changed;
+    }
+
+    bool RowKeybind(const char* label, int* vk, bool allowMouse)
+    {
+        return RowKeybind(label, vk, 0.0f, allowMouse);
     }
 
     bool RowSlider(const char* label, int* v, int v_min, int v_max, const char* fmt)
