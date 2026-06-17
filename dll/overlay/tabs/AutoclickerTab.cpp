@@ -13,7 +13,7 @@ namespace OverlayTabs
         dirty |= RowSlider  ("CPS",          &g_settings.cps, 1, 20);
         dirty |= RowCheckbox("Jitter",       &g_settings.jitterEnabled);
         if (g_settings.jitterEnabled)
-            dirty |= RowSlider("Jitter Strength", &g_settings.jitterStrength, 0, 10);
+            dirty |= RowSlider("Strength", &g_settings.jitterStrength, 0, 10);
         dirty |= RowKeybind ("Toggle Key",   &g_settings.acKey);
         return dirty;
     }

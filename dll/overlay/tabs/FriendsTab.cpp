@@ -19,8 +19,6 @@ namespace OverlayTabs
         dirty |= RowKeybind("Bind", &g_settings.friendKey, true);
         dirty |= RowCheckbox("Teams by Colour", &g_settings.teamsByColor);
 
-        ImGui::Dummy(ImVec2(0, 2));
-
         static char addBuf[32] = {};
         ImGui::PushItemWidth(-80.0f);
         bool submitted = ImGui::InputTextWithHint(
