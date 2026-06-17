@@ -28,6 +28,7 @@ namespace OverlayTabs
         ImGui::PopItemWidth();
         ImGui::SameLine(0, Theme::M::ListGap);
         bool clicked = ImGui::Button("Add", ImVec2(Theme::M::FriendAddBtnW, 0));
+        if (ImGui::IsItemHovered()) ImGui::SetMouseCursor(ImGuiMouseCursor_Hand);
 
         if (submitted || clicked) {
             std::string name = addBuf;
@@ -76,6 +77,7 @@ namespace OverlayTabs
                 ImGui::PushStyleColor(ImGuiCol_ButtonActive,  FromHex(Theme::ListBtnActive));
                 if (ImGui::Button("##del", ImVec2(delW, delW)))
                     toDelete = i;
+                if (ImGui::IsItemHovered()) ImGui::SetMouseCursor(ImGuiMouseCursor_Hand);
                 ImGui::PopStyleColor(3);
                 ImGui::PopStyleVar();
                 {

@@ -27,6 +27,12 @@ namespace OverlayTabs
 
         ImGui::PopID();
 
+        ImGui::Dummy(ImVec2(0, Theme::M::BodyPad));
+        ImGui::TextDisabled("Source & updates:");
+        ImGui::SameLine(0, Theme::M::ListGap);
+        ImGui::TextLinkOpenURL("github.com/expires/autoclicker",
+                               "https://github.com/expires/autoclicker");
+
         return dirty;
     }
 }

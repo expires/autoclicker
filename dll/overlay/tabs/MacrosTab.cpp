@@ -48,6 +48,7 @@ namespace OverlayTabs
             if (ImGui::Button("##del", ImVec2(btnW, btnW))) {
                 toDelete = i;
             }
+            if (ImGui::IsItemHovered()) ImGui::SetMouseCursor(ImGuiMouseCursor_Hand);
             {
                 const ImVec2 bmin = ImGui::GetItemRectMin();
                 const ImVec2 bmax = ImGui::GetItemRectMax();
@@ -62,6 +63,7 @@ namespace OverlayTabs
                 open = !open;
                 storage->SetBool(openId, open);
             }
+            if (ImGui::IsItemHovered()) ImGui::SetMouseCursor(ImGuiMouseCursor_Hand);
             {
                 const ImVec2 bmin = ImGui::GetItemRectMin();
                 const ImVec2 bmax = ImGui::GetItemRectMax();
@@ -122,6 +124,7 @@ namespace OverlayTabs
                 g_settings.macroCount++;
                 dirty = true;
             }
+            if (ImGui::IsItemHovered()) ImGui::SetMouseCursor(ImGuiMouseCursor_Hand);
             ImGui::PopStyleColor(3);
         }
 

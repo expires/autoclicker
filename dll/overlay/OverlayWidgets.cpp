@@ -65,6 +65,7 @@ namespace OverlayWidgets
 
         bool hovered, held;
         bool pressed = ButtonBehavior(bb, id, &hovered, &held);
+        if (hovered) SetMouseCursor(ImGuiMouseCursor_Hand);
         if (pressed) { *v = !*v; MarkItemEdited(id); }
 
         ImGuiStorage* storage = &window->StateStorage;
@@ -140,6 +141,7 @@ namespace OverlayWidgets
 
         bool hovered, held;
         bool pressed = ButtonBehavior(pill, id, &hovered, &held);
+        if (hovered) SetMouseCursor(ImGuiMouseCursor_Hand);
 
         bool changed = false;
 
@@ -251,6 +253,7 @@ namespace OverlayWidgets
 
         bool hovered, held;
         ButtonBehavior(hitFrame, id, &hovered, &held);
+        if (hovered) SetMouseCursor(ImGuiMouseCursor_Hand);
 
         ImRect grab_bb;
         bool changed = SliderBehavior(hitFrame, id, ImGuiDataType_S32, v, &v_min, &v_max, fmt, ImGuiSliderFlags_None, &grab_bb);
@@ -392,6 +395,7 @@ namespace OverlayWidgets
 
         bool hovered, held;
         bool pressed = ButtonBehavior(bb, id, &hovered, &held);
+        if (hovered) SetMouseCursor(ImGuiMouseCursor_Hand);
 
         ImDrawList* dl = window->DrawList;
         const float  mx = Theme::M::TabMarginX;
