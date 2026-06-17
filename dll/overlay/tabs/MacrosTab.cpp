@@ -10,7 +10,6 @@ namespace OverlayTabs
         using namespace OverlayWidgets;
         bool dirty = false;
 
-        // Matches whatever push happens outside this function context
         ImGui::PopStyleVar();
 
         int toDelete = -1;
@@ -18,7 +17,6 @@ namespace OverlayTabs
         for (int i = 0; i < g_settings.macroCount; ++i) {
             ImGui::PushID(i);
 
-            // Fetch open/closed state from ImGui's persistent storage
             ImGuiStorage* storage = ImGui::GetStateStorage();
             const ImGuiID openId  = ImGui::GetID("##open");
             bool open = storage->GetBool(openId, false);
@@ -27,9 +25,6 @@ namespace OverlayTabs
             const float gap    = 6.0f;
             const float availX = ImGui::GetContentRegionAvail().x;
 
-            // --- HEADER LINE ---
-
-            // 1. Expander Toggle Button (Leftmost)
             ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 0.0f);
             ImGui::PushStyleColor(ImGuiCol_Button,        FromHex(Theme::Transparent));
             ImGui::PushStyleColor(ImGuiCol_ButtonHovered, FromHex(Theme::ListBtnHovered));
@@ -40,7 +35,6 @@ namespace OverlayTabs
                 storage->SetBool(openId, open);
             }
             
-            // Draw custom caret arrow over expander button
             {
                 const ImVec2 bmin = ImGui::GetItemRectMin();
                 const ImVec2 bmax = ImGui::GetItemRectMax();
@@ -48,17 +42,16 @@ namespace OverlayTabs
                 ImDrawList* dl   = ImGui::GetWindowDrawList();
                 const ImU32  col = ImGui::GetColorU32(ImGuiCol_Text);
                 
-                if (open) // Downward caret
+                if (open)
                     dl->AddTriangleFilled(ImVec2(ctr.x - 4.0f, ctr.y - 2.5f),
                                           ImVec2(ctr.x + 4.0f, ctr.y - 2.5f),
                                           ImVec2(ctr.x,       ctr.y + 3.0f), col);
-                else      // Rightward caret
+                else
                     dl->AddTriangleFilled(ImVec2(ctr.x - 2.5f, ctr.y - 4.0f),
                                           ImVec2(ctr.x - 2.5f, ctr.y + 4.0f),
                                           ImVec2(ctr.x + 3.0f, ctr.y),        col);
             }
 
-            // 2. Macro Name Input Field (Middle)
             ImGui::SameLine(0, gap);
             ImGui::SetNextItemWidth(availX - (2.0f * (btnW + gap)));
             if (ImGui::InputTextWithHint("##name", "item name (e.g. golden apple)", 
@@ -67,13 +60,11 @@ namespace OverlayTabs
                 dirty = true;
             }
 
-            // 3. Delete Button (Rightmost)
             ImGui::SameLine(0, gap);
             if (ImGui::Button("##del", ImVec2(btnW, 24))) {
                 toDelete = i;
             }
             
-            // Draw custom horizontal minus line over delete button
             {
                 const ImVec2 bmin = ImGui::GetItemRectMin();
                 const ImVec2 bmax = ImGui::GetItemRectMax();
@@ -86,10 +77,9 @@ namespace OverlayTabs
             ImGui::PopStyleColor(3);
             ImGui::PopStyleVar();
 
-            // --- EXPANDED DROPDOWN SETTINGS ---
             if (open) {
                 ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(ImGui::GetStyle().ItemSpacing.x, 6.0f));
-                ImGui::Indent(btnW + gap); // Aligns dropdown inputs neatly beneath the text input
+                ImGui::Indent(btnW + gap);
                 
                 dirty |= RowSlider("Delay (ms)", &g_settings.macros[i].delay, 0, 5000, "%d ms");
                 dirty |= RowKeybind("Key", &g_settings.macros[i].key);
@@ -102,7 +92,6 @@ namespace OverlayTabs
             ImGui::PopID();
         }
 
-        // Handle item deletion if requested
         if (toDelete >= 0 && toDelete < g_settings.macroCount) {
             for (int j = toDelete; j < g_settings.macroCount - 1; ++j)
                 g_settings.macros[j] = g_settings.macros[j + 1];
@@ -111,7 +100,6 @@ namespace OverlayTabs
             dirty = true;
         }
 
-        // Add Macro Button Element
         if (g_settings.macroCount < Settings::MAX_MACROS) {
             ImGui::PushStyleColor(ImGuiCol_Button,        FromHex(Theme::AddBtn));
             ImGui::PushStyleColor(ImGuiCol_ButtonHovered, FromHex(Theme::AddBtnHovered));
@@ -124,7 +112,6 @@ namespace OverlayTabs
             ImGui::PopStyleColor(3);
         }
 
-        // Restores expected external state tracking for tab containers
         ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0, 0));
         return dirty;
     }
