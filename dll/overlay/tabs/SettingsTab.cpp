@@ -23,6 +23,8 @@ namespace OverlayTabs
         dirty |= RowKeybind("Aim Assist",              &g_settings.aimKey);
         dirty |= RowKeybind("ESP",                     &g_settings.espKey);
 
+        ImGui::PopID();
+
         return dirty;
     }
 }
