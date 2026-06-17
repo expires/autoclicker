@@ -235,17 +235,18 @@ namespace OverlayWidgets
         ImGuiContext& g       = *GImGui;
         const bool inlineMode = (label[0] == '#' && label[1] == '#');
         const float w         = GetContentRegionAvail().x;
-        const ImVec2 labelSz  = inlineMode ? ImVec2(0, 0) : CalcTextSize(label, nullptr, true);
         
-        const float heightOffset = inlineMode ? 0.0f : (labelSz.y + 4.0f);
+        const char* cleanLabel = inlineMode ? "Delay (ms)" : label;
+        const ImVec2 labelSz  = CalcTextSize(cleanLabel, nullptr, true);
+        
+        const float heightOffset = labelSz.y + 4.0f;
         const ImRect total(window->DC.CursorPos, ImVec2(window->DC.CursorPos.x + w, window->DC.CursorPos.y + heightOffset + 24.0f));
         
-        const float  knobPad = 11.0f;
-        const ImRect frame(ImVec2(total.Min.x + knobPad, total.Min.y + heightOffset + 6.0f),
-                           ImVec2(total.Max.x - knobPad, total.Max.y - 7.0f));
+        const ImRect frame(ImVec2(total.Min.x, total.Min.y + heightOffset + 6.0f),
+                           ImVec2(total.Max.x, total.Max.y - 7.0f));
 
-        const ImRect hitFrame(ImVec2(total.Min.x + knobPad, total.Min.y + heightOffset),
-                              ImVec2(total.Max.x - knobPad, total.Max.y));
+        const ImRect hitFrame(ImVec2(total.Min.x, total.Min.y + heightOffset),
+                              ImVec2(total.Max.x, total.Max.y));
 
         ImGuiID id = window->GetID(label);
         ItemSize(total, g.Style.FramePadding.y);
@@ -271,11 +272,9 @@ namespace OverlayWidgets
         char buf[32];
         snprintf(buf, sizeof(buf), fmt, *v);
 
-        if (!inlineMode) {
-            RenderText(total.Min, label);
-            ImVec2 valSz = CalcTextSize(buf);
-            RenderText(ImVec2(total.Max.x - valSz.x, total.Min.y), buf);
-        }
+        RenderText(total.Min, cleanLabel);
+        ImVec2 valSz = CalcTextSize(buf);
+        RenderText(ImVec2(total.Max.x - valSz.x, total.Min.y), buf);
 
         const float fillW  = anim * frame.GetWidth();
         const float trackR = frame.GetHeight() * 0.5f;

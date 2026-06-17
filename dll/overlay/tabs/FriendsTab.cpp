@@ -27,7 +27,7 @@ namespace OverlayTabs
         static char addBuf[32] = {};
         ImGui::PushItemWidth(-80.0f);
         bool submitted = ImGui::InputTextWithHint(
-            "##friendadd", "username (Enter to add)",
+            "##friendadd", "username",
             addBuf, sizeof(addBuf),
             ImGuiInputTextFlags_EnterReturnsTrue);
         ImGui::PopItemWidth();
