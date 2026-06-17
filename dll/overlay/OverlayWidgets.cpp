@@ -55,7 +55,7 @@ namespace OverlayWidgets
         if (window->SkipItems) return false;
 
         const float  w    = GetContentRegionAvail().x;
-        const float  rowH = 30.0f;
+        const float  rowH = Theme::M::CheckRowH;
         const ImVec2 pos  = window->DC.CursorPos;
         const ImRect bb(pos, ImVec2(pos.x + w, pos.y + rowH));
 
@@ -72,8 +72,8 @@ namespace OverlayWidgets
         anim = ImLerp(anim, *v ? 1.0f : 0.0f, 0.20f);
         storage->SetFloat(id, anim);
 
-        const float  pillW = 42.0f;
-        const float  pillH = 22.0f;
+        const float  pillW = Theme::M::PillW;
+        const float  pillH = Theme::M::PillH;
         const ImVec2 pMin(bb.Max.x - pillW, bb.Min.y + (rowH - pillH) * 0.5f);
         const ImVec2 pMax(bb.Max.x, pMin.y + pillH);
         const float  rad = pillH * 0.5f;
@@ -91,7 +91,7 @@ namespace OverlayWidgets
 
         const float knobX = pMin.x + rad + anim * (pillW - pillH);
         const float knobY = pMin.y + rad;
-        const float knobR = rad - 3.0f;
+        const float knobR = rad - Theme::M::KnobInset;
         dl->AddCircleFilled(ImVec2(knobX, knobY + 1.0f), knobR, IM_COL32(0, 0, 0, 60));
         dl->AddCircleFilled(ImVec2(knobX, knobY), knobR, IM_COL32(255, 255, 255, 236));
 
@@ -127,8 +127,8 @@ namespace OverlayWidgets
         if (window->SkipItems) return false;
 
         const bool inlineMode = (label[0] == '#' && label[1] == '#');
-        const float  w   = (inlineMode && customWidth > 0.0f) ? customWidth : (inlineMode ? 80.0f : GetContentRegionAvail().x);
-        const float  h   = 24.0f;
+        const float  w   = (inlineMode && customWidth > 0.0f) ? customWidth : (inlineMode ? Theme::M::KeybindInlineW : GetContentRegionAvail().x);
+        const float  h   = Theme::M::KeybindH;
         const ImVec2 pos = window->DC.CursorPos;
         const ImRect bb(pos, ImVec2(pos.x + w, pos.y + h));
 
@@ -136,7 +136,7 @@ namespace OverlayWidgets
         ItemSize(bb);
         if (!ItemAdd(bb, id)) return false;
 
-        const ImRect pill = inlineMode ? bb : ImRect(ImVec2(bb.Max.x - 120.0f, bb.Min.y + 2.0f), ImVec2(bb.Max.x, bb.Max.y - 2.0f));
+        const ImRect pill = inlineMode ? bb : ImRect(ImVec2(bb.Max.x - Theme::M::KeybindPillW, bb.Min.y + Theme::M::KeybindPillPad), ImVec2(bb.Max.x, bb.Max.y - Theme::M::KeybindPillPad));
 
         bool hovered, held;
         bool pressed = ButtonBehavior(pill, id, &hovered, &held);
@@ -202,7 +202,7 @@ namespace OverlayWidgets
             PopStyleColor();
         }
 
-        const float pr = 6.0f;
+        const float pr = Theme::M::KeybindRound;
         const ImU32 pillBg = listening
             ? ColorConvertFloat4ToU32(FromHex(Theme::KeybindListening))
             : (hovered ? GetColorU32(ImGuiCol_FrameBgHovered) : GetColorU32(ImGuiCol_FrameBg));
@@ -236,11 +236,11 @@ namespace OverlayWidgets
         const char* cleanLabel = inlineMode ? "Delay (ms)" : label;
         const ImVec2 labelSz  = CalcTextSize(cleanLabel, nullptr, true);
         
-        const float heightOffset = labelSz.y + 4.0f;
-        const ImRect total(window->DC.CursorPos, ImVec2(window->DC.CursorPos.x + w, window->DC.CursorPos.y + heightOffset + 24.0f));
-        
-        const ImRect frame(ImVec2(total.Min.x, total.Min.y + heightOffset + 6.0f),
-                           ImVec2(total.Max.x, total.Max.y - 7.0f));
+        const float heightOffset = labelSz.y + Theme::M::SliderLabelGap;
+        const ImRect total(window->DC.CursorPos, ImVec2(window->DC.CursorPos.x + w, window->DC.CursorPos.y + heightOffset + Theme::M::SliderH));
+
+        const ImRect frame(ImVec2(total.Min.x, total.Min.y + heightOffset + Theme::M::SliderTrackTop),
+                           ImVec2(total.Max.x, total.Max.y - Theme::M::SliderTrackBot));
 
         const ImRect hitFrame(ImVec2(total.Min.x, total.Min.y + heightOffset),
                               ImVec2(total.Max.x, total.Max.y));
@@ -285,13 +285,13 @@ namespace OverlayWidgets
                     ImVec2(frame.Max.x - trackR, frame.Min.y + 0.5f),
                     IM_COL32(255, 255, 255, 20), 1.0f);
 
-        const float grabRadiusPadding = 6.5f;
+        const float grabRadiusPadding = Theme::M::SliderGrabPad;
         const float knobX = ImLerp(frame.Min.x + grabRadiusPadding, frame.Max.x - grabRadiusPadding, anim);
         const ImVec2 knob(knobX, frame.GetCenter().y);
 
-        dl->AddCircleFilled(knob, 9.5f, ColorConvertFloat4ToU32(FromHex(Theme::AccentGlow)));
-        dl->AddCircleFilled(ImVec2(knob.x, knob.y + 1.0f), 6.5f, IM_COL32(0, 0, 0, 55));
-        dl->AddCircleFilled(knob, 6.5f, GetColorU32(ImGuiCol_SliderGrab));
+        dl->AddCircleFilled(knob, Theme::M::SliderKnobGlow, ColorConvertFloat4ToU32(FromHex(Theme::AccentGlow)));
+        dl->AddCircleFilled(ImVec2(knob.x, knob.y + Theme::px(1.0f)), Theme::M::SliderKnob, IM_COL32(0, 0, 0, 55));
+        dl->AddCircleFilled(knob, Theme::M::SliderKnob, GetColorU32(ImGuiCol_SliderGrab));
 
         return changed;
     }
@@ -302,9 +302,9 @@ namespace OverlayWidgets
         ImGuiWindow* window = GetCurrentWindow();
         if (window->SkipItems) return false;
 
-        const float rowH    = 36.0f;
+        const float rowH    = Theme::M::InputRowH;
         const float w       = GetContentRegionAvail().x;
-        const float inputW  = 160.0f;
+        const float inputW  = Theme::M::InputW;
         const ImVec2 origin = window->DC.CursorPos;
 
         const ImRect rowBB(origin, ImVec2(origin.x + w, origin.y + rowH));
@@ -338,11 +338,11 @@ namespace OverlayWidgets
         ImGuiWindow* window = GetCurrentWindow();
         if (window->SkipItems) return false;
 
-        const float rowH    = 36.0f;
+        const float rowH    = Theme::M::InputRowH;
         const float w       = GetContentRegionAvail().x;
-        const float gutter  = 6.0f;
+        const float gutter  = Theme::M::InputPairGap;
         const float halfW   = (w - gutter) * 0.5f;
-        const float inputW  = 110.0f;
+        const float inputW  = Theme::M::InputPairW;
         const ImVec2 origin = window->DC.CursorPos;
 
         const ImRect rowBB(origin, ImVec2(origin.x + w, origin.y + rowH));
@@ -383,7 +383,7 @@ namespace OverlayWidgets
         if (window->SkipItems) return false;
 
         ImVec2 p = window->DC.CursorPos;
-        ImVec2 size(window->Size.x, 32.0f);
+        ImVec2 size(window->Size.x, Theme::M::TabH);
         ImRect bb(p, ImVec2(p.x + size.x, p.y + size.y));
 
         ImGuiID id = window->GetID(label);
@@ -394,11 +394,11 @@ namespace OverlayWidgets
         bool pressed = ButtonBehavior(bb, id, &hovered, &held);
 
         ImDrawList* dl = window->DrawList;
-        const float  mx = 10.0f;
-        const float  my = 1.0f;
+        const float  mx = Theme::M::TabMarginX;
+        const float  my = Theme::M::TabMarginY;
         const ImVec2 rMin(bb.Min.x + mx, bb.Min.y + my);
         const ImVec2 rMax(bb.Max.x - mx, bb.Max.y - my);
-        const float  rr = 7.0f;
+        const float  rr = Theme::M::TabRound;
 
         if (selected) {
             dl->AddRectFilled(rMin, rMax, ColorConvertFloat4ToU32(FromHex(Theme::TabSelectedFill)), rr);
@@ -411,7 +411,7 @@ namespace OverlayWidgets
         PushStyleColor(ImGuiCol_Text, textCol);
 
         ImVec2 labelSz = CalcTextSize(label);
-        RenderText(ImVec2(bb.Min.x + 20.0f, bb.GetCenter().y - labelSz.y * 0.5f), label);
+        RenderText(ImVec2(bb.Min.x + Theme::M::TabTextPadX, bb.GetCenter().y - labelSz.y * 0.5f), label);
 
         PopStyleColor();
         return pressed;

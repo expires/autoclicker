@@ -5,6 +5,80 @@ namespace Theme
 {
     struct Col { uint32_t hex; float a; };
 
+    // ── Layout scale ─────────────────────────────────────────────────
+    // Single source of truth for GUI size. Every pixel metric below is
+    // multiplied by this, so changing it grows/shrinks the whole menu.
+    inline constexpr float Scale = 1.2f;
+
+    // Bakes the scale into a logical pixel value at compile time. Use for
+    // incidental geometry (icon points, line thickness) that doesn't earn
+    // a named metric.
+    inline constexpr float px(float v) { return v * Scale; }
+
+    // ── Pixel metrics (already scaled) ───────────────────────────────
+    namespace M
+    {
+        // Window
+        inline constexpr float WindowW       = px(638.0f);
+        inline constexpr float WindowH       = px(420.0f * 0.90f);   // 10% shorter
+
+        // Fonts
+        inline constexpr float FontBody      = px(16.0f);
+        inline constexpr float FontTitle     = px(19.0f);
+
+        // Chrome / layout
+        inline constexpr float Margin        = px(10.0f);
+        inline constexpr float TopbarH       = px(52.0f);
+        inline constexpr float SidebarW      = px(150.0f);
+        inline constexpr float TitlePadX     = px(15.0f);
+        inline constexpr float SidebarTopPad = px(20.0f);
+        inline constexpr float BodyPad       = px(22.0f);
+
+        // Sidebar tab
+        inline constexpr float TabH          = px(32.0f);
+        inline constexpr float TabMarginX    = px(10.0f);
+        inline constexpr float TabMarginY    = px(1.0f);
+        inline constexpr float TabRound      = px(7.0f);
+        inline constexpr float TabTextPadX   = px(20.0f);
+
+        // Checkbox row (toggle pill)
+        inline constexpr float CheckRowH     = px(30.0f);
+        inline constexpr float PillW         = px(42.0f);
+        inline constexpr float PillH         = px(22.0f);
+        inline constexpr float KnobInset     = px(3.0f);
+
+        // Keybind row
+        inline constexpr float KeybindH      = px(24.0f);
+        inline constexpr float KeybindInlineW= px(80.0f);
+        inline constexpr float KeybindPillW  = px(120.0f);
+        inline constexpr float KeybindPillPad= px(2.0f);
+        inline constexpr float KeybindRound  = px(6.0f);
+
+        // Slider row
+        inline constexpr float SliderH       = px(24.0f);
+        inline constexpr float SliderLabelGap= px(4.0f);
+        inline constexpr float SliderTrackTop= px(6.0f);
+        inline constexpr float SliderTrackBot= px(7.0f);
+        inline constexpr float SliderGrabPad = px(6.5f);
+        inline constexpr float SliderKnobGlow= px(9.5f);
+        inline constexpr float SliderKnob    = px(6.5f);
+
+        // Numeric input rows
+        inline constexpr float InputRowH     = px(36.0f);
+        inline constexpr float InputW        = px(160.0f);
+        inline constexpr float InputPairW    = px(110.0f);
+        inline constexpr float InputPairGap  = px(6.0f);
+
+        // List rows (friends / macros)
+        inline constexpr float ListBtnW      = px(24.0f);
+        inline constexpr float ListGap       = px(6.0f);
+        inline constexpr float ListBindW     = px(80.0f);
+        inline constexpr float AddBtnH       = px(32.0f);
+        inline constexpr float FriendAddBtnW = px(74.0f);
+        inline constexpr float MacroIndent   = px(12.0f);
+        inline constexpr float RowSpacing    = px(6.0f);
+    }
+
     inline constexpr Col Transparent       { 0x000000, 0.00f };
     inline constexpr Col White             { 0xffffff, 1.00f };
 

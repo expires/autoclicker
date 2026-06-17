@@ -20,14 +20,14 @@ namespace OverlayTabs
         dirty |= RowCheckbox("Teams by Colour", &g_settings.teamsByColor);
 
         static char addBuf[32] = {};
-        ImGui::PushItemWidth(-80.0f);
+        ImGui::PushItemWidth(-Theme::px(80.0f));
         bool submitted = ImGui::InputTextWithHint(
             "##friendadd", "username",
             addBuf, sizeof(addBuf),
             ImGuiInputTextFlags_EnterReturnsTrue);
         ImGui::PopItemWidth();
-        ImGui::SameLine(0, 6);
-        bool clicked = ImGui::Button("Add", ImVec2(74.0f, 0));
+        ImGui::SameLine(0, Theme::M::ListGap);
+        bool clicked = ImGui::Button("Add", ImVec2(Theme::M::FriendAddBtnW, 0));
 
         if (submitted || clicked) {
             std::string name = addBuf;
@@ -50,7 +50,7 @@ namespace OverlayTabs
             addBuf[0] = '\0';
         }
 
-        ImGui::Dummy(ImVec2(0, 6));
+        ImGui::Dummy(ImVec2(0, Theme::M::RowSpacing));
 
         std::vector<std::string> snap;
         {
@@ -63,7 +63,7 @@ namespace OverlayTabs
             for (int i = 0; i < (int)snap.size(); ++i) {
                 ImGui::PushID(i);
 
-                const float delW   = 24.0f;
+                const float delW   = Theme::M::ListBtnW;
                 const float availX = ImGui::GetContentRegionAvail().x;
 
                 ImGui::AlignTextToFramePadding();
@@ -74,7 +74,7 @@ namespace OverlayTabs
                 ImGui::PushStyleColor(ImGuiCol_Button,        FromHex(Theme::Transparent));
                 ImGui::PushStyleColor(ImGuiCol_ButtonHovered, FromHex(Theme::ListBtnHovered));
                 ImGui::PushStyleColor(ImGuiCol_ButtonActive,  FromHex(Theme::ListBtnActive));
-                if (ImGui::Button("##del", ImVec2(delW, 24)))
+                if (ImGui::Button("##del", ImVec2(delW, delW)))
                     toDelete = i;
                 ImGui::PopStyleColor(3);
                 ImGui::PopStyleVar();
@@ -83,8 +83,8 @@ namespace OverlayTabs
                     const ImVec2 bmax = ImGui::GetItemRectMax();
                     const ImVec2 ctr((bmin.x + bmax.x) * 0.5f, (bmin.y + bmax.y) * 0.5f);
                     ImGui::GetWindowDrawList()->AddLine(
-                        ImVec2(ctr.x - 5.0f, ctr.y), ImVec2(ctr.x + 5.0f, ctr.y),
-                        ImGui::GetColorU32(ImGuiCol_Text), 2.0f);
+                        ImVec2(ctr.x - Theme::px(5.0f), ctr.y), ImVec2(ctr.x + Theme::px(5.0f), ctr.y),
+                        ImGui::GetColorU32(ImGuiCol_Text), Theme::px(2.0f));
                 }
 
                 ImGui::PopID();

@@ -354,6 +354,11 @@ static void ApplyStyle()
     s.FrameBorderSize    = 1.0f;
     s.WindowMinSize      = {220.0f, 80.0f};
 
+    // Scale every metric above (padding, rounding, borders, ...) by the
+    // global UI scale in one shot. Custom draws that read GetStyle()
+    // rounding values stay consistent with Theme::M after this.
+    s.ScaleAllSizes(Theme::Scale);
+
     ImVec4* c = s.Colors;
 
     c[ImGuiCol_WindowBg]              = FromHex(Theme::WindowBg);
@@ -607,11 +612,11 @@ static BOOL WINAPI hk_wglSwapBuffers(HDC hdc)
             (GetFileAttributesA(fontSemibold) != INVALID_FILE_ATTRIBUTES) ? fontSemibold :
             (GetFileAttributesA(fontRegular)  != INVALID_FILE_ATTRIBUTES) ? fontRegular  : nullptr;
         ImFont* fReg = bodyPath
-            ? io.Fonts->AddFontFromFileTTF(bodyPath, 16.0f, &cfg) : nullptr;
+            ? io.Fonts->AddFontFromFileTTF(bodyPath, Theme::M::FontBody, &cfg) : nullptr;
         if (!fReg) io.Fonts->AddFontDefault();
 
         ImFont* fBold = (GetFileAttributesA(fontBold) != INVALID_FILE_ATTRIBUTES)
-            ? io.Fonts->AddFontFromFileTTF(fontBold, 19.0f, &cfg) : nullptr;
+            ? io.Fonts->AddFontFromFileTTF(fontBold, Theme::M::FontTitle, &cfg) : nullptr;
         if (!fBold) io.Fonts->AddFontDefault();
 
         ApplyStyle();
@@ -752,7 +757,7 @@ static BOOL WINAPI hk_wglSwapBuffers(HDC hdc)
             ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
             ImGui::SetNextWindowPos (ImVec2(display.x * 0.5f, display.y * 0.5f),
                                      ImGuiCond_Always, ImVec2(0.5f, 0.5f));
-            ImGui::SetNextWindowSize(ImVec2(638, 420), ImGuiCond_Always);
+            ImGui::SetNextWindowSize(ImVec2(Theme::M::WindowW, Theme::M::WindowH), ImGuiCond_Always);
             ImGui::Begin("manuclicker", nullptr,
                 ImGuiWindowFlags_NoCollapse |
                 ImGuiWindowFlags_NoResize   |
@@ -761,10 +766,10 @@ static BOOL WINAPI hk_wglSwapBuffers(HDC hdc)
                 ImGuiWindowFlags_NoMove);
             ImGui::PopStyleVar();
 
-            const float   MARGIN    = 10.0f;
-            const float   TOPBAR_H  = 52.0f;
+            const float   MARGIN    = Theme::M::Margin;
+            const float   TOPBAR_H  = Theme::M::TopbarH;
             const float   BODY_Y    = MARGIN + TOPBAR_H + MARGIN;
-            const float   SIDEBAR_W = 150.0f;
+            const float   SIDEBAR_W = Theme::M::SidebarW;
             const ImVec2  winSize   = ImGui::GetWindowSize();
             const ImVec2  winPos    = ImGui::GetWindowPos();
             ImDrawList*   dl        = ImGui::GetWindowDrawList();
@@ -780,14 +785,14 @@ static BOOL WINAPI hk_wglSwapBuffers(HDC hdc)
             // Title
             ImGui::PushFont(ImGui::GetIO().Fonts->Fonts[1]);
             const float titleY = MARGIN + (TOPBAR_H - ImGui::GetFontSize()) * 0.5f;
-            ImGui::SetCursorPos(ImVec2(MARGIN + 15, titleY));
+            ImGui::SetCursorPos(ImVec2(MARGIN + Theme::M::TitlePadX, titleY));
             ImGui::TextUnformatted("manuclicker");
             ImGui::PopFont();
 
             // Revision
             const std::string revStr = "v" + std::string(BUILD_REVISION);
             const ImVec2 revSz = ImGui::CalcTextSize(revStr.c_str());
-            ImGui::SetCursorPos(ImVec2(winSize.x - MARGIN - revSz.x - 15,
+            ImGui::SetCursorPos(ImVec2(winSize.x - MARGIN - revSz.x - Theme::M::TitlePadX,
                                        MARGIN + (TOPBAR_H - revSz.y) * 0.5f));
             ImGui::TextDisabled("%s", revStr.c_str());
 
@@ -806,7 +811,7 @@ static BOOL WINAPI hk_wglSwapBuffers(HDC hdc)
                     ImVec2(winPos.x + SIDEBAR_W,     winPos.y + winSize.y),
                     ImGui::GetColorU32(ImGuiCol_Border));
 
-                ImGui::SetCursorPos(ImVec2(0, 20));
+                ImGui::SetCursorPos(ImVec2(0, Theme::M::SidebarTopPad));
                 ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0, 0));
                 using OverlayWidgets::SidebarTab;
                 if (SidebarTab("Autoclicker", s_currentTab == 0)) s_currentTab = 0;
@@ -827,7 +832,7 @@ static BOOL WINAPI hk_wglSwapBuffers(HDC hdc)
             ImGui::BeginChild("##content", ImVec2(winSize.x - SIDEBAR_W, winSize.y - BODY_Y),
                 false, ImGuiWindowFlags_NoBackground);
             {
-                const float bodyPadding = 22.0f;
+                const float bodyPadding = Theme::M::BodyPad;
                 ImGui::SetCursorPos(ImVec2(bodyPadding, bodyPadding));
                 ImGui::BeginChild("##body",
                     ImVec2(winSize.x - SIDEBAR_W - bodyPadding * 2,
