@@ -816,9 +816,9 @@ namespace Overlay
 
         void* tgtSwap = reinterpret_cast<void*>(
             GetProcAddress(GetModuleHandleA("opengl32.dll"), "wglSwapBuffers"));
-        MH_CreateHook(tgtSwap, reinterpret_cast<void*>(hk_wglSwapBuffers),
-                      reinterpret_cast<void**>(&o_wglSwapBuffers));
-        MH_EnableHook(tgtSwap);
+        if (tgtSwap)
+            MH_CreateHook(tgtSwap, reinterpret_cast<void*>(hk_wglSwapBuffers),
+                          reinterpret_cast<void**>(&o_wglSwapBuffers));
 
         HMODULE u32 = GetModuleHandleA("user32.dll");
         if (u32) {
@@ -832,10 +832,12 @@ namespace Overlay
             };
             for (auto& h : hooks) {
                 void* target = reinterpret_cast<void*>(GetProcAddress(u32, h.name));
-                if (target && MH_CreateHook(target, h.hook, h.orig) == MH_OK)
-                    MH_EnableHook(target);
+                if (target) MH_CreateHook(target, h.hook, h.orig);
             }
         }
+
+        MH_QueueEnableHook(MH_ALL_HOOKS);
+        MH_ApplyQueued();
     }
 
     void BeginTeardown()
