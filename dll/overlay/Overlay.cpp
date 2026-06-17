@@ -4,6 +4,8 @@
 #include <climits>
 #include <cmath>
 #include <memory>
+#include <string>
+#include <vector>
 #define IMGUI_DEFINE_MATH_OPERATORS
 #include "imgui.h"
 #include "imgui_internal.h"
@@ -17,6 +19,7 @@
 #include "../SDK/Lunar.h"
 #include "../SDK/Minecraft.h"
 #include "../SDK/Vec3.h"
+#include "../Revision.h"
 #include <MinHook.h>
 
 #ifndef M_PI
@@ -749,7 +752,7 @@ static BOOL WINAPI hk_wglSwapBuffers(HDC hdc)
             ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
             ImGui::SetNextWindowPos (ImVec2(display.x * 0.5f, display.y * 0.5f),
                                      ImGuiCond_Always, ImVec2(0.5f, 0.5f));
-            ImGui::SetNextWindowSize(ImVec2(638, 380), ImGuiCond_Always);
+            ImGui::SetNextWindowSize(ImVec2(638, 420), ImGuiCond_Always);
             ImGui::Begin("manuclicker", nullptr,
                 ImGuiWindowFlags_NoCollapse |
                 ImGuiWindowFlags_NoResize   |
@@ -758,30 +761,48 @@ static BOOL WINAPI hk_wglSwapBuffers(HDC hdc)
                 ImGuiWindowFlags_NoMove);
             ImGui::PopStyleVar();
 
+            const float   TOPBAR_H  = 40.0f;
             const float   SIDEBAR_W = 150.0f;
             const ImVec2  winSize   = ImGui::GetWindowSize();
             const ImVec2  winPos    = ImGui::GetWindowPos();
+            ImDrawList*   dl        = ImGui::GetWindowDrawList();
 
-            ImGui::BeginChild("##sidebar", ImVec2(SIDEBAR_W, winSize.y),
+            // ── Top Navigation Bar ──────────────────────────────────────────
+            dl->AddRectFilled(winPos, 
+                ImVec2(winPos.x + winSize.x, winPos.y + TOPBAR_H),
+                IM_COL32(21, 21, 24, 255), 
+                ImGui::GetStyle().WindowRounding, 
+                ImDrawFlags_RoundCornersTop);
+            
+            // Title
+            ImGui::PushFont(ImGui::GetIO().Fonts->Fonts[1]);
+            const float titleY = (TOPBAR_H - ImGui::GetFontSize()) * 0.5f;
+            ImGui::SetCursorPos(ImVec2(15, titleY));
+            ImGui::TextUnformatted("manuclicker");
+            ImGui::PopFont();
+
+            // Revision
+            const std::string revStr = "v" + std::string(BUILD_REVISION);
+            const ImVec2 revSz = ImGui::CalcTextSize(revStr.c_str());
+            ImGui::SetCursorPos(ImVec2(winSize.x - revSz.x - 15, (TOPBAR_H - revSz.y) * 0.5f));
+            ImGui::TextDisabled("%s", revStr.c_str());
+
+            // ── Sidebar ─────────────────────────────────────────────────────
+            ImGui::SetCursorPos(ImVec2(0, TOPBAR_H));
+            ImGui::BeginChild("##sidebar", ImVec2(SIDEBAR_W, winSize.y - TOPBAR_H),
                 false, ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoScrollbar);
             {
-                ImDrawList* dl = ImGui::GetWindowDrawList();
-                dl->AddRectFilled(winPos,
+                dl->AddRectFilled(ImVec2(winPos.x, winPos.y + TOPBAR_H),
                     ImVec2(winPos.x + SIDEBAR_W, winPos.y + winSize.y),
                     ImGui::GetColorU32(ImGuiCol_ChildBg),
                     ImGui::GetStyle().WindowRounding,
-                    ImDrawFlags_RoundCornersLeft);
+                    ImDrawFlags_RoundCornersBottomLeft);
                 dl->AddRectFilled(
-                    ImVec2(winPos.x + SIDEBAR_W - 1, winPos.y),
+                    ImVec2(winPos.x + SIDEBAR_W - 1, winPos.y + TOPBAR_H),
                     ImVec2(winPos.x + SIDEBAR_W,     winPos.y + winSize.y),
                     ImGui::GetColorU32(ImGuiCol_Border));
 
-                ImGui::SetCursorPos(ImVec2(20, 22));
-                ImGui::PushFont(ImGui::GetIO().Fonts->Fonts[1]);
-                ImGui::TextUnformatted("manuclicker");
-                ImGui::PopFont();
-
-                ImGui::SetCursorPos(ImVec2(0, 76));
+                ImGui::SetCursorPos(ImVec2(0, 20));
                 ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0, 0));
                 using OverlayWidgets::SidebarTab;
                 if (SidebarTab("Autoclicker", s_currentTab == 0)) s_currentTab = 0;
@@ -797,28 +818,16 @@ static BOOL WINAPI hk_wglSwapBuffers(HDC hdc)
 
             ImGui::SameLine(0, 0);
 
-            ImGui::BeginChild("##content", ImVec2(winSize.x - SIDEBAR_W, winSize.y),
+            // ── Content Area ────────────────────────────────────────────────
+            ImGui::SetCursorPos(ImVec2(SIDEBAR_W, TOPBAR_H));
+            ImGui::BeginChild("##content", ImVec2(winSize.x - SIDEBAR_W, winSize.y - TOPBAR_H),
                 false, ImGuiWindowFlags_NoBackground);
             {
-                ImGui::SetCursorPos(ImVec2(22, 22));
-                ImGui::PushFont(ImGui::GetIO().Fonts->Fonts[1]);
-                ImGui::TextUnformatted(
-                    s_currentTab == 0 ? "Autoclicker" :
-                    s_currentTab == 1 ? "Aim Assist"  :
-                    s_currentTab == 2 ? "ESP"         : 
-                    s_currentTab == 3 ? "Friends"     :
-                    s_currentTab == 4 ? "Macros"      :
-                    s_currentTab == 5 ? "Misc"        :
-                                        "Settings");
-                ImGui::PopFont();
-
-                const float bodyTop          = 64.0f;
-                const float bodyBottom       = 20.0f;
-                const float bodyRightMargin  = 22.0f;
-                ImGui::SetCursorPos(ImVec2(22, bodyTop));
+                const float bodyPadding = 22.0f;
+                ImGui::SetCursorPos(ImVec2(bodyPadding, bodyPadding));
                 ImGui::BeginChild("##body",
-                    ImVec2(winSize.x - SIDEBAR_W - 22 - bodyRightMargin,
-                           winSize.y - bodyTop - bodyBottom),
+                    ImVec2(winSize.x - SIDEBAR_W - bodyPadding * 2,
+                           winSize.y - TOPBAR_H - bodyPadding * 2),
                     false,
                     ImGuiWindowFlags_NoBackground |
                     ImGuiWindowFlags_NoScrollbar);
