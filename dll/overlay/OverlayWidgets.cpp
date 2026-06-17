@@ -210,9 +210,6 @@ namespace OverlayWidgets
         ImDrawList* dl = window->DrawList;
         dl->AddRectFilled(pill.Min, pill.Max, pillBg, pr);
         dl->AddRect(pill.Min, pill.Max, GetColorU32(ImGuiCol_Border), pr, 0, 1.0f);
-        dl->AddLine(ImVec2(pill.Min.x + pr, pill.Min.y + 1.0f),
-                    ImVec2(pill.Max.x - pr, pill.Min.y + 1.0f),
-                    IM_COL32(255, 255, 255, 22), 1.0f);
 
         const char* pillText = listening ? "press a key..." : (*vk ? GetKeyName(*vk) : "none");
         ImVec2 textSz = CalcTextSize(pillText);
@@ -288,7 +285,10 @@ namespace OverlayWidgets
                     ImVec2(frame.Max.x - trackR, frame.Min.y + 0.5f),
                     IM_COL32(255, 255, 255, 20), 1.0f);
 
-        const ImVec2 knob(frame.Min.x + fillW, frame.GetCenter().y);
+        const float grabRadiusPadding = 6.5f;
+        const float knobX = ImLerp(frame.Min.x + grabRadiusPadding, frame.Max.x - grabRadiusPadding, anim);
+        const ImVec2 knob(knobX, frame.GetCenter().y);
+
         dl->AddCircleFilled(knob, 9.5f, ColorConvertFloat4ToU32(FromHex(Theme::AccentGlow)));
         dl->AddCircleFilled(ImVec2(knob.x, knob.y + 1.0f), 6.5f, IM_COL32(0, 0, 0, 55));
         dl->AddCircleFilled(knob, 6.5f, GetColorU32(ImGuiCol_SliderGrab));
