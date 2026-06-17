@@ -10,7 +10,7 @@ namespace OverlayTabs
         bool dirty = false;
         dirty |= RowCheckbox("Enabled",      &g_settings.acEnabled);
         dirty |= RowCheckbox("Break Blocks", &g_settings.breakBlocks);
-        dirty |= RowSlider  ("CPS",          &g_settings.cps, 1, 50);
+        dirty |= RowSlider  ("CPS",          &g_settings.cps, 1, 20);
         dirty |= RowCheckbox("Jitter",       &g_settings.jitterEnabled);
         if (g_settings.jitterEnabled)
             dirty |= RowSlider("Jitter Strength", &g_settings.jitterStrength, 0, 10);
