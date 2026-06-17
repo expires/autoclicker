@@ -120,7 +120,7 @@ namespace OverlayWidgets
         return buf;
     }
 
-    bool RowKeybind(const char* label, int* vk, float customWidth, bool allowMouse)
+    bool RowKeybind(const char* label, int* vk, float customWidth = 0.0f, bool allowMouse = false);
     {
         using namespace ImGui;
         ImGuiWindow* window = GetCurrentWindow();
