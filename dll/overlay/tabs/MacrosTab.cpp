@@ -37,8 +37,7 @@ namespace OverlayTabs
             }
 
             ImGui::SameLine(0, gap);
-            ImGui::SetNextItemWidth(bindW);
-            dirty |= RowKeybind("##key", &g_settings.macros[i].key);
+            dirty |= RowKeybind("##key", &g_settings.macros[i].key, bindW);
 
             ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 0.0f);
             ImGui::PushStyleColor(ImGuiCol_Button,        FromHex(Theme::Transparent));
