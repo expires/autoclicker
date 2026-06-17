@@ -126,8 +126,9 @@ namespace OverlayWidgets
         ImGuiWindow* window = GetCurrentWindow();
         if (window->SkipItems) return false;
 
-        const float  w   = GetContentRegionAvail().x;
-        const float  h   = 30.0f;
+        const bool inlineMode = (label[0] == '#' && label[1] == '#');
+        const float  w   = inlineMode ? GetNextItemWidth() : GetContentRegionAvail().x;
+        const float  h   = 24.0f;
         const ImVec2 pos = window->DC.CursorPos;
         const ImRect bb(pos, ImVec2(pos.x + w, pos.y + h));
 
@@ -135,9 +136,7 @@ namespace OverlayWidgets
         ItemSize(bb);
         if (!ItemAdd(bb, id)) return false;
 
-        const float pillW = 120.0f;
-        const ImRect pill(ImVec2(bb.Max.x - pillW, bb.Min.y + 4.0f),
-                          ImVec2(bb.Max.x,         bb.Max.y - 4.0f));
+        const ImRect pill = inlineMode ? bb : ImRect(ImVec2(bb.Max.x - 120.0f, bb.Min.y + 2.0f), ImVec2(bb.Max.x, bb.Max.y - 2.0f));
 
         bool hovered, held;
         bool pressed = ButtonBehavior(pill, id, &hovered, &held);
@@ -146,9 +145,7 @@ namespace OverlayWidgets
 
         auto isFilteredVk = [allowMouse](int k) {
             if (k == VK_LBUTTON || k == VK_RBUTTON) return true;
-            if (!allowMouse &&
-                (k == VK_MBUTTON || k == VK_XBUTTON1 || k == VK_XBUTTON2))
-                return true;
+            if (!allowMouse && (k == VK_MBUTTON || k == VK_XBUTTON1 || k == VK_XBUTTON2)) return true;
             if (k == VK_SHIFT || k == VK_CONTROL || k == VK_MENU) return true;
             return false;
         };
@@ -163,8 +160,7 @@ namespace OverlayWidgets
             }
         }
 
-        if (IsMouseHoveringRect(pill.Min, pill.Max) &&
-            IsMouseClicked(ImGuiMouseButton_Right)) {
+        if (IsMouseHoveringRect(pill.Min, pill.Max) && IsMouseClicked(ImGuiMouseButton_Right)) {
             if (*vk != 0) { *vk = 0; changed = true; }
             if (s_kbActiveId == id) s_kbActiveId = 0;
         }
@@ -183,8 +179,7 @@ namespace OverlayWidgets
                         s_kbExcluded[k] = false;
                 }
 
-                const int menuVk = (g_settings.menuKey > 0 && g_settings.menuKey <= 0xFE)
-                    ? g_settings.menuKey : VK_RSHIFT;
+                const int menuVk = (g_settings.menuKey > 0 && g_settings.menuKey <= 0xFE) ? g_settings.menuKey : VK_RSHIFT;
                 const int loopStart = allowMouse ? 0x01 : 0x07;
                 for (int k = loopStart; k <= 0xFE; ++k) {
                     if (isFilteredVk(k))  continue;
@@ -200,16 +195,18 @@ namespace OverlayWidgets
             }
         }
 
-        ImVec2 labelSz = CalcTextSize(label, nullptr, true);
-        PushStyleColor(ImGuiCol_Text, GetColorU32(ImGuiCol_Text));
-        RenderText(ImVec2(bb.Min.x, bb.GetCenter().y - labelSz.y * 0.5f), label);
-        PopStyleColor();
+        if (!inlineMode) {
+            ImVec2 labelSz = CalcTextSize(label, nullptr, true);
+            PushStyleColor(ImGuiCol_Text, GetColorU32(ImGuiCol_Text));
+            RenderText(ImVec2(bb.Min.x, bb.GetCenter().y - labelSz.y * 0.5f), label);
+            PopStyleColor();
+        }
 
         const float pr = 6.0f;
         const ImU32 pillBg = listening
             ? ColorConvertFloat4ToU32(FromHex(Theme::KeybindListening))
-            : (hovered ? GetColorU32(ImGuiCol_FrameBgHovered)
-                       : GetColorU32(ImGuiCol_FrameBg));
+            : (hovered ? GetColorU32(ImGuiCol_FrameBgHovered) : GetColorU32(ImGuiCol_FrameBg));
+            
         ImDrawList* dl = window->DrawList;
         dl->AddRectFilled(pill.Min, pill.Max, pillBg, pr);
         dl->AddRect(pill.Min, pill.Max, GetColorU32(ImGuiCol_Border), pr, 0, 1.0f);
@@ -217,13 +214,9 @@ namespace OverlayWidgets
                     ImVec2(pill.Max.x - pr, pill.Min.y + 1.0f),
                     IM_COL32(255, 255, 255, 22), 1.0f);
 
-        const char* pillText = listening
-            ? "press a key..."
-            : (*vk ? GetKeyName(*vk) : "none");
+        const char* pillText = listening ? "press a key..." : (*vk ? GetKeyName(*vk) : "none");
         ImVec2 textSz = CalcTextSize(pillText);
-        RenderText(ImVec2(pill.GetCenter().x - textSz.x * 0.5f,
-                          pill.GetCenter().y - textSz.y * 0.5f),
-                   pillText);
+        RenderText(ImVec2(pill.GetCenter().x - textSz.x * 0.5f, pill.GetCenter().y - textSz.y * 0.5f), pillText);
 
         return changed;
     }
@@ -235,17 +228,19 @@ namespace OverlayWidgets
         if (window->SkipItems) return false;
 
         ImGuiContext& g       = *GImGui;
+        const bool inlineMode = (label[0] == '#' && label[1] == '#');
         const float w         = GetContentRegionAvail().x;
-        const ImVec2 labelSz  = CalcTextSize(label, nullptr, true);
-        const ImRect total(window->DC.CursorPos,
-                           ImVec2(window->DC.CursorPos.x + w,
-                                  window->DC.CursorPos.y + labelSz.y + 30.0f));
+        const ImVec2 labelSz  = inlineMode ? ImVec2(0, 0) : CalcTextSize(label, nullptr, true);
+        
+        const float heightOffset = inlineMode ? 0.0f : (labelSz.y + 4.0f);
+        const ImRect total(window->DC.CursorPos, ImVec2(window->DC.CursorPos.x + w, window->DC.CursorPos.y + heightOffset + 24.0f));
+        
         const float  knobPad = 11.0f;
-        const ImRect frame(ImVec2(total.Min.x + knobPad, total.Min.y + labelSz.y + 12.0f),
-                           ImVec2(total.Max.x - knobPad, total.Max.y - 13.0f));
+        const ImRect frame(ImVec2(total.Min.x + knobPad, total.Min.y + heightOffset + 6.0f),
+                           ImVec2(total.Max.x - knobPad, total.Max.y - 7.0f));
 
-        const ImRect hitFrame(ImVec2(total.Min.x + knobPad, total.Min.y + labelSz.y + 4.0f),
-                              ImVec2(total.Max.x - knobPad, total.Max.y - 4.0f));
+        const ImRect hitFrame(ImVec2(total.Min.x + knobPad, total.Min.y + heightOffset),
+                              ImVec2(total.Max.x - knobPad, total.Max.y));
 
         ImGuiID id = window->GetID(label);
         ItemSize(total, g.Style.FramePadding.y);
@@ -255,8 +250,7 @@ namespace OverlayWidgets
         ButtonBehavior(hitFrame, id, &hovered, &held);
 
         ImRect grab_bb;
-        bool changed = SliderBehavior(hitFrame, id, ImGuiDataType_S32, v,
-                                      &v_min, &v_max, fmt, ImGuiSliderFlags_None, &grab_bb);
+        bool changed = SliderBehavior(hitFrame, id, ImGuiDataType_S32, v, &v_min, &v_max, fmt, ImGuiSliderFlags_None, &grab_bb);
         if (changed) MarkItemEdited(id);
 
         const float range = (float)(v_max - v_min);
@@ -272,9 +266,11 @@ namespace OverlayWidgets
         char buf[32];
         snprintf(buf, sizeof(buf), fmt, *v);
 
-        RenderText(total.Min, label);
-        ImVec2 valSz = CalcTextSize(buf);
-        RenderText(ImVec2(total.Max.x - valSz.x, total.Min.y), buf);
+        if (!inlineMode) {
+            RenderText(total.Min, label);
+            ImVec2 valSz = CalcTextSize(buf);
+            RenderText(ImVec2(total.Max.x - valSz.x, total.Min.y), buf);
+        }
 
         const float fillW  = anim * frame.GetWidth();
         const float trackR = frame.GetHeight() * 0.5f;
@@ -283,8 +279,7 @@ namespace OverlayWidgets
         ImDrawList* dl = window->DrawList;
         dl->AddRectFilled(frame.Min, frame.Max, GetColorU32(ImGuiCol_FrameBg), trackR);
         if (fillW > trackR)
-            dl->AddRectFilled(frame.Min,
-                ImVec2(frame.Min.x + fillW, frame.Max.y), accent, trackR);
+            dl->AddRectFilled(frame.Min, ImVec2(frame.Min.x + fillW, frame.Max.y), accent, trackR);
         dl->AddLine(ImVec2(frame.Min.x + trackR, frame.Min.y + 0.5f),
                     ImVec2(frame.Max.x - trackR, frame.Min.y + 0.5f),
                     IM_COL32(255, 255, 255, 20), 1.0f);
@@ -318,14 +313,12 @@ namespace OverlayWidgets
         const float btn = GetFrameHeight();
         const float gap = g.Style.ItemInnerSpacing.x;
         const float fieldW = inputW - 2.0f * (btn + gap);
-        SetCursorScreenPos(ImVec2(origin.x + w - inputW,
-                                  origin.y + (rowH - GetFrameHeight()) * 0.5f));
+        SetCursorScreenPos(ImVec2(origin.x + w - inputW, origin.y + (rowH - GetFrameHeight()) * 0.5f));
         SetNextItemWidth(fieldW);
 
         char hidden[64];
         snprintf(hidden, sizeof(hidden), "##%s", label);
-        bool changed = InputInt(hidden, v, step, fastStep,
-                                ImGuiInputTextFlags_CharsDecimal);
+        bool changed = InputInt(hidden, v, step, fastStep, ImGuiInputTextFlags_CharsDecimal);
         if (changed) {
             if (*v < v_min) *v = v_min;
             if (*v > v_max) *v = v_max;
@@ -356,19 +349,16 @@ namespace OverlayWidgets
         const float gap = g.Style.ItemInnerSpacing.x;
         const float fieldW = inputW - 2.0f * (btn + gap);
 
-        auto drawHalf = [&](float originX, const char* label, int* v, int vMin, int vMax,
-                            int step, int fast) -> bool {
+        auto drawHalf = [&](float originX, const char* label, int* v, int vMin, int vMax, int step, int fast) -> bool {
             const ImVec2 labelSz = CalcTextSize(label);
             RenderText(ImVec2(originX, origin.y + (rowH - labelSz.y) * 0.5f), label);
 
-            SetCursorScreenPos(ImVec2(originX + halfW - inputW,
-                                      origin.y + (rowH - GetFrameHeight()) * 0.5f));
+            SetCursorScreenPos(ImVec2(originX + halfW - inputW, origin.y + (rowH - GetFrameHeight()) * 0.5f));
             SetNextItemWidth(fieldW);
 
             char hidden[64];
             snprintf(hidden, sizeof(hidden), "##%s", label);
-            bool changed = InputInt(hidden, v, step, fast,
-                                    ImGuiInputTextFlags_CharsDecimal);
+            bool changed = InputInt(hidden, v, step, fast, ImGuiInputTextFlags_CharsDecimal);
             if (changed) {
                 if (*v < vMin) *v = vMin;
                 if (*v > vMax) *v = vMax;
@@ -412,14 +402,12 @@ namespace OverlayWidgets
             dl->AddRectFilled(rMin, rMax, ColorConvertFloat4ToU32(FromHex(Theme::TabHover)), rr);
         }
 
-        const ImU32 textCol = ColorConvertFloat4ToU32(
-            selected ? FromHex(Theme::TabTextActive) : FromHex(Theme::TabTextInactive));
+        const ImU32 textCol = ColorConvertFloat4ToU32(selected ? FromHex(Theme::TabTextActive) : FromHex(Theme::TabTextInactive));
 
         PushStyleColor(ImGuiCol_Text, textCol);
 
         ImVec2 labelSz = CalcTextSize(label);
-        RenderText(ImVec2(bb.Min.x + 20.0f,
-                          bb.GetCenter().y - labelSz.y * 0.5f), label);
+        RenderText(ImVec2(bb.Min.x + 20.0f, bb.GetCenter().y - labelSz.y * 0.5f), label);
 
         PopStyleColor();
         return pressed;

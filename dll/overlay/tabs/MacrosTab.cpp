@@ -29,7 +29,6 @@ namespace OverlayTabs
 
             const float nameW  = availX - bindW - (2.0f * btnW) - (3.0f * gap);
 
-            // 1. Macro Name Input Field
             ImGui::SetNextItemWidth(nameW);
             if (ImGui::InputTextWithHint("##name", "item name (e.g. golden apple)", 
                                          g_settings.macros[i].name, 
@@ -37,7 +36,6 @@ namespace OverlayTabs
                 dirty = true;
             }
 
-            // 2. Inline Keybind Box
             ImGui::SameLine(0, gap);
             ImGui::SetNextItemWidth(bindW);
             dirty |= RowKeybind("##key", &g_settings.macros[i].key);
@@ -47,7 +45,6 @@ namespace OverlayTabs
             ImGui::PushStyleColor(ImGuiCol_ButtonHovered, FromHex(Theme::ListBtnHovered));
             ImGui::PushStyleColor(ImGuiCol_ButtonActive,  FromHex(Theme::ListBtnActive));
 
-            // 3. Delete Button
             ImGui::SameLine(0, gap);
             if (ImGui::Button("##del", ImVec2(btnW, 24))) {
                 toDelete = i;
@@ -61,7 +58,6 @@ namespace OverlayTabs
                     ImGui::GetColorU32(ImGuiCol_Text), 2.0f);
             }
 
-            // 4. Expander Chevron Button
             ImGui::SameLine(0, gap);
             if (ImGui::Button("##exp", ImVec2(btnW, 24))) {
                 open = !open;
@@ -74,11 +70,9 @@ namespace OverlayTabs
                 ImDrawList* dl   = ImGui::GetWindowDrawList();
                 const ImU32  col = ImGui::GetColorU32(ImGuiCol_Text);
                 
-                // Set path flags for anti-aliased lines with rounded ends
                 const float thickness = 2.5f; 
                 
                 if (open) {
-                    // Downward Chevron
                     ImVec2 points[3] = {
                         ImVec2(ctr.x - 4.5f, ctr.y - 2.0f),
                         ImVec2(ctr.x,        ctr.y + 2.5f),
@@ -86,7 +80,6 @@ namespace OverlayTabs
                     };
                     dl->AddPolyline(points, 3, col, 0, thickness);
                 } else {
-                    // Rightward Chevron
                     ImVec2 points[3] = {
                         ImVec2(ctr.x - 2.0f, ctr.y - 4.5f),
                         ImVec2(ctr.x + 2.5f, ctr.y),
