@@ -20,7 +20,7 @@ namespace OverlayTabs
             const char* hdr = g_settings.macros[i].name[0]
                 ? g_settings.macros[i].name
                 : "Unnamed Macro";
-            ImGui::PushFont(ImGui::GetIO().Fonts->Fonts[2]);
+            ImGui::PushFont(ImGui::GetIO().Fonts->Fonts[1]);
             ImGui::TextUnformatted(hdr);
             ImGui::PopFont();
 

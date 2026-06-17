@@ -11,7 +11,7 @@ namespace OverlayTabs
         bool dirty = false;
 
         ImGui::PushID("autoblock");
-        ImGui::PushFont(ImGui::GetIO().Fonts->Fonts[2]);
+        ImGui::PushFont(ImGui::GetIO().Fonts->Fonts[1]);
         ImGui::TextUnformatted("Autoblock");
         ImGui::PopFont();
         dirty |= RowCheckbox("Enabled",        &g_settings.autoblockEnabled);

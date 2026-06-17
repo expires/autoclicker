@@ -576,13 +576,9 @@ static BOOL WINAPI hk_wglSwapBuffers(HDC hdc)
         char fontBold[MAX_PATH]      = {};
         char fontSemibold[MAX_PATH]  = {};
         char fontRegular[MAX_PATH]   = {};
-        char fontIcons[MAX_PATH]     = {};
-        char fontIconsMDL2[MAX_PATH] = {};
         strcpy_s(fontBold,      sizeof(fontBold),      winDir); strcat_s(fontBold,      sizeof(fontBold),      "\\Fonts\\segoeuib.ttf");
         strcpy_s(fontSemibold,  sizeof(fontSemibold),  winDir); strcat_s(fontSemibold,  sizeof(fontSemibold),  "\\Fonts\\seguisb.ttf");
         strcpy_s(fontRegular,   sizeof(fontRegular),   winDir); strcat_s(fontRegular,   sizeof(fontRegular),   "\\Fonts\\segoeui.ttf");
-        strcpy_s(fontIcons,     sizeof(fontIcons),     winDir); strcat_s(fontIcons,     sizeof(fontIcons),     "\\Fonts\\SegoeIcons.ttf");
-        strcpy_s(fontIconsMDL2, sizeof(fontIconsMDL2), winDir); strcat_s(fontIconsMDL2, sizeof(fontIconsMDL2), "\\Fonts\\segmdl2.ttf");
 
         ImFontConfig cfg;
         cfg.OversampleH = 3;
@@ -595,18 +591,6 @@ static BOOL WINAPI hk_wglSwapBuffers(HDC hdc)
         ImFont* fReg = bodyPath
             ? io.Fonts->AddFontFromFileTTF(bodyPath, 16.0f, &cfg) : nullptr;
         if (!fReg) io.Fonts->AddFontDefault();
-
-        static const ImWchar iconRanges[] = { 0xE000, 0xF8FF, 0 };
-        ImFontConfig iconCfg;
-        iconCfg.OversampleH = 2;
-        iconCfg.OversampleV = 2;
-        iconCfg.PixelSnapH  = true;
-        const char* iconPath =
-            (GetFileAttributesA(fontIcons)     != INVALID_FILE_ATTRIBUTES) ? fontIcons     :
-            (GetFileAttributesA(fontIconsMDL2) != INVALID_FILE_ATTRIBUTES) ? fontIconsMDL2 : nullptr;
-        ImFont* fIcon = iconPath
-            ? io.Fonts->AddFontFromFileTTF(iconPath, 15.0f, &iconCfg, iconRanges) : nullptr;
-        if (!fIcon) io.Fonts->AddFontDefault();
 
         ImFont* fBold = (GetFileAttributesA(fontBold) != INVALID_FILE_ATTRIBUTES)
             ? io.Fonts->AddFontFromFileTTF(fontBold, 19.0f, &cfg) : nullptr;
@@ -783,7 +767,7 @@ static BOOL WINAPI hk_wglSwapBuffers(HDC hdc)
                     ImGui::GetColorU32(ImGuiCol_Border));
 
                 ImGui::SetCursorPos(ImVec2(20, 22));
-                ImGui::PushFont(ImGui::GetIO().Fonts->Fonts[2]);
+                ImGui::PushFont(ImGui::GetIO().Fonts->Fonts[1]);
                 ImGui::TextUnformatted("manuclicker");
                 ImGui::PopFont();
 
@@ -807,7 +791,7 @@ static BOOL WINAPI hk_wglSwapBuffers(HDC hdc)
                 false, ImGuiWindowFlags_NoBackground);
             {
                 ImGui::SetCursorPos(ImVec2(22, 22));
-                ImGui::PushFont(ImGui::GetIO().Fonts->Fonts[2]);
+                ImGui::PushFont(ImGui::GetIO().Fonts->Fonts[1]);
                 ImGui::TextUnformatted(
                     s_currentTab == 0 ? "Autoclicker" :
                     s_currentTab == 1 ? "Aimassist"  :
