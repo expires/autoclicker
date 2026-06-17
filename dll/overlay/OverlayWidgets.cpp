@@ -401,7 +401,7 @@ namespace OverlayWidgets
 
         ImDrawList* dl = window->DrawList;
         const float  mx = 10.0f;
-        const float  my = 3.0f;
+        const float  my = 1.0f;
         const ImVec2 rMin(bb.Min.x + mx, bb.Min.y + my);
         const ImVec2 rMax(bb.Max.x - mx, bb.Max.y - my);
         const float  rr = 7.0f;

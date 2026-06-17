@@ -16,11 +16,11 @@ namespace OverlayTabs
 
         ImGui::PopStyleVar();
 
-        dirty |= RowCheckbox("Teams by Colour", &g_settings.teamsByColor);
+        dirty |= RowKeybind("Bind", &g_settings.friendKey, true);
 
         ImGui::Dummy(ImVec2(0, 6));
 
-        dirty |= RowKeybind("Bind", &g_settings.friendKey, true);
+        dirty |= RowCheckbox("Teams by Colour", &g_settings.teamsByColor);
 
         ImGui::Dummy(ImVec2(0, 6));
 

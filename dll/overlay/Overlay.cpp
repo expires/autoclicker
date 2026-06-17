@@ -63,7 +63,6 @@ static void ResetUnpackState()
     glPixelStorei(GL_UNPACK_SKIP_ROWS,   0);
     glPixelStorei(GL_UNPACK_SKIP_PIXELS, 0);
     glPixelStorei(GL_UNPACK_ALIGNMENT,   1);
-    AC_LOG("overlay: unpack state reset (glBindBuffer=%p)", (void*)p_glBindBuffer);
 }
 
 typedef BOOL    (WINAPI* fn_SetCursorPos)(int, int);
@@ -576,18 +575,9 @@ static BOOL WINAPI hk_wglSwapBuffers(HDC hdc)
         return o_wglSwapBuffers(hdc);
     }
 
-    static int s_dbgFrame = 0;
-    const bool trace = (s_dbgFrame < 6);
-    if (trace)
-        AC_LOG("overlay: swap frame=%d tid=%lu glctx=%p initialized=%d",
-               s_dbgFrame, GetCurrentThreadId(), DbgGlCtx(), (int)s_initialized);
-
     if (!s_initialized)
     {
         s_hwnd = swapWnd;
-
-        AC_LOG("overlay: init begin tid=%lu hwnd=%p glctx=%p",
-               GetCurrentThreadId(), (void*)WindowFromDC(hdc), DbgGlCtx());
 
         IMGUI_CHECKVERSION();
         ImGui::CreateContext();
@@ -623,26 +613,17 @@ static BOOL WINAPI hk_wglSwapBuffers(HDC hdc)
 
         ApplyStyle();
 
-        AC_LOG("overlay: init win32 begin");
         ImGui_ImplWin32_Init(s_hwnd);
-        AC_LOG("overlay: init opengl3 begin");
         ImGui_ImplOpenGL3_Init("#version 150");
-        AC_LOG("overlay: init opengl3 done");
 
         ResetUnpackState();
-        AC_LOG("overlay: create fonts texture begin");
         ImGui_ImplOpenGL3_CreateFontsTexture();
-        AC_LOG("overlay: create fonts texture done");
-
-        AC_LOG("overlay: create device objects begin");
         ImGui_ImplOpenGL3_CreateDeviceObjects();
-        AC_LOG("overlay: create device objects done");
 
         s_origProc = reinterpret_cast<WNDPROC>(
             SetWindowLongPtrW(s_hwnd, GWLP_WNDPROC, reinterpret_cast<LONG_PTR>(HookedWndProc)));
 
         s_initialized = true;
-        AC_LOG("overlay: init complete");
     }
 
     {
@@ -732,9 +713,7 @@ static BOOL WINAPI hk_wglSwapBuffers(HDC hdc)
     const bool needFrame = s_visible || g_settings.espEnabled;
     if (needFrame)
     {
-        if (trace) AC_LOG("overlay: opengl3 newframe begin");
         ImGui_ImplOpenGL3_NewFrame();
-        if (trace) AC_LOG("overlay: win32 newframe begin");
         ImGui_ImplWin32_NewFrame();
 
         if (s_visible) {
@@ -869,20 +848,11 @@ static BOOL WINAPI hk_wglSwapBuffers(HDC hdc)
             ImGui::End();
         }
 
-        if (trace) AC_LOG("overlay: render begin");
         ImGui::Render();
-        if (trace) AC_LOG("overlay: renderdrawdata begin");
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
-        if (trace) AC_LOG("overlay: renderdrawdata done");
     }
 
-    if (trace) AC_LOG("overlay: swapbuffers passthrough begin frame=%d", s_dbgFrame);
-    BOOL swapRet = o_wglSwapBuffers(hdc);
-    if (trace) {
-        AC_LOG("overlay: swapbuffers passthrough done frame=%d ret=%d", s_dbgFrame, (int)swapRet);
-        ++s_dbgFrame;
-    }
-    return swapRet;
+    return o_wglSwapBuffers(hdc);
 }
 
 namespace Overlay

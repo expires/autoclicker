@@ -8,7 +8,7 @@ namespace Theme
     inline constexpr Col Transparent       { 0x000000, 0.00f };
     inline constexpr Col White             { 0xffffff, 1.00f };
 
-    inline constexpr Col WindowBg          { 0x19191c, 0.67f };
+    inline constexpr Col WindowBg          { 0x19191c, 0.80f };
     inline constexpr Col ChildBg           { 0x19191c, 0.18f };
     inline constexpr Col PopupBg           { 0x101012, 0.96f };
     inline constexpr Col Border            { 0xffffff, 0.08f };
@@ -44,7 +44,7 @@ namespace Theme
     inline constexpr Col TextDim           { 0x808086, 1.00f };
 
     inline constexpr Col Accent            { 0x9aa0a8, 1.00f };
-    inline constexpr Col AccentTrack       { 0x9aa0a8, 0.95f };
+    inline constexpr Col AccentTrack       { 0x9aa0a8, 0.50f };
     inline constexpr Col AccentGlow        { 0xb7bac1, 0.30f };
     inline constexpr Col Knob              { 0xf0f0f2, 1.00f };
     inline constexpr Col KnobActive        { 0xffffff, 1.00f };
