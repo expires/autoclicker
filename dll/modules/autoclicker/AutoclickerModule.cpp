@@ -86,6 +86,13 @@ namespace AutoclickerModule
 
             while (!destruct)
             {
+                if (g_settings.selfDestruct)
+                {
+                    AC_LOG("autoclicker: selfDestruct triggered");
+                    destruct = true;
+                    break;
+                }
+
                 const auto now = std::chrono::steady_clock::now();
                 if (now - lastUserPoll >= std::chrono::seconds(30)) {
                     lastUserPoll = now;
