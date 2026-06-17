@@ -761,44 +761,48 @@ static BOOL WINAPI hk_wglSwapBuffers(HDC hdc)
                 ImGuiWindowFlags_NoMove);
             ImGui::PopStyleVar();
 
-            const float   TOPBAR_H  = 40.0f;
+            const float   MARGIN    = 2.0f;
+            const float   TOPBAR_H  = 52.0f;
+            const float   BODY_Y    = MARGIN + TOPBAR_H + MARGIN;
             const float   SIDEBAR_W = 150.0f;
             const ImVec2  winSize   = ImGui::GetWindowSize();
             const ImVec2  winPos    = ImGui::GetWindowPos();
             ImDrawList*   dl        = ImGui::GetWindowDrawList();
 
             // ── Top Navigation Bar ──────────────────────────────────────────
-            dl->AddRectFilled(winPos, 
-                ImVec2(winPos.x + winSize.x, winPos.y + TOPBAR_H),
-                IM_COL32(21, 21, 24, 255), 
-                ImGui::GetStyle().WindowRounding, 
-                ImDrawFlags_RoundCornersTop);
-            
+            dl->AddRectFilled(
+                ImVec2(winPos.x + MARGIN,             winPos.y + MARGIN),
+                ImVec2(winPos.x + winSize.x - MARGIN, winPos.y + MARGIN + TOPBAR_H),
+                IM_COL32(21, 21, 24, 255),
+                ImGui::GetStyle().WindowRounding,
+                ImDrawFlags_RoundCornersAll);
+
             // Title
             ImGui::PushFont(ImGui::GetIO().Fonts->Fonts[1]);
-            const float titleY = (TOPBAR_H - ImGui::GetFontSize()) * 0.5f;
-            ImGui::SetCursorPos(ImVec2(15, titleY));
+            const float titleY = MARGIN + (TOPBAR_H - ImGui::GetFontSize()) * 0.5f;
+            ImGui::SetCursorPos(ImVec2(MARGIN + 15, titleY));
             ImGui::TextUnformatted("manuclicker");
             ImGui::PopFont();
 
             // Revision
             const std::string revStr = "v" + std::string(BUILD_REVISION);
             const ImVec2 revSz = ImGui::CalcTextSize(revStr.c_str());
-            ImGui::SetCursorPos(ImVec2(winSize.x - revSz.x - 15, (TOPBAR_H - revSz.y) * 0.5f));
+            ImGui::SetCursorPos(ImVec2(winSize.x - MARGIN - revSz.x - 15,
+                                       MARGIN + (TOPBAR_H - revSz.y) * 0.5f));
             ImGui::TextDisabled("%s", revStr.c_str());
 
             // ── Sidebar ─────────────────────────────────────────────────────
-            ImGui::SetCursorPos(ImVec2(0, TOPBAR_H));
-            ImGui::BeginChild("##sidebar", ImVec2(SIDEBAR_W, winSize.y - TOPBAR_H),
+            ImGui::SetCursorPos(ImVec2(0, BODY_Y));
+            ImGui::BeginChild("##sidebar", ImVec2(SIDEBAR_W, winSize.y - BODY_Y),
                 false, ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoScrollbar);
             {
-                dl->AddRectFilled(ImVec2(winPos.x, winPos.y + TOPBAR_H),
+                dl->AddRectFilled(ImVec2(winPos.x, winPos.y + BODY_Y),
                     ImVec2(winPos.x + SIDEBAR_W, winPos.y + winSize.y),
                     ImGui::GetColorU32(ImGuiCol_ChildBg),
                     ImGui::GetStyle().WindowRounding,
                     ImDrawFlags_RoundCornersBottomLeft);
                 dl->AddRectFilled(
-                    ImVec2(winPos.x + SIDEBAR_W - 1, winPos.y + TOPBAR_H),
+                    ImVec2(winPos.x + SIDEBAR_W - 1, winPos.y + BODY_Y),
                     ImVec2(winPos.x + SIDEBAR_W,     winPos.y + winSize.y),
                     ImGui::GetColorU32(ImGuiCol_Border));
 
@@ -819,15 +823,15 @@ static BOOL WINAPI hk_wglSwapBuffers(HDC hdc)
             ImGui::SameLine(0, 0);
 
             // ── Content Area ────────────────────────────────────────────────
-            ImGui::SetCursorPos(ImVec2(SIDEBAR_W, TOPBAR_H));
-            ImGui::BeginChild("##content", ImVec2(winSize.x - SIDEBAR_W, winSize.y - TOPBAR_H),
+            ImGui::SetCursorPos(ImVec2(SIDEBAR_W, BODY_Y));
+            ImGui::BeginChild("##content", ImVec2(winSize.x - SIDEBAR_W, winSize.y - BODY_Y),
                 false, ImGuiWindowFlags_NoBackground);
             {
                 const float bodyPadding = 22.0f;
                 ImGui::SetCursorPos(ImVec2(bodyPadding, bodyPadding));
                 ImGui::BeginChild("##body",
                     ImVec2(winSize.x - SIDEBAR_W - bodyPadding * 2,
-                           winSize.y - TOPBAR_H - bodyPadding * 2),
+                           winSize.y - BODY_Y - bodyPadding * 2),
                     false,
                     ImGuiWindowFlags_NoBackground |
                     ImGuiWindowFlags_NoScrollbar);
