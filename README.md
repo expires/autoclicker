@@ -1,6 +1,6 @@
 # JNI Minecraft Client
 
-A native DLL + ImGui overlay for Lunar Client, built as a **hands-on exploration of how JNI and JVMTI interact with a running JVM**. Targets Lunar Client 1.21.11 (Fabric intermediary mappings).
+A native DLL + ImGui overlay for Lunar Client, built as a **hands-on exploration of how JNI and JVMTI interact with a running JVM** — and as a controlled testbed for anti-cheat research. Targets Lunar Client 1.21.11 (Fabric intermediary mappings).
 
 The point of this project is the seam between native code and the JVM. The modules here exist to exercise specific aspects of that boundary: enumerating loaded classes via JVMTI, resolving obfuscated names through Fabric intermediary mappings, calling into `Minecraft`/`Player`/`Inventory`/`ItemStack` from a non-MC thread, walking entity snapshots, projecting world → screen without touching MC's renderer, and surviving the cursor/window-message contortions GLFW expects.
 
@@ -8,74 +8,83 @@ The point of this project is the seam between native code and the JVM. The modul
 
 ## Architecture
 
-Two binaries: an injector and the payload DLL. The injector locates `javaw.exe`, allocates remote memory, writes the DLL path, and calls `LoadLibraryA` via a remote thread. Once loaded inside the JVM, the DLL stands up its own threads alongside MC's render loop.
+Two binaries: an injector and the payload DLL. The injector locates `javaw.exe`, allocates remote memory, writes the DLL path, and calls `LoadLibraryA` via a remote thread. Once loaded inside the JVM, `DllMain` spawns a bootstrap thread that loads settings, installs the overlay hooks, and starts one worker thread per module alongside MC's render loop.
 
 ```mermaid
 flowchart LR
-    INJ["injector.exe"] -->|"CreateRemoteThread → LoadLibraryA"| JVM
+    INJ["INJECTOR.exe"] -->|"CreateRemoteThread → LoadLibraryA"| JVM
 
     subgraph JVM["javaw.exe · Lunar Client"]
-        subgraph DLL["ac.dll"]
-            DllMain(["DllMain"])
+        subgraph DLL["DLL.dll"]
+            DllMain(["DllMain → Bootstrap"])
 
-            subgraph OVL["Overlay"]
+            subgraph OVL["Overlay · ImGui"]
                 o1["wglSwapBuffers hook"]
-                o2["ImGui render"]
+                o2["Tabbed menu + ESP render"]
                 o3["WndProc + cursor hooks"]
             end
 
-            subgraph ACM["Autoclicker"]
-                a1["Attach JVM (JNI)"]
-                a2["Enumerate classes (JVMTI)"]
-                a3["LMB-held click loop"]
-            end
-
-            subgraph ESP["ESP"]
-                e1["Snapshot world entities"]
-                e2["Project to screen"]
-                e3["Team-colored boxes + nametags"]
-            end
-
-            subgraph MAC["Macros"]
-                m1["Edge-detect bound keys"]
-                m2["Match item by hover name"]
-                m3["Switch + right-click + restore"]
+            subgraph MODS["Worker modules"]
+                m1["Autoclicker"]
+                m2["Aim Assist"]
+                m3["Autoblock"]
+                m4["ESP"]
+                m5["Macros"]
+                m6["Friends / Teams"]
             end
 
             subgraph SDK["SDK · JNI wrappers"]
-                s1["Minecraft, Player, Inventory"]
-                s2["ItemStack, Component, AABB, Vec3"]
+                s1["Minecraft, Player, Inventory, Level"]
+                s2["Entity, ItemStack, Component, AABB, Vec3, Camera"]
             end
 
+            NET["Network · ban-list gate + report"]
+
             DllMain --> OVL
-            DllMain --> ACM
-            DllMain --> ESP
-            DllMain --> MAC
-            ACM --> SDK
-            ESP --> SDK
-            MAC --> SDK
+            DllMain --> MODS
+            MODS --> SDK
+            m1 --> NET
         end
     end
 ```
 
 ### Threads
 
-| Thread       | Started by      | Role                                                        |
-|--------------|-----------------|-------------------------------------------------------------|
-| Render       | MC (hooked)     | ImGui draw + input swallow when overlay visible             |
-| Autoclicker  | `DllMain`       | Enumerates classes, attaches JVM, runs click loop           |
-| ESP          | `DllMain`       | Reads entity snapshot each frame, publishes for overlay     |
-| Macros       | `DllMain`       | Polls bound keys, fires hotbar switch + right-click         |
+| Thread       | Started by   | Role                                                        |
+|--------------|--------------|-------------------------------------------------------------|
+| Render       | MC (hooked)  | ImGui draw + input swallow when overlay visible             |
+| Autoclicker  | `Bootstrap`  | Enumerates classes, attaches JVM, runs click loop, ban gate |
+| Aim Assist   | `Bootstrap`  | Steers the camera toward the nearest in-FOV entity          |
+| Autoblock    | `Bootstrap`  | Right-click-blocks while attacking with a sword             |
+| ESP          | `Bootstrap`  | Reads entity snapshot each frame, publishes for overlay     |
+| Macros       | `Bootstrap`  | Polls bound keys, fires hotbar switch + right-click         |
+| Friends      | `Bootstrap`  | Resolves player teams/colors for highlighting               |
 
 Each JVM-touching thread calls `AttachCurrentThread` independently. `lc->env` is `thread_local` so the per-thread JNIEnv routes correctly without cross-thread sharing.
 
 ### Shared state
 
-`g_settings` is a header-defined singleton (`inline Settings g_settings`). Written by the overlay, read by the modules; loaded on attach, saved on every settings dirty + on detach.
+`g_settings` is a header-defined singleton (`inline Settings g_settings`). Written by the overlay, read by the modules; loaded on attach, saved on every settings change + on detach. The friend list is guarded by its own mutex since the overlay and Friends thread both touch it.
 
 ### Overlay input model
 
-While the menu is open, all keyboard/mouse messages are swallowed in the WndProc hook so MC's GLFW pump never sees them. `SetCursorPos`, `ClipCursor`, `ShowCursor`, and `SetCursor` are hooked to no-op so GLFW's cursor-disabled mode can't fight the visible cursor. Held inputs are released on open via synthesized `WM_KEYUP` so the player doesn't keep walking forward.
+While the menu is open, all keyboard/mouse messages are swallowed in the WndProc hook so MC's GLFW pump never sees them. `SetCursorPos`, `ClipCursor`, `ShowCursor`, and `SetCursor` are hooked to no-op so GLFW's cursor-disabled mode can't fight the visible (software-drawn) cursor. Held inputs are released on open via synthesized `WM_KEYUP` so the player doesn't keep walking forward.
+
+### Source layout
+
+```
+dll/
+  config/     Settings (runtime) + Config.h.in (build-time secrets template)
+  logger/     File logger
+  teardown/   Worker registry + clean self-unload
+  modules/    autoclicker, aim, autoblock, esp, macros, friends
+  network/    Ban-list check + Discord report (WinHTTP)
+  overlay/    ImGui overlay, widgets, theme, per-tab UI
+  SDK/        JNI/JVMTI wrappers + generated Mappings.h
+injector/     Remote-thread injector
+mappings/     Fabric intermediary mappings per game version
+data/         Embedded assets (logo.png)
+```
 
 ---
 
@@ -99,21 +108,27 @@ To add a new MC version, copy `mappings/fabric_1.21.11.json`, update the interme
 ## Features
 
 - **Autoclicker** — randomized Gaussian-jittered LMB while held; respects block-breaking hold behavior; toggleable via keybind. Demonstrates synthesizing input events through the JNI layer.
-- **ESP** — team-colored boxes + nametag chunks + distance, projected from a JNI entity snapshot with partial-tick interpolation. Demonstrates reading live world state from a native thread.
+- **Aim Assist** — smoothly steers the camera toward the nearest entity inside a configurable FOV cone and range, with separate horizontal/vertical speeds and an optional "only while attacking" mode. Demonstrates reading live entity positions + camera state from a native thread.
+- **Autoblock** — automatically right-click-blocks while attacking, optionally only when a sword is held, with configurable delay and cooldown. Demonstrates inspecting the held `ItemStack` via JNI.
+- **ESP** — team-colored boxes + nametag chunks + distance + health, projected from a JNI entity snapshot with partial-tick interpolation. Demonstrates reading live world state from a native thread and projecting world → screen without the MC renderer.
+- **Friends / Teams** — maintain a friend list and detect scoreboard teams by color; friends and teammates are highlighted and excluded from targeting. Demonstrates walking `PlayerTeam` / `Style` / `TextColor` through JNI.
 - **Macros** — dynamic list of up to 10 hotbar macros. Each matches an item by display-name substring (case-insensitive, includes anvil renames), switches to that slot, right-clicks once, and restores the previously held slot. Demonstrates calling into `Inventory` and `ItemStack` via JNI from outside the game thread.
-- **Persistent config** — all settings + keybinds + macros saved to `%APPDATA%` with schema versioning.
-- **Self-destruct** — UNLOAD button or `END` key triggers clean DLL unload via `FreeLibraryAndExitThread`. Demonstrates orderly JNI teardown.
+- **Safety gate** — the local player's UUID is checked against a remote banned list (GitHub-hosted) over WinHTTP; a match triggers self-destruct, and first-seen accounts are reported to a Discord webhook. Endpoints are baked in at build time from environment variables and are blank by default.
+- **Persistent config** — all settings + keybinds + macros + friends saved to `%APPDATA%` with schema versioning (v3).
+- **Self-destruct** — the in-menu toggle or the self-destruct key (default `END`) triggers a clean DLL unload via `FreeLibraryAndExitThread`. Demonstrates orderly JNI teardown.
 
 ---
 
 ## Building
 
-Requirements: Windows, Visual Studio 2022+, CMake 3.30+, JDK 21 (`JAVA_HOME` set). ImGui and MinHook are fetched at configure time.
+Requirements: Windows, Visual Studio 2022+, CMake 3.30+, JDK 21 (`JAVA_HOME` set). ImGui, MinHook, and stb are fetched at configure time; `data/logo.png` is embedded into the DLL.
 
 ```bat
 cmake -S . -B build -DMAPPING_VERSION=fabric_1.21.11
 cmake --build build --config Release
 ```
+
+Optionally set `AC_WEBHOOK_PATH` and `AC_BANNED_PATH` before configuring to bake in the report webhook and banned-list endpoints; both default to empty (the safety gate is then a no-op).
 
 Outputs:
 - `build/dll/Release/DLL.dll`
@@ -125,10 +140,10 @@ CI builds every push to `main` and uploads an artifact. Tag `v*` to publish a re
 
 ## Usage
 
-1. Download `ac.dll` + `injector.exe` from the latest Actions run or release.
+1. Download `DLL.dll` + `INJECTOR.exe` from the latest Actions run or release.
 2. Launch Lunar Client, join a world or server.
-3. Run `injector.exe`.
-4. `INSERT` opens the overlay. `END` unloads.
+3. Run `INJECTOR.exe`.
+4. **Right Shift** opens the overlay (rebindable in Settings); the self-destruct key (default **END**) unloads.
 
 ---
 
