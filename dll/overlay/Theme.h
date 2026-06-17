@@ -48,6 +48,7 @@ namespace Theme
         inline constexpr float KeybindPillW  = px(80.0f);
         inline constexpr float KeybindPillPad= px(0.0f);
         inline constexpr float KeybindRound  = px(6.0f);
+        inline constexpr float KeybindGap    = px(8.0f);
 
         // Slider row
         inline constexpr float SliderH       = px(24.0f);

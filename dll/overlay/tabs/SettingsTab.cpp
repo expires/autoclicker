@@ -17,11 +17,13 @@ namespace OverlayTabs
         ImGui::TextUnformatted("Keybinds");
         ImGui::PopFont();
 
+        ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0, Theme::M::KeybindGap));
         dirty |= RowKeybind("Menu",                    &g_settings.menuKey);
         dirty |= RowKeybind("Self-Destruct",   &g_settings.selfDestructKey);
         dirty |= RowKeybind("Autoclicker",              &g_settings.acKey);
         dirty |= RowKeybind("Aim Assist",              &g_settings.aimKey);
         dirty |= RowKeybind("ESP",                     &g_settings.espKey);
+        ImGui::PopStyleVar();
 
         ImGui::PopID();
 
