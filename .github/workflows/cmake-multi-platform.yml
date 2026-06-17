@@ -66,8 +66,8 @@ jobs:
       - name: Stage artifacts
         run: |
           mkdir release
-          copy build\dll\ac.dll release\ac.dll
-          copy build\injector\injector.exe release\injector.exe
+          copy build\DLL\libDLL.dll release\ac.dll
+          copy build\INJECTOR\INJECTOR.exe release\injector.exe
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
