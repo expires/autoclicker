@@ -4,7 +4,7 @@
 #include <cstdio>
 #include "imgui.h"
 #include "imgui_internal.h"
-#include "../Settings.h"
+#include "../config/Settings.h"
 
 namespace OverlayWidgets
 {

@@ -111,7 +111,7 @@ string(LENGTH "${DISCORD_WEBHOOK_PATH}" _webhook_len)
 string(LENGTH "${BANNED_PATH}" _banned_len)
 message(STATUS "DISCORD_WEBHOOK_PATH length: ${_webhook_len}")
 message(STATUS "BANNED_PATH length: ${_banned_len}")
-configure_file(Config.h.in ${CMAKE_CURRENT_BINARY_DIR}/Config.h @ONLY)
+configure_file(config/Config.h.in ${CMAKE_CURRENT_BINARY_DIR}/config/Config.h @ONLY)
 
 # ── Embedded logo ────────────────────────────────────────────────────────────
 # The DLL is injected, so it can't rely on a disk path; bake data/logo.png into
@@ -240,12 +240,12 @@ file(GLOB NETWORK_SOURCES      "network/*.cpp")
 
 add_library(${PROJECT_NAME} SHARED
     main.cpp
-    Logger.h
-    Logger.cpp
-    Settings.h
-    Settings.cpp
-    Teardown.h
-    Teardown.cpp
+    logger/Logger.h
+    logger/Logger.cpp
+    config/Settings.h
+    config/Settings.cpp
+    teardown/Teardown.h
+    teardown/Teardown.cpp
     ${AUTOCLICKER_HEADERS}
     ${AUTOCLICKER_SOURCES}
     ${ESP_HEADERS}

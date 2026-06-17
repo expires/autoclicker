@@ -1,6 +1,6 @@
 #include "Tabs.h"
 #include "../OverlayWidgets.h"
-#include "../../Settings.h"
+#include "../../config/Settings.h"
 #include "../../modules/esp/EspModule.h"
 #include "imgui.h"
 #include <memory>

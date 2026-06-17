@@ -1,6 +1,6 @@
 #include "Teardown.h"
 #include "overlay/Overlay.h"
-#include "Logger.h"
+#include "../logger/Logger.h"
 #include <mutex>
 
 namespace Teardown

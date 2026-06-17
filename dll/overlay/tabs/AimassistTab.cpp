@@ -1,6 +1,6 @@
 #include "Tabs.h"
 #include "../OverlayWidgets.h"
-#include "../../Settings.h"
+#include "../../config/Settings.h"
 
 namespace OverlayTabs
 {

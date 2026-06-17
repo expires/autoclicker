@@ -1,9 +1,9 @@
 #include <Windows.h>
 #include <thread>
 
-#include "Settings.h"
-#include "Teardown.h"
-#include "Logger.h"
+#include "config/Settings.h"
+#include "teardown/Teardown.h"
+#include "logger/Logger.h"
 #include "modules/autoclicker/AutoclickerModule.h"
 #include "modules/esp/EspModule.h"
 #include "modules/macros/MacrosModule.h"

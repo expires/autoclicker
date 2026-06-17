@@ -1,10 +1,10 @@
 #include "AutoclickerModule.h"
-#include "../../Teardown.h"
-#include "../../Settings.h"
+#include "../../teardown/Teardown.h"
+#include "../../config/Settings.h"
 #include "../../network/Network.h"
 #include "../../overlay/Overlay.h"
-#include "../../Logger.h"
-#include "Config.h"
+#include "../../logger/Logger.h"
+#include "config/Config.h"
 #include <chrono>
 #include <string>
 

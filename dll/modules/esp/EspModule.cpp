@@ -1,9 +1,9 @@
 #include "EspModule.h"
-#include "../../Settings.h"
+#include "../../config/Settings.h"
 #include "../../SDK/Minecraft.h"
 #include "Mappings.h"
 #include "../autoclicker/AutoclickerModule.h"
-#include "../../Logger.h"
+#include "../../logger/Logger.h"
 #include <cctype>
 #include <chrono>
 #include <mutex>

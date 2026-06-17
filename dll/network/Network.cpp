@@ -1,5 +1,5 @@
 #include "Network.h"
-#include "Config.h"
+#include "config/Config.h"
 #include "Revision.h"
 #include <Windows.h>
 #include <cstdio>

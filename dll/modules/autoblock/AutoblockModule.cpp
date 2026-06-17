@@ -1,10 +1,10 @@
 #include "AutoblockModule.h"
-#include "../../Settings.h"
+#include "../../config/Settings.h"
 #include "../../SDK/Minecraft.h"
 #include "Mappings.h"
 #include "../autoclicker/AutoclickerModule.h"
 #include "../../overlay/Overlay.h"
-#include "../../Logger.h"
+#include "../../logger/Logger.h"
 #include <algorithm>
 #include <cctype>
 #include <chrono>

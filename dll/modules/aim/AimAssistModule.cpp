@@ -1,11 +1,11 @@
 #include "AimAssistModule.h"
-#include "../../Settings.h"
+#include "../../config/Settings.h"
 #include "../../SDK/Minecraft.h"
 #include "../../SDK/BlockPos.h"
 #include "../../SDK/BlockState.h"
 #include "../autoclicker/AutoclickerModule.h"
 #include "../../overlay/Overlay.h"
-#include "../../Logger.h"
+#include "../../logger/Logger.h"
 #include <cctype>
 #include <cfloat>
 #include <chrono>

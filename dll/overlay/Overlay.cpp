@@ -13,8 +13,8 @@
 #include "imgui_impl_opengl3.h"
 #include "OverlayWidgets.h"
 #include "tabs/Tabs.h"
-#include "../Settings.h"
-#include "../Logger.h"
+#include "../config/Settings.h"
+#include "../logger/Logger.h"
 #include "../modules/esp/EspModule.h"
 #include "../SDK/Lunar.h"
 #include "../SDK/Minecraft.h"
@@ -77,6 +77,10 @@ static void ResetUnpackState()
     glPixelStorei(GL_UNPACK_ALIGNMENT,   1);
 }
 
+static GLuint s_logoTex = 0;
+static int    s_logoW   = 0;
+static int    s_logoH   = 0;
+
 static void LoadLogoTexture()
 {
     if (s_logoTex != 0 || g_logoPngSize == 0) return;
@@ -119,10 +123,6 @@ static bool    s_eatEscUntilRelease = false;
 
 static volatile bool s_shutdownRequested = false;
 static volatile bool s_renderDrained     = false;
-
-static GLuint s_logoTex = 0;
-static int    s_logoW   = 0;
-static int    s_logoH   = 0;
 
 static bool ProjectWorld(double wx, double wy, double wz,
                          const EspModule::CameraState& cam,

@@ -1,5 +1,5 @@
 #include "Lunar.h"
-#include "../Logger.h"
+#include "../logger/Logger.h"
 
 thread_local JNIEnv *Lunar::env = nullptr;
 
