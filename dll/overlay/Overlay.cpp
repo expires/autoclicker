@@ -761,7 +761,7 @@ static BOOL WINAPI hk_wglSwapBuffers(HDC hdc)
                 ImGuiWindowFlags_NoMove);
             ImGui::PopStyleVar();
 
-            const float   MARGIN    = 2.0f;
+            const float   MARGIN    = 10.0f;
             const float   TOPBAR_H  = 52.0f;
             const float   BODY_Y    = MARGIN + TOPBAR_H + MARGIN;
             const float   SIDEBAR_W = 150.0f;
