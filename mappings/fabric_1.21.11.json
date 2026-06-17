@@ -130,6 +130,7 @@
   "desc_ClientLevel_players":      "()Ljava/util/List;",
 
   "class_PauseScreen":             "net.minecraft.class_433",
+  "class_AbstractContainerScreen": "net.minecraft.class_465",
   "mtd_Minecraft_setScreen":       "method_1507",
   "desc_Minecraft_setScreen":      "(Lnet/minecraft/class_437;)V",
   "mtd_Minecraft_pauseGame":       "method_20539",

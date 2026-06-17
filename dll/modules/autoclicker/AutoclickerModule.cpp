@@ -5,6 +5,7 @@
 #include "../../overlay/Overlay.h"
 #include "../../logger/Logger.h"
 #include "config/Config.h"
+#include "Mappings.h"
 #include <chrono>
 #include <string>
 
@@ -102,6 +103,34 @@ namespace AutoclickerModule
                 const HWND activeWindow = GetForegroundWindow();
                 clicker.setCPS(g_settings.cps);
                 DELAY(TICK);
+
+                while (!destruct && g_settings.inventoryClick
+                       && activeWindow == mcWindow
+                       && (GetAsyncKeyState(VK_SHIFT) & 0x8000)
+                       && (GetAsyncKeyState(VK_LBUTTON) & 0x8000)
+                       && !Overlay::IsMenuVisible())
+                {
+                    if (mc->GetInstance() == nullptr) {
+                        if (lc->env->ExceptionCheck()) lc->env->ExceptionClear();
+                        break;
+                    }
+
+                    bool inContainer = false;
+                    Screen screen = mc->GetScreen();
+                    if (lc->env->ExceptionCheck()) lc->env->ExceptionClear();
+                    if (screen.GetInstance() != nullptr) {
+                        jclass acs = lc->GetClass(MC_AbstractContainerScreen);
+                        if (acs != nullptr &&
+                            lc->env->IsInstanceOf(screen.GetInstance(), acs) == JNI_TRUE)
+                            inContainer = true;
+                        screen.Cleanup();
+                    }
+                    if (lc->env->ExceptionCheck()) lc->env->ExceptionClear();
+
+                    if (!inContainer) break;
+
+                    clicker.invClick(mcWindow);
+                }
 
                 while (!destruct && activeWindow == mcWindow && GetAsyncKeyState(VK_LBUTTON) && g_settings.acEnabled)
                 {

@@ -58,6 +58,26 @@ void Clicker::lclick(HWND hwnd, int jitterStrength)
     trackClick();
 }
 
+void Clicker::invClick(HWND hwnd)
+{
+    updatePace();
+
+    const double downFrac = downFracDist(gen);
+
+    POINT pt;
+    GetCursorPos(&pt);
+    SendMessage(hwnd, WM_LBUTTONDOWN, MK_LBUTTON, MAKELPARAM(pt.x, pt.y));
+    DELAY(randomDelay(downFrac));
+    SendMessage(hwnd, WM_LBUTTONUP, MK_LBUTTON, MAKELPARAM(pt.x, pt.y));
+
+    int gap = randomDelay(1.0 - downFrac);
+    if (pauseRoll(gen) == 1)
+        gap = static_cast<int>(gap * pauseMult(gen));
+    DELAY(gap);
+
+    trackClick();
+}
+
 void Clicker::rclick(HWND hwnd)
 {
     updatePace();

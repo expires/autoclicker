@@ -15,6 +15,7 @@ struct Settings
 {
     bool acEnabled    = true;
     bool breakBlocks  = true;
+    bool inventoryClick = false;
     int  cps          = 10;
     bool selfDestruct = false;
 

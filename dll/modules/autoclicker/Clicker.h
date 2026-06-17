@@ -22,6 +22,7 @@ public:
     void setCPS(int newCps) { cps = newCps; }
 
     void lclick(HWND hwnd, int jitterStrength = 0);
+    void invClick(HWND hwnd);
     void rclick(HWND hwnd);
     void mouseDown(HWND hwnd);
     int randomDelay(double fraction);

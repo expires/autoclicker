@@ -28,6 +28,7 @@ void Settings::Save()
 
     fprintf(f, "acEnabled=%d\n",    acEnabled    ? 1 : 0);
     fprintf(f, "breakBlocks=%d\n",  breakBlocks  ? 1 : 0);
+    fprintf(f, "inventoryClick=%d\n", inventoryClick ? 1 : 0);
     fprintf(f, "cps=%d\n",          cps);
     fprintf(f, "jitterEnabled=%d\n",  jitterEnabled ? 1 : 0);
     fprintf(f, "jitterStrength=%d\n", jitterStrength);
@@ -103,6 +104,7 @@ void Settings::Load()
         const std::string k = keyStr;
         if      (k == "acEnabled")    acEnabled    = (val != 0);
         else if (k == "breakBlocks")  breakBlocks  = (val != 0);
+        else if (k == "inventoryClick") inventoryClick = (val != 0);
         else if (k == "cps")          cps          = val;
         else if (k == "jitterEnabled")  jitterEnabled  = (val != 0);
         else if (k == "jitterStrength") jitterStrength = val;

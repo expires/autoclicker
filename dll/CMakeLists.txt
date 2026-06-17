@@ -78,7 +78,7 @@ foreach(KEY
     fld_GameRenderer_mainCamera desc_GameRenderer_mainCamera
     mtd_GameRenderer_getFov     desc_GameRenderer_getFov
     mtd_ClientLevel_players     desc_ClientLevel_players
-    class_PauseScreen
+    class_PauseScreen class_AbstractContainerScreen
     mtd_Minecraft_setScreen     desc_Minecraft_setScreen
     mtd_Minecraft_pauseGame     desc_Minecraft_pauseGame
     class_Inventory
