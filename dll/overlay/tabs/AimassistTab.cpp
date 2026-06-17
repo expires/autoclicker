@@ -14,7 +14,6 @@ namespace OverlayTabs
         dirty |= RowSlider  ("Vertical Speed",   &g_settings.aimSpeedV, 0, 20);
         dirty |= RowSlider  ("FOV (deg)",        &g_settings.aimFov,    1, 180);
         dirty |= RowSlider  ("Range (blocks)",   &g_settings.aimRange,  1, 64);
-        dirty |= RowKeybind ("Toggle Key",       &g_settings.aimKey);
         return dirty;
     }
 }

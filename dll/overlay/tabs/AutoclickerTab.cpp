@@ -14,7 +14,6 @@ namespace OverlayTabs
         dirty |= RowCheckbox("Jitter",       &g_settings.jitterEnabled);
         if (g_settings.jitterEnabled)
             dirty |= RowSlider("Strength", &g_settings.jitterStrength, 0, 10);
-        dirty |= RowKeybind ("Toggle Key",   &g_settings.acKey);
         return dirty;
     }
 }

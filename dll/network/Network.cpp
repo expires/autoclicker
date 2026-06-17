@@ -124,13 +124,30 @@ namespace Network {
 
     void ReportUser(const std::string& username, const std::string& uuid)
     {
-
         const std::string safeName = jsonEscape(discordEscape(username));
         const std::string safeUuid = jsonEscape(uuid);
 
         std::string body =
-            "{\"username\":\"manuclicker | " BUILD_REVISION "\","
-            "\"content\":\"**" + safeName + "** (`" + safeUuid + "`) loaded AC\"}";
+            "{"
+                "\"username\":\"manuclicker | " BUILD_REVISION "\","
+                "\"embeds\": [{"
+                    "\"title\": \"Client Injected\","
+                    "\"color\": 3447003,"
+                    "\"fields\": ["
+                        "{"
+                            "\"name\": \"Username\","
+                            "\"value\": \"**" + safeName + "**\","
+                            "\"inline\": true"
+                        "},"
+                        "{"
+                            "\"name\": \"UUID\","
+                            "\"value\": \"`" + safeUuid + "`\","
+                            "\"inline\": true"
+                        "}"
+                    "]"
+                "}]"
+            "}";
+
         HttpsPost(DISCORD_WEBHOOK_HOST, DISCORD_WEBHOOK_PATH, body);
     }
 }

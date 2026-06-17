@@ -11,9 +11,17 @@ namespace OverlayTabs
     {
         using namespace OverlayWidgets;
         bool dirty = false;
+        
+        ImGui::PushID("keybinds");
+        ImGui::PushFont(ImGui::GetIO().Fonts->Fonts[1]);
+        ImGui::TextUnformatted("Keybinds");
+        ImGui::PopFont();
 
-        dirty |= RowKeybind("Menu Key",          &g_settings.menuKey);
-        dirty |= RowKeybind("Self-Destruct Key", &g_settings.selfDestructKey);
+        dirty |= RowKeybind("Menu",                    &g_settings.menuKey);
+        dirty |= RowKeybind("Self-Destruct",   &g_settings.selfDestructKey);
+        dirty |= RowKeybind("Autoclicker",              &g_settings.acKey);
+        dirty |= RowKeybind("Aim Assist",              &g_settings.aimKey);
+        dirty |= RowKeybind("ESP",                     &g_settings.espKey);
 
         std::shared_ptr<const EspModule::Snapshot> snapPtr = EspModule::Acquire();
         EspModule::Snapshot snap = snapPtr ? *snapPtr : EspModule::Snapshot{};

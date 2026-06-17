@@ -804,12 +804,12 @@ static BOOL WINAPI hk_wglSwapBuffers(HDC hdc)
                 ImGui::PushFont(ImGui::GetIO().Fonts->Fonts[1]);
                 ImGui::TextUnformatted(
                     s_currentTab == 0 ? "Autoclicker" :
-                    s_currentTab == 1 ? "Aimassist"  :
-                    s_currentTab == 2 ? "ESP"         :
+                    s_currentTab == 1 ? "Aim Assist"  :
+                    s_currentTab == 2 ? "ESP"         : 
                     s_currentTab == 3 ? "Friends"     :
                     s_currentTab == 4 ? "Macros"      :
                     s_currentTab == 5 ? "Misc"        :
-                                        "Settings");
+                                        "Settings"
                 ImGui::PopFont();
 
                 const float bodyTop          = 64.0f;

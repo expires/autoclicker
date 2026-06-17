@@ -16,7 +16,7 @@ namespace OverlayTabs
             dirty |= RowCheckbox("Health",             &g_settings.drawHealth);
             dirty |= RowCheckbox("Highlight Friends",  &g_settings.highlightFriends);
         }
-        dirty |= RowKeybind("Toggle Key", &g_settings.espKey);
+        
         return dirty;
     }
 }
