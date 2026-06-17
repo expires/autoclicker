@@ -28,6 +28,19 @@ extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg
 typedef BOOL(WINAPI* fn_wglSwapBuffers)(HDC);
 static fn_wglSwapBuffers o_wglSwapBuffers = nullptr;
 
+typedef HGLRC(WINAPI* fn_wglGetCurrentContext)();
+static fn_wglGetCurrentContext p_wglGetCurrentContext = nullptr;
+
+static void* DbgGlCtx()
+{
+    if (!p_wglGetCurrentContext) {
+        HMODULE gl = GetModuleHandleA("opengl32.dll");
+        if (gl) p_wglGetCurrentContext =
+            reinterpret_cast<fn_wglGetCurrentContext>(GetProcAddress(gl, "wglGetCurrentContext"));
+    }
+    return p_wglGetCurrentContext ? reinterpret_cast<void*>(p_wglGetCurrentContext()) : nullptr;
+}
+
 typedef BOOL    (WINAPI* fn_SetCursorPos)(int, int);
 typedef BOOL    (WINAPI* fn_ClipCursor)(const RECT*);
 typedef int     (WINAPI* fn_ShowCursor)(BOOL);
@@ -527,9 +540,29 @@ static BOOL WINAPI hk_wglSwapBuffers(HDC hdc)
             return o_wglSwapBuffers(hdc);
     }
 
+    if (!DbgGlCtx())
+    {
+        static bool s_warnedNoCtx = false;
+        if (!s_warnedNoCtx) {
+            AC_LOG("overlay: no current GL context on swap tid=%lu hwnd=%p",
+                   GetCurrentThreadId(), (void*)swapWnd);
+            s_warnedNoCtx = true;
+        }
+        return o_wglSwapBuffers(hdc);
+    }
+
+    static int s_dbgFrame = 0;
+    const bool trace = (s_dbgFrame < 6);
+    if (trace)
+        AC_LOG("overlay: swap frame=%d tid=%lu glctx=%p initialized=%d",
+               s_dbgFrame, GetCurrentThreadId(), DbgGlCtx(), (int)s_initialized);
+
     if (!s_initialized)
     {
         s_hwnd = swapWnd;
+
+        AC_LOG("overlay: init begin tid=%lu hwnd=%p glctx=%p",
+               GetCurrentThreadId(), (void*)WindowFromDC(hdc), DbgGlCtx());
 
         IMGUI_CHECKVERSION();
         ImGui::CreateContext();
@@ -581,13 +614,17 @@ static BOOL WINAPI hk_wglSwapBuffers(HDC hdc)
 
         ApplyStyle();
 
+        AC_LOG("overlay: init win32 begin");
         ImGui_ImplWin32_Init(s_hwnd);
+        AC_LOG("overlay: init opengl3 begin");
         ImGui_ImplOpenGL3_Init(nullptr);
+        AC_LOG("overlay: init opengl3 done");
 
         s_origProc = reinterpret_cast<WNDPROC>(
             SetWindowLongPtrW(s_hwnd, GWLP_WNDPROC, reinterpret_cast<LONG_PTR>(HookedWndProc)));
 
         s_initialized = true;
+        AC_LOG("overlay: init complete");
     }
 
     {
@@ -677,7 +714,9 @@ static BOOL WINAPI hk_wglSwapBuffers(HDC hdc)
     const bool needFrame = s_visible || g_settings.espEnabled;
     if (needFrame)
     {
+        if (trace) AC_LOG("overlay: opengl3 newframe begin");
         ImGui_ImplOpenGL3_NewFrame();
+        if (trace) AC_LOG("overlay: win32 newframe begin");
         ImGui_ImplWin32_NewFrame();
 
         if (s_visible) {
@@ -812,11 +851,20 @@ static BOOL WINAPI hk_wglSwapBuffers(HDC hdc)
             ImGui::End();
         }
 
+        if (trace) AC_LOG("overlay: render begin");
         ImGui::Render();
+        if (trace) AC_LOG("overlay: renderdrawdata begin");
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+        if (trace) AC_LOG("overlay: renderdrawdata done");
     }
 
-    return o_wglSwapBuffers(hdc);
+    if (trace) AC_LOG("overlay: swapbuffers passthrough begin frame=%d", s_dbgFrame);
+    BOOL swapRet = o_wglSwapBuffers(hdc);
+    if (trace) {
+        AC_LOG("overlay: swapbuffers passthrough done frame=%d ret=%d", s_dbgFrame, (int)swapRet);
+        ++s_dbgFrame;
+    }
+    return swapRet;
 }
 
 namespace Overlay
