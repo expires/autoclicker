@@ -8,7 +8,7 @@ namespace Theme
     inline constexpr Col Transparent       { 0x000000, 0.00f };
     inline constexpr Col White             { 0xffffff, 1.00f };
 
-    inline constexpr Col WindowBg          { 0x19191c, 0.80f };
+    inline constexpr Col WindowBg          { 0x19191c, 0.90f };
     inline constexpr Col ChildBg           { 0x19191c, 0.18f };
     inline constexpr Col PopupBg           { 0x101012, 0.96f };
     inline constexpr Col Border            { 0xffffff, 0.08f };
