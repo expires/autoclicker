@@ -24,24 +24,7 @@ namespace OverlayTabs
             snap.gotLevel, snap.gotGameRenderer, snap.gotCamera);
         ImGui::Text("players()=%d  targets=%d",
             snap.rawPlayerCount, (int)snap.targets.size());
-        ImGui::Text("cam=(%.1f,%.1f,%.1f)  yaw=%.1f  pitch=%.1f  fov=%.1f",
-            snap.cam.x, snap.cam.y, snap.cam.z,
-            snap.cam.yRot, snap.cam.xRot, snap.cam.fov);
         ImGui::PopStyleColor();
-
-        ImGui::PopStyleVar();
-        ImGui::Dummy(ImVec2(0, 8));
-        ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 4.0f);
-        ImGui::PushStyleColor(ImGuiCol_Button,        FromHex(Theme::Danger));
-        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, FromHex(Theme::DangerHovered));
-        ImGui::PushStyleColor(ImGuiCol_ButtonActive,  FromHex(Theme::DangerActive));
-        ImGui::PushStyleColor(ImGuiCol_Text,          FromHex(Theme::White));
-        if (ImGui::Button("Self-Destruct",
-                ImVec2(ImGui::GetContentRegionAvail().x, 32)))
-            g_settings.selfDestruct = true;
-        ImGui::PopStyleColor(4);
-        ImGui::PopStyleVar();
-        ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0, 0));
 
         return dirty;
     }
