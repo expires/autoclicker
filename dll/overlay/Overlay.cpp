@@ -19,7 +19,7 @@
 #include "../SDK/Lunar.h"
 #include "../SDK/Minecraft.h"
 #include "../SDK/Vec3.h"
-#include "../Revision.h"
+#include "Revision.h"
 #include <MinHook.h>
 
 #ifndef M_PI
