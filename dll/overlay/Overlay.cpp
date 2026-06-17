@@ -41,6 +41,31 @@ static void* DbgGlCtx()
     return p_wglGetCurrentContext ? reinterpret_cast<void*>(p_wglGetCurrentContext()) : nullptr;
 }
 
+static void* GlProc(const char* name)
+{
+    HMODULE gl = GetModuleHandleA("opengl32.dll");
+    if (!gl) return nullptr;
+    typedef PROC(WINAPI* fn_wglGetProcAddress)(LPCSTR);
+    static fn_wglGetProcAddress p_get =
+        reinterpret_cast<fn_wglGetProcAddress>(GetProcAddress(gl, "wglGetProcAddress"));
+    void* p = p_get ? reinterpret_cast<void*>(p_get(name)) : nullptr;
+    if (!p) p = reinterpret_cast<void*>(GetProcAddress(gl, name));
+    return p;
+}
+
+static void ResetUnpackState()
+{
+    typedef void (WINAPI* fn_glBindBuffer)(GLenum, GLuint);
+    static fn_glBindBuffer p_glBindBuffer =
+        reinterpret_cast<fn_glBindBuffer>(GlProc("glBindBuffer"));
+    if (p_glBindBuffer) p_glBindBuffer(0x88EC, 0);
+    glPixelStorei(GL_UNPACK_ROW_LENGTH,  0);
+    glPixelStorei(GL_UNPACK_SKIP_ROWS,   0);
+    glPixelStorei(GL_UNPACK_SKIP_PIXELS, 0);
+    glPixelStorei(GL_UNPACK_ALIGNMENT,   1);
+    AC_LOG("overlay: unpack state reset (glBindBuffer=%p)", (void*)p_glBindBuffer);
+}
+
 typedef BOOL    (WINAPI* fn_SetCursorPos)(int, int);
 typedef BOOL    (WINAPI* fn_ClipCursor)(const RECT*);
 typedef int     (WINAPI* fn_ShowCursor)(BOOL);
@@ -603,6 +628,12 @@ static BOOL WINAPI hk_wglSwapBuffers(HDC hdc)
         AC_LOG("overlay: init opengl3 begin");
         ImGui_ImplOpenGL3_Init("#version 150");
         AC_LOG("overlay: init opengl3 done");
+
+        ResetUnpackState();
+        AC_LOG("overlay: create fonts texture begin");
+        ImGui_ImplOpenGL3_CreateFontsTexture();
+        AC_LOG("overlay: create fonts texture done");
+
         AC_LOG("overlay: create device objects begin");
         ImGui_ImplOpenGL3_CreateDeviceObjects();
         AC_LOG("overlay: create device objects done");
