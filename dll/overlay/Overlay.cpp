@@ -552,7 +552,17 @@ static LRESULT CALLBACK HookedWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM
 
     if (s_visible)
     {
-        ImGui_ImplWin32_WndProcHandler(hwnd, msg, wParam, lParam);
+        switch (msg)
+        {
+        case WM_LBUTTONDOWN: case WM_LBUTTONUP: case WM_LBUTTONDBLCLK:
+        case WM_RBUTTONDOWN: case WM_RBUTTONUP: case WM_RBUTTONDBLCLK:
+        case WM_MBUTTONDOWN: case WM_MBUTTONUP: case WM_MBUTTONDBLCLK:
+        case WM_XBUTTONDOWN: case WM_XBUTTONUP: case WM_XBUTTONDBLCLK:
+            break;
+        default:
+            ImGui_ImplWin32_WndProcHandler(hwnd, msg, wParam, lParam);
+            break;
+        }
 
         switch (msg)
         {
