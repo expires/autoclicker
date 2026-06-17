@@ -809,7 +809,7 @@ static BOOL WINAPI hk_wglSwapBuffers(HDC hdc)
                     s_currentTab == 3 ? "Friends"     :
                     s_currentTab == 4 ? "Macros"      :
                     s_currentTab == 5 ? "Misc"        :
-                                        "Settings"
+                                        "Settings");
                 ImGui::PopFont();
 
                 const float bodyTop          = 64.0f;
