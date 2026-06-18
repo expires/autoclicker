@@ -82,10 +82,12 @@ namespace ScaffoldModule
             || !isAir(lv, (int)std::floor(box.maxX()), by, (int)std::floor(box.maxZ()));
     }
 
-    static bool centerPastEdge(jobject lv, AABB& box, int by, double ndx, double ndz, double lean)
+    static bool centerPastEdge(jobject lv, AABB& box, int by,
+                               double ndx, double ndz, double lean,
+                               double vx, double vz, double pred)
     {
-        const double cx = (box.minX() + box.maxX()) * 0.5;
-        const double cz = (box.minZ() + box.maxZ()) * 0.5;
+        const double cx = (box.minX() + box.maxX()) * 0.5 + vx * pred;
+        const double cz = (box.minZ() + box.maxZ()) * 0.5 + vz * pred;
         return isAir(lv, (int)std::floor(cx - ndx * lean), by, (int)std::floor(cz - ndz * lean));
     }
 
@@ -155,6 +157,8 @@ namespace ScaffoldModule
                         if (box.GetInstance() != nullptr) {
                             const double y   = local.getY();
                             const float  yaw = local.getYRot();
+                            const double vx  = local.getX() - local.getXo();
+                            const double vz  = local.getZ() - local.getZo();
 
                             decided = true;
 
@@ -178,7 +182,7 @@ namespace ScaffoldModule
                                 const jobject lv = level.GetInstance();
 
                                 if (anyCornerSolid(lv, box, by)
-                                    && centerPastEdge(lv, box, by, ndx, ndz, lean))
+                                    && centerPastEdge(lv, box, by, ndx, ndz, lean, vx, vz, 2.0))
                                     wantSneak = true;
                             }
                         }
