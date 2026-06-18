@@ -89,14 +89,14 @@ namespace ScaffoldModule
         const double widthX = box.maxX() - box.minX();
         const double widthZ = box.maxZ() - box.minZ();
         
-        const double biasX = (box.minX() + box.maxX()) / 2.0;
-        const double biasZ = (box.minZ() + box.maxZ()) / 2.0;
+        const double biasX = (ndx > 0) ? (box.minX() + widthX * 0.35) : (box.maxX() - widthX * 0.35);
+        const double biasZ = (ndz > 0) ? (box.minZ() + widthZ * 0.35) : (box.maxZ() - widthZ * 0.35);
 
         if (isAir(lv, (int)std::floor(biasX + ndx * edge), by, (int)std::floor(biasZ + ndz * edge)))
             return true;
 
-        const double toleranceX = widthX * 0.10;
-        const double toleranceZ = widthZ * 0.10;
+        const double toleranceX = widthX * 0.07;
+        const double toleranceZ = widthZ * 0.07;
 
         struct Pt { double x, z; };
         Pt pts[3];
@@ -106,15 +106,15 @@ namespace ScaffoldModule
 
         if (std::abs(ndx) > 0.4) {
             pts[count++] = { (ndx > 0) ? (box.minX() + toleranceX) : (box.maxX() - toleranceX), 
-                             biasZ };
+                             (box.minZ() + box.maxZ()) / 2.0 };
         }
         if (std::abs(ndz) > 0.4) {
-            pts[count++] = { biasX,
+            pts[count++] = { (box.minX() + box.maxX()) / 2.0,
                              (ndz > 0) ? (box.minZ() + toleranceZ) : (box.maxZ() - toleranceZ) };
         }
         if (isDiag) {
-            const double diagTolX = widthX * 0.15;
-            const double diagTolZ = widthZ * 0.15;
+            const double diagTolX = widthX * 0.10;
+            const double diagTolZ = widthZ * 0.10;
             pts[count++] = { (ndx > 0) ? (box.minX() + diagTolX) : (box.maxX() - diagTolX),
                              (ndz > 0) ? (box.minZ() + diagTolZ) : (box.maxZ() - diagTolZ) };
         }
