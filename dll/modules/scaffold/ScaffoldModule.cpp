@@ -7,6 +7,7 @@
 #include <chrono>
 #include <cmath>
 #include <random>
+#include <vector>
 
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
@@ -85,14 +86,30 @@ namespace ScaffoldModule
         const double ndx = dx / dl;
         const double ndz = dz / dl;
 
-        const double startX = (ndx > 0) ? box.maxX() : (ndx < 0 ? box.minX() : (box.minX() + box.maxX()) / 2.0);
-        const double startZ = (ndz > 0) ? box.maxZ() : (ndz < 0 ? box.minZ() : (box.minZ() + box.maxZ()) / 2.0);
+        std::vector<std::pair<double, double>> points;
+        if (std::abs(ndx) > 0.4) {
+            double x = (ndx > 0) ? box.maxX() : box.minX();
+            points.push_back({x, box.minZ()});
+            points.push_back({x, box.maxZ()});
+            points.push_back({x, (box.minZ() + box.maxZ()) / 2.0});
+        }
+        if (std::abs(ndz) > 0.4) {
+            double z = (ndz > 0) ? box.maxZ() : box.minZ();
+            points.push_back({box.minX(), z});
+            points.push_back({box.maxX(), z});
+            points.push_back({(box.minX() + box.maxX()) / 2.0, z});
+        }
 
-        constexpr int STEPS = 6;
-        for (int i = 1; i <= STEPS; ++i) {
-            const double t = edge * (double)i / STEPS;
-            if (isAir(lv, (int)std::floor(startX + ndx * t), by, (int)std::floor(startZ + ndz * t)))
-                return true;
+        if (points.empty()) {
+            points.push_back({(box.minX() + box.maxX()) / 2.0, (box.minZ() + box.maxZ()) / 2.0});
+        }
+
+        for (const auto& p : points) {
+            for (int i = 1; i <= 6; ++i) {
+                const double t = edge * (double)i / 6.0;
+                if (isAir(lv, (int)std::floor(p.first + ndx * t), by, (int)std::floor(p.second + ndz * t)))
+                    return true;
+            }
         }
         return false;
     }
@@ -122,7 +139,7 @@ namespace ScaffoldModule
         if (mcWindow == nullptr) mcWindow = FindWindowW(L"GLFW30", nullptr);
 
         static std::mt19937 rng(std::random_device{}());
-        static std::uniform_real_distribution<double> edgeRange(0.05, 0.15);
+        static std::uniform_real_distribution<double> edgeRange(0.02, 0.08);
         static double edge      = edgeRange(rng);
         static bool   prevSneak = false;
 
@@ -133,7 +150,7 @@ namespace ScaffoldModule
         const bool moveKey = kW || kA || kS || kD;
 
         if (!g_settings.scaffoldEnabled || Overlay::IsMenuVisible()
-            || GetForegroundWindow() != mcWindow) {
+            || GetForegroundWindow() != mcWindow || kW) {
             setSneak(false);
             prevSneak = false;
             return;
@@ -163,6 +180,8 @@ namespace ScaffoldModule
                             const double x   = local.getX();
                             const double y   = local.getY();
                             const double z   = local.getZ();
+                            const double xo  = local.getXo();
+                            const double zo  = local.getZo();
                             const float  yaw = local.getYRot();
 
                             decided = true;
@@ -172,32 +191,28 @@ namespace ScaffoldModule
                                 const jobject lv = level.GetInstance();
 
                                 if (anyCornerSolid(lv, box, by)) {
-                                    const double yawR = yaw * M_PI / 180.0;
-                                    const double fwdX = -std::sin(yawR), fwdZ =  std::cos(yawR);
-                                    const double rgtX = -std::cos(yawR), rgtZ = -std::sin(yawR);
+                                    double vx = x - xo;
+                                    double vz = z - zo;
+                                    double vlen = std::sqrt(vx * vx + vz * vz);
 
-                                    double dx = 0.0, dz = 0.0;
-                                    if (kW) { dx += fwdX; dz += fwdZ; }
-                                    if (kS) { dx -= fwdX; dz -= fwdZ; }
-                                    if (kD) { dx += rgtX; dz += rgtZ; }
-                                    if (kA) { dx -= rgtX; dz -= rgtZ; }
+                                    if (vlen > 1e-4) {
+                                        double lookAhead = edge + vlen * 3.0;
+                                        if (isCloseToEdge(lv, box, by, vx, vz, lookAhead))
+                                            wantSneak = true;
+                                    }
+                                    else if (moveKey) {
+                                        const double yawR = yaw * M_PI / 180.0;
+                                        const double fwdX = -std::sin(yawR), fwdZ =  std::cos(yawR);
+                                        const double rgtX = -std::cos(yawR), rgtZ = -std::sin(yawR);
 
-                                    if (moveKey) {
-                                        const double dl = std::sqrt(dx * dx + dz * dz);
-                                        if (dl > 1e-3) {
-                                            const double ndx = dx / dl;
-                                            const double ndz = dz / dl;
+                                        double dx = 0.0, dz = 0.0;
+                                        if (kW) { dx += fwdX; dz += fwdZ; }
+                                        if (kS) { dx -= fwdX; dz -= fwdZ; }
+                                        if (kD) { dx += rgtX; dz += rgtZ; }
+                                        if (kA) { dx -= rgtX; dz -= rgtZ; }
 
-                                            if (isCloseToEdge(lv, box, by, ndx, ndz, edge)) {
-                                                wantSneak = true;
-                                            }
-                                            else {
-                                                if (std::abs(ndx) > 0.1 && isCloseToEdge(lv, box, by, (ndx > 0 ? 1.0 : -1.0), 0.0, edge))
-                                                    wantSneak = true;
-                                                else if (std::abs(ndz) > 0.1 && isCloseToEdge(lv, box, by, 0.0, (ndz > 0 ? 1.0 : -1.0), edge))
-                                                    wantSneak = true;
-                                            }
-                                        }
+                                        if (isCloseToEdge(lv, box, by, dx, dz, edge))
+                                            wantSneak = true;
                                     }
                                     else {
                                         if (isAir(lv, (int)std::floor(box.minX()), by, (int)std::floor(box.minZ()))
