@@ -26,6 +26,7 @@ set(MAPPING_FILE "${CMAKE_SOURCE_DIR}/mappings/${MAPPING_VERSION}.json")
 if(NOT EXISTS "${MAPPING_FILE}")
     message(FATAL_ERROR "Mapping file not found: ${MAPPING_FILE}")
 endif()
+set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${MAPPING_FILE}")
 file(READ "${MAPPING_FILE}" MAPPING_JSON)
 
 foreach(KEY
