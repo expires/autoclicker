@@ -72,26 +72,29 @@ namespace ScaffoldModule
                lc->env->IsInstanceOf(item.GetInstance(), cls) == JNI_TRUE;
     }
 
-    static bool anyCornerSolid(jobject lv, double x, double z, int by)
+    static bool anyCornerSolid(jobject lv, AABB& box, int by)
     {
-        constexpr double H = 0.3;
-        return !isAir(lv, (int)std::floor(x - H), by, (int)std::floor(z - H))
-            || !isAir(lv, (int)std::floor(x + H), by, (int)std::floor(z - H))
-            || !isAir(lv, (int)std::floor(x - H), by, (int)std::floor(z + H))
-            || !isAir(lv, (int)std::floor(x + H), by, (int)std::floor(z + H));
+        return !isAir(lv, (int)std::floor(box.minX()), by, (int)std::floor(box.minZ()))
+            || !isAir(lv, (int)std::floor(box.maxX()), by, (int)std::floor(box.minZ()))
+            || !isAir(lv, (int)std::floor(box.minX()), by, (int)std::floor(box.maxZ()))
+            || !isAir(lv, (int)std::floor(box.maxX()), by, (int)std::floor(box.maxZ()));
     }
 
-    static bool isCloseToEdge(jobject lv, double x, double z, int by,
+    static bool isCloseToEdge(jobject lv, AABB& box, int by,
                               double dx, double dz, double edge)
     {
         const double dl = std::sqrt(dx * dx + dz * dz);
         if (dl <= 1e-3) return false;
-        dx /= dl; dz /= dl;
+        const double ndx = dx / dl;
+        const double ndz = dz / dl;
+
+        const double startX = (ndx > 0) ? box.maxX() : (ndx < 0 ? box.minX() : (box.minX() + box.maxX()) / 2.0);
+        const double startZ = (ndz > 0) ? box.maxZ() : (ndz < 0 ? box.minZ() : (box.minZ() + box.maxZ()) / 2.0);
 
         constexpr int STEPS = 6;
         for (int i = 1; i <= STEPS; ++i) {
             const double t = edge * (double)i / STEPS;
-            if (isAir(lv, (int)std::floor(x + dx * t), by, (int)std::floor(z + dz * t)))
+            if (isAir(lv, (int)std::floor(startX + ndx * t), by, (int)std::floor(startZ + ndz * t)))
                 return true;
         }
         return false;
@@ -122,7 +125,7 @@ namespace ScaffoldModule
         if (mcWindow == nullptr) mcWindow = FindWindowW(L"GLFW30", nullptr);
 
         static std::mt19937 rng(std::random_device{}());
-        static std::uniform_real_distribution<double> edgeRange(0.4, 0.6);
+        static std::uniform_real_distribution<double> edgeRange(0.05, 0.15);
         static double edge      = edgeRange(rng);
         static bool   prevSneak = false;
 
@@ -133,7 +136,7 @@ namespace ScaffoldModule
         const bool moveKey = kW || kA || kS || kD;
 
         if (!g_settings.scaffoldEnabled || Overlay::IsMenuVisible()
-            || GetForegroundWindow() != mcWindow || !moveKey) {
+            || GetForegroundWindow() != mcWindow) {
             setSneak(false);
             prevSneak = false;
             return;
@@ -158,11 +161,11 @@ namespace ScaffoldModule
                     Player local = mc.GetLocalPlayer();
                     Level  level = mc.GetLevel();
                     if (local.GetInstance() != nullptr && level.GetInstance() != nullptr) {
-                        Vec3 pos = local.getPosition();
-                        if (pos.GetInstance() != nullptr) {
-                            const double x   = pos.getX();
-                            const double y   = pos.getY();
-                            const double z   = pos.getZ();
+                        AABB box = local.getBoundingBox();
+                        if (box.GetInstance() != nullptr) {
+                            const double x   = local.getX();
+                            const double y   = local.getY();
+                            const double z   = local.getZ();
                             const float  yaw = local.getYRot();
 
                             decided = true;
@@ -171,7 +174,7 @@ namespace ScaffoldModule
                                 const int     by = (int)std::floor(y) - 1;
                                 const jobject lv = level.GetInstance();
 
-                                if (anyCornerSolid(lv, x, z, by)) {
+                                if (anyCornerSolid(lv, box, by)) {
                                     const double yawR = yaw * M_PI / 180.0;
                                     const double fwdX = -std::sin(yawR), fwdZ =  std::cos(yawR);
                                     const double rgtX = -std::cos(yawR), rgtZ = -std::sin(yawR);
@@ -182,8 +185,20 @@ namespace ScaffoldModule
                                     if (kD) { dx += rgtX; dz += rgtZ; }
                                     if (kA) { dx -= rgtX; dz -= rgtZ; }
 
-                                    if (isCloseToEdge(lv, x, z, by, dx, dz, edge))
-                                        wantSneak = true;
+                                    if (moveKey) {
+                                        if (isCloseToEdge(lv, box, by, dx, dz, edge))
+                                            wantSneak = true;
+                                    }
+                                    else {
+                                        // Stationary check: stay sneaking if any part of the hitbox is over air.
+                                        if (isAir(lv, (int)std::floor(box.minX()), by, (int)std::floor(box.minZ()))
+                                            || isAir(lv, (int)std::floor(box.maxX()), by, (int)std::floor(box.minZ()))
+                                            || isAir(lv, (int)std::floor(box.minX()), by, (int)std::floor(box.maxZ()))
+                                            || isAir(lv, (int)std::floor(box.maxX()), by, (int)std::floor(box.maxZ())))
+                                        {
+                                            wantSneak = true;
+                                        }
+                                    }
                                 }
                             }
                         }
