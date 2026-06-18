@@ -23,6 +23,7 @@ namespace OverlayTabs
         dirty |= RowKeybind("Autoclicker",              &g_settings.acKey);
         dirty |= RowKeybind("Aim Assist",              &g_settings.aimKey);
         dirty |= RowKeybind("ESP",                     &g_settings.espKey);
+        dirty |= RowKeybind("Legit Scaffold",          &g_settings.scaffoldKey);
         ImGui::PopStyleVar();
 
         ImGui::PopID();

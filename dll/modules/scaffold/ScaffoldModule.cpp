@@ -44,7 +44,6 @@ namespace ScaffoldModule
         return !bs.blocksMotion();
     }
 
-    // stage: 0=no inv, 1=bad sel, 2=empty, 3=item null, 4=class null, 5=not block, 6=block
     static int blockHeldStage(Player& local)
     {
         Inventory inv = local.getInventory();
@@ -84,10 +83,8 @@ namespace ScaffoldModule
             return 0;
         }
 
-        auto lastLog = std::chrono::steady_clock::now();
-
         std::mt19937 rng(std::random_device{}());
-        std::uniform_real_distribution<double> marginDist(0.1, 0.2);
+        std::uniform_real_distribution<double> marginDist(0.05, 0.1);
         double margin    = marginDist(rng);
         bool   prevSneak = false;
 
@@ -98,15 +95,16 @@ namespace ScaffoldModule
             const bool enabled = g_settings.scaffoldEnabled;
             const bool fg      = (GetForegroundWindow() == mcWindow);
             const bool menu    = Overlay::IsMenuVisible();
-            const bool sKey    = (GetAsyncKeyState('S') & 0x8000) != 0;
+            const bool kW = (GetAsyncKeyState('W') & 0x8000) != 0;
+            const bool kA = (GetAsyncKeyState('A') & 0x8000) != 0;
+            const bool kS = (GetAsyncKeyState('S') & 0x8000) != 0;
+            const bool kD = (GetAsyncKeyState('D') & 0x8000) != 0;
+            const bool moveKey = kA || kS || kD;
 
-            bool   decided   = false;
-            bool   wantSneak = false;
-            int    dbgBlock = -1, dbgGround = -1, dbgNbrAir = -1;
-            float  dbgPitch = 0.0f;
-            double dbgDist = 9.0, dbgX = 0, dbgY = 0, dbgZ = 0;
+            bool decided   = false;
+            bool wantSneak = false;
 
-            if (enabled && fg && !menu && sKey && lc->env->PushLocalFrame(64) == 0)
+            if (enabled && fg && !menu && moveKey && lc->env->PushLocalFrame(64) == 0)
             {
                 if (mc.isPaused()) {
                     decided = true;
@@ -129,38 +127,42 @@ namespace ScaffoldModule
                                 const double z     = pos.getZ();
                                 const float  yaw   = local.getYRot();
                                 const float  pitch = local.getXRot();
-                                dbgPitch = pitch; dbgX = x; dbgY = y; dbgZ = z;
 
                                 decided = true;
 
-                                dbgBlock = blockHeldStage(local);
-
-                                if (pitch > 0.0f && dbgBlock == 6) {
-                                    const int by = (int)std::floor(y) - 1;
-
+                                if (pitch > 30.0f && blockHeldStage(local) == 6) {
                                     const double yawR = yaw * M_PI / 180.0;
-                                    const double dxb =  std::sin(yawR);
-                                    const double dzb = -std::cos(yawR);
+                                    const double fwdX = -std::sin(yawR), fwdZ =  std::cos(yawR);
+                                    const double rgtX = -std::cos(yawR), rgtZ = -std::sin(yawR);
 
-                                    constexpr double HALF   = 0.3;
+                                    double mdx = 0.0, mdz = 0.0;
+                                    if (kW) { mdx += fwdX; mdz += fwdZ; }
+                                    if (kS) { mdx -= fwdX; mdz -= fwdZ; }
+                                    if (kD) { mdx += rgtX; mdz += rgtZ; }
+                                    if (kA) { mdx -= rgtX; mdz -= rgtZ; }
 
-                                    int    rbx, rbz, nbx, nbz;
-                                    double distToEdge;
-                                    if (std::fabs(dxb) >= std::fabs(dzb)) {
-                                        rbz = (int)std::floor(z); nbz = rbz;
-                                        if (dxb < 0.0) { rbx = (int)std::floor(x + HALF); distToEdge = (x - HALF) - rbx;       nbx = rbx - 1; }
-                                        else           { rbx = (int)std::floor(x - HALF); distToEdge = (rbx + 1) - (x + HALF); nbx = rbx + 1; }
-                                    } else {
-                                        rbx = (int)std::floor(x); nbx = rbx;
-                                        if (dzb < 0.0) { rbz = (int)std::floor(z + HALF); distToEdge = (z - HALF) - rbz;       nbz = rbz - 1; }
-                                        else           { rbz = (int)std::floor(z - HALF); distToEdge = (rbz + 1) - (z + HALF); nbz = rbz + 1; }
-                                    }
-                                    dbgDist = distToEdge;
+                                    const double mlen = std::sqrt(mdx * mdx + mdz * mdz);
+                                    if (mlen > 1e-3) {
+                                        mdx /= mlen; mdz /= mlen;
 
-                                    dbgGround = isAir(level, rbx, by, rbz) ? 0 : 1;
-                                    if (dbgGround == 1) {
-                                        dbgNbrAir = isAir(level, nbx, by, nbz) ? 1 : 0;
-                                        if (distToEdge <= margin && dbgNbrAir == 1)
+                                        const int by = (int)std::floor(y) - 1;
+                                        constexpr double HALF = 0.3;
+
+                                        int    rbx, rbz, nbx, nbz;
+                                        double distToEdge;
+                                        if (std::fabs(mdx) >= std::fabs(mdz)) {
+                                            rbz = (int)std::floor(z); nbz = rbz;
+                                            if (mdx < 0.0) { rbx = (int)std::floor(x + HALF); distToEdge = (x - HALF) - rbx;       nbx = rbx - 1; }
+                                            else           { rbx = (int)std::floor(x - HALF); distToEdge = (rbx + 1) - (x + HALF); nbx = rbx + 1; }
+                                        } else {
+                                            rbx = (int)std::floor(x); nbx = rbx;
+                                            if (mdz < 0.0) { rbz = (int)std::floor(z + HALF); distToEdge = (z - HALF) - rbz;       nbz = rbz - 1; }
+                                            else           { rbz = (int)std::floor(z - HALF); distToEdge = (rbz + 1) - (z + HALF); nbz = rbz + 1; }
+                                        }
+
+                                        if (!isAir(level, rbx, by, rbz) &&
+                                            distToEdge <= margin &&
+                                            isAir(level, nbx, by, nbz))
                                             wantSneak = true;
                                     }
                                 }
@@ -172,21 +174,13 @@ namespace ScaffoldModule
                 lc->env->PopLocalFrame(nullptr);
             }
 
-            if (!enabled || menu || !fg || !sKey) {
+            if (!enabled || menu || !fg || !moveKey) {
                 setSneak(false);
             }
             else if (decided) {
                 setSneak(wantSneak);
                 if (prevSneak && !wantSneak) margin = marginDist(rng);
                 prevSneak = wantSneak;
-            }
-
-            const auto now = std::chrono::steady_clock::now();
-            if (enabled &&
-                std::chrono::duration_cast<std::chrono::milliseconds>(now - lastLog).count() >= 300) {
-                lastLog = now;
-                AC_LOG("scaffold: en=%d fg=%d menu=%d S=%d | pitch=%.1f block=%d ground=%d dist=%.3f margin=%.3f nbrAir=%d sneak=%d pos=(%.2f,%.2f,%.2f)",
-                       enabled, fg, menu, sKey, dbgPitch, dbgBlock, dbgGround, dbgDist, margin, dbgNbrAir, wantSneak, dbgX, dbgY, dbgZ);
             }
         }
 

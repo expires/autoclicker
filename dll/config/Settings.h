@@ -58,6 +58,7 @@ struct Settings
     int  autoblockKey           = 0;
 
     bool scaffoldEnabled = false;
+    int  scaffoldKey     = 0;
 
     mutable std::mutex       friendsMutex;
     std::vector<std::string> friends;
