@@ -127,7 +127,7 @@ namespace OverlayWidgets
             dl->AddCircleFilled(ImVec2(c.x,                   c.y), dotR, GetColorU32(ImGuiCol_TextDisabled));
             dl->AddCircleFilled(ImVec2(c.x + Theme::px(5.0f), c.y), dotR, GetColorU32(ImGuiCol_TextDisabled));
         } else {
-            const char* name = listening ? "?" : GetKeyName(*vk);
+            const char* name = listening ? "?" : GetVirtualKeyName(*vk);
             ImVec2 sz = CalcTextSize(name);
             RenderText(inner.GetCenter() - sz * 0.5f, name);
         }
@@ -197,7 +197,7 @@ namespace OverlayWidgets
         return changed;
     }
 
-    static const char* GetKeyName(int vk)
+    static const char* GetVirtualKeyName(int vk)
     {
         if (vk == 0) return "NONE";
         static char buf[32];
