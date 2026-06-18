@@ -27,9 +27,6 @@ namespace ScaffoldModule
         SendInput(1, &in, sizeof(INPUT));
     }
 
-    // Resolves the class/method ids once and reuses them, and calls getBlockState
-    // directly on the level instance (no per-read GetClass mutex / GetMethodID).
-    // Render-thread only, so the statics are single-threaded.
     static bool isAir(jobject levelInstance, int bx, int by, int bz)
     {
         static jclass    bpCls = nullptr, lvCls = nullptr, bsCls = nullptr;
@@ -186,11 +183,23 @@ namespace ScaffoldModule
                                     if (kA) { dx -= rgtX; dz -= rgtZ; }
 
                                     if (moveKey) {
-                                        if (isCloseToEdge(lv, box, by, dx, dz, edge))
-                                            wantSneak = true;
+                                        const double dl = std::sqrt(dx * dx + dz * dz);
+                                        if (dl > 1e-3) {
+                                            const double ndx = dx / dl;
+                                            const double ndz = dz / dl;
+
+                                            if (isCloseToEdge(lv, box, by, ndx, ndz, edge)) {
+                                                wantSneak = true;
+                                            }
+                                            else {
+                                                if (std::abs(ndx) > 0.1 && isCloseToEdge(lv, box, by, (ndx > 0 ? 1.0 : -1.0), 0.0, edge))
+                                                    wantSneak = true;
+                                                else if (std::abs(ndz) > 0.1 && isCloseToEdge(lv, box, by, 0.0, (ndz > 0 ? 1.0 : -1.0), edge))
+                                                    wantSneak = true;
+                                            }
+                                        }
                                     }
                                     else {
-                                        // Stationary check: stay sneaking if any part of the hitbox is over air.
                                         if (isAir(lv, (int)std::floor(box.minX()), by, (int)std::floor(box.minZ()))
                                             || isAir(lv, (int)std::floor(box.maxX()), by, (int)std::floor(box.minZ()))
                                             || isAir(lv, (int)std::floor(box.minX()), by, (int)std::floor(box.maxZ()))
