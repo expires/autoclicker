@@ -68,21 +68,9 @@ namespace ScaffoldModule
             || !isAir(level, (int)std::floor(x + H), by, (int)std::floor(z + H));
     }
 
-    static bool anyCornerAir(Level& level, double x, double z, int by)
-    {
-        constexpr double H = 0.3;
-        return isAir(level, (int)std::floor(x - H), by, (int)std::floor(z - H))
-            || isAir(level, (int)std::floor(x + H), by, (int)std::floor(z - H))
-            || isAir(level, (int)std::floor(x - H), by, (int)std::floor(z + H))
-            || isAir(level, (int)std::floor(x + H), by, (int)std::floor(z + H));
-    }
-
     static bool isCloseToEdge(Level& level, double x, double z, int by,
                               double dx, double dz, double edge)
     {
-        if (anyCornerAir(level, x, z, by))
-            return true;
-
         const double dl = std::sqrt(dx * dx + dz * dz);
         if (dl <= 1e-3)
             return false;
