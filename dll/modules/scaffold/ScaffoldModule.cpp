@@ -84,25 +84,32 @@ namespace ScaffoldModule
 
     static bool shouldShift(jobject lv, AABB& box, int by, double dx, double dz)
     {
-        static bool isLatching = false;
-        const double dl = std::sqrt(dx * dx + dz * dz);
-        
-        // Current "center" block
-        const int cx = (int)std::floor((box.minX() + box.maxX()) * 0.5);
-        const int cz = (int)std::floor((box.minZ() + box.maxZ()) * 0.5);
+        static bool   isLatching = false;
+        static double lastNdx    = 0.0;
+        static double lastNdz    = 0.0;
 
-        // Movement direction
-        double ndx = 0, ndz = 0;
+        const double dl = std::sqrt(dx * dx + dz * dz);
+        double ndx = lastNdx;
+        double ndz = lastNdz;
+
         if (dl > 1e-4) {
             ndx = dx / dl;
             ndz = dz / dl;
+            lastNdx = ndx;
+            lastNdz = ndz;
         }
 
-        // Next block in movement direction
+        // If we've never moved, we can't shift
+        if (std::abs(ndx) < 0.001 && std::abs(ndz) < 0.001) return false;
+
+        const int cx = (int)std::floor((box.minX() + box.maxX()) * 0.5);
+        const int cz = (int)std::floor((box.minZ() + box.maxZ()) * 0.5);
+
+        // Projected "target" block in movement direction
         const int nx = (int)std::floor(((box.minX() + box.maxX()) * 0.5) + (ndx * 0.45));
         const int nz = (int)std::floor(((box.minZ() + box.maxZ()) * 0.5) + (ndz * 0.45));
 
-        // Check distance past the edge of the current center block
+        // Distance to the edge of the current block
         const double boundX = (ndx >= 0) ? (double)cx + 1.0 : (double)cx;
         const double boundZ = (ndz >= 0) ? (double)cz + 1.0 : (double)cz;
 
@@ -116,15 +123,16 @@ namespace ScaffoldModule
             past = (std::max)(past, std::abs(leadZ - boundZ));
         }
 
-        // 90% threshold to START shifting (0.54)
-        // 50% threshold to STOP shifting (0.30) to provide hysteresis/latching
         if (!isLatching) {
+            // Trigger shift at 90% (0.54)
             if (isAir(lv, nx, by, nz) && past > 0.535) {
                 isLatching = true;
             }
         } else {
-            // Stay shifting until we are mostly back on a block
-            if (past < 0.30 || !anyCornerSolid(lv, box, by)) {
+            // Stay latched until:
+            // 1. We are safely back on the block (past < 0.15)
+            // 2. OR the block in front is now solid (we placed a block)
+            if (past < 0.15 || !isAir(lv, nx, by, nz)) {
                 isLatching = false;
             }
         }
