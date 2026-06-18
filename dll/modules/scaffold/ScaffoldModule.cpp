@@ -82,40 +82,11 @@ namespace ScaffoldModule
             || !isAir(lv, (int)std::floor(box.maxX()), by, (int)std::floor(box.maxZ()));
     }
 
-    static bool leadOverAir(jobject lv, AABB& box, int by, double ndx, double ndz, double look)
+    static bool centerPastEdge(jobject lv, AABB& box, int by, double ndx, double ndz, double lean)
     {
-        const double ax = ndx * look, az = ndz * look;
-        const double x0 = box.minX() + ax, x1 = box.maxX() + ax;
-        const double z0 = box.minZ() + az, z1 = box.maxZ() + az;
-        return isAir(lv, (int)std::floor(x0), by, (int)std::floor(z0))
-            || isAir(lv, (int)std::floor(x1), by, (int)std::floor(z0))
-            || isAir(lv, (int)std::floor(x0), by, (int)std::floor(z1))
-            || isAir(lv, (int)std::floor(x1), by, (int)std::floor(z1));
-    }
-
-    static bool shouldShift(jobject lv, AABB& box, int by, double dx, double dz)
-    {
-        static bool   latched = false;
-        static double lastNdx = 0.0;
-        static double lastNdz = 0.0;
-
-        const double dl = std::sqrt(dx * dx + dz * dz);
-        double ndx = lastNdx;
-        double ndz = lastNdz;
-        if (dl > 1e-4) {
-            ndx = dx / dl;
-            ndz = dz / dl;
-            lastNdx = ndx;
-            lastNdz = ndz;
-        }
-        if (std::abs(ndx) < 1e-3 && std::abs(ndz) < 1e-3) return false;
-
-        if (!latched) {
-            if (leadOverAir(lv, box, by, ndx, ndz, 0.05)) latched = true;
-        } else {
-            if (!leadOverAir(lv, box, by, ndx, ndz, 0.30)) latched = false;
-        }
-        return latched;
+        const double cx = (box.minX() + box.maxX()) * 0.5;
+        const double cz = (box.minZ() + box.maxZ()) * 0.5;
+        return isAir(lv, (int)std::floor(cx - ndx * lean), by, (int)std::floor(cz - ndz * lean));
     }
 
     void Release()
@@ -142,15 +113,19 @@ namespace ScaffoldModule
         static HWND mcWindow = nullptr;
         if (mcWindow == nullptr) mcWindow = FindWindowW(L"GLFW30", nullptr);
 
+        static std::mt19937 rng(std::random_device{}());
+        static std::uniform_real_distribution<double> leanDist(0.05, 0.25);
+        static double lean      = leanDist(rng);
+        static double lastNdx   = 0.0;
+        static double lastNdz   = 0.0;
+        static bool   prevSneak = false;
+
         const bool kW = (GetAsyncKeyState('W') & 0x8000) != 0;
-        const bool kA = (GetAsyncKeyState('A') & 0x8000) != 0;
-        const bool kS = (GetAsyncKeyState('S') & 0x8000) != 0;
-        const bool kD = (GetAsyncKeyState('D') & 0x8000) != 0;
-        const bool moveKey = kW || kA || kS || kD;
 
         if (!g_settings.scaffoldEnabled || Overlay::IsMenuVisible()
             || GetForegroundWindow() != mcWindow || kW) {
             setSneak(false);
+            prevSneak = false;
             return;
         }
 
@@ -175,36 +150,26 @@ namespace ScaffoldModule
                     if (local.GetInstance() != nullptr && level.GetInstance() != nullptr) {
                         AABB box = local.getBoundingBox();
                         if (box.GetInstance() != nullptr) {
-                            const double x   = local.getX();
-                            const double y   = local.getY();
-                            const double z   = local.getZ();
-                            const double xo  = local.getXo();
-                            const double zo  = local.getZo();
-                            const float  yaw = local.getYRot();
+                            const double y  = local.getY();
+                            const double vx = local.getX() - local.getXo();
+                            const double vz = local.getZ() - local.getZo();
 
                             decided = true;
 
-                            if (holdingBlock(local)) {
+                            double ndx = lastNdx, ndz = lastNdz;
+                            const double vl = std::sqrt(vx * vx + vz * vz);
+                            if (vl > 1e-4) {
+                                ndx = vx / vl; ndz = vz / vl;
+                                lastNdx = ndx; lastNdz = ndz;
+                            }
+
+                            if (holdingBlock(local) && (std::abs(ndx) > 1e-3 || std::abs(ndz) > 1e-3)) {
                                 const int     by = (int)std::floor(y) - 1;
                                 const jobject lv = level.GetInstance();
 
-                                if (anyCornerSolid(lv, box, by)) {
-                                    double dx = x - xo;
-                                    double dz = z - zo;
-
-                                    if (std::sqrt(dx * dx + dz * dz) < 1e-4 && moveKey) {
-                                        const double yawR = yaw * M_PI / 180.0;
-                                        const double fwdX = -std::sin(yawR), fwdZ =  std::cos(yawR);
-                                        const double rgtX = -std::cos(yawR), rgtZ = -std::sin(yawR);
-                                        if (kW) { dx += fwdX; dz += fwdZ; }
-                                        if (kS) { dx -= fwdX; dz -= fwdZ; }
-                                        if (kD) { dx += rgtX; dz += rgtZ; }
-                                        if (kA) { dx -= rgtX; dz -= rgtZ; }
-                                    }
-
-                                    if (shouldShift(lv, box, by, dx, dz))
-                                        wantSneak = true;
-                                }
+                                if (anyCornerSolid(lv, box, by)
+                                    && centerPastEdge(lv, box, by, ndx, ndz, lean))
+                                    wantSneak = true;
                             }
                         }
                     }
@@ -216,6 +181,8 @@ namespace ScaffoldModule
 
         if (decided) {
             setSneak(wantSneak);
+            if (prevSneak && !wantSneak) lean = leanDist(rng);
+            prevSneak = wantSneak;
         }
     }
 }
