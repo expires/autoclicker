@@ -100,6 +100,8 @@ namespace ScaffoldModule
         Pt pts[3];
         int count = 0;
 
+        bool isDiag = std::abs(ndx) > 0.5 && std::abs(ndz) > 0.5;
+
         if (std::abs(ndx) > 0.4) {
             pts[count++] = { (ndx > 0) ? (box.minX() + toleranceX) : (box.maxX() - toleranceX), 
                              centerZ };
@@ -108,9 +110,11 @@ namespace ScaffoldModule
             pts[count++] = { centerX,
                              (ndz > 0) ? (box.minZ() + toleranceZ) : (box.maxZ() - toleranceZ) };
         }
-        if (std::abs(ndx) > 0.4 && std::abs(ndz) > 0.4) {
-            pts[count++] = { (ndx > 0) ? (box.minX() + toleranceX) : (box.maxX() - toleranceX),
-                             (ndz > 0) ? (box.minZ() + toleranceZ) : (box.maxZ() - toleranceZ) };
+        if (isDiag) {
+            const double diagTolX = widthX * 0.05;
+            const double diagTolZ = widthZ * 0.05;
+            pts[count++] = { (ndx > 0) ? (box.minX() + diagTolX) : (box.maxX() - diagTolX),
+                             (ndz > 0) ? (box.minZ() + diagTolZ) : (box.maxZ() - diagTolZ) };
         }
 
         for (int i = 0; i < count; ++i) {
@@ -207,11 +211,13 @@ namespace ScaffoldModule
                                     double vlen = std::sqrt(vx * vx + vz * vz);
 
                                     if (vlen > 1e-4) {
-                                        double lookAhead = edge + vlen * 1.5;
+                                        double multiplier = (vlen > 0.2) ? 1.0 : 1.5;
+                                        double lookAhead = edge + vlen * multiplier;
                                         if (isCloseToEdge(lv, box, by, vx, vz, lookAhead))
                                             wantSneak = true;
                                     }
-                                    else if (moveKey) {
+
+                                    if (!wantSneak && moveKey) {
                                         const double yawR = yaw * M_PI / 180.0;
                                         const double fwdX = -std::sin(yawR), fwdZ =  std::cos(yawR);
                                         const double rgtX = -std::cos(yawR), rgtZ = -std::sin(yawR);
@@ -225,7 +231,8 @@ namespace ScaffoldModule
                                         if (isCloseToEdge(lv, box, by, dx, dz, edge))
                                             wantSneak = true;
                                     }
-                                    else {
+
+                                    if (!wantSneak) {
                                         if (isAir(lv, (int)std::floor(box.minX()), by, (int)std::floor(box.minZ()))
                                             || isAir(lv, (int)std::floor(box.maxX()), by, (int)std::floor(box.minZ()))
                                             || isAir(lv, (int)std::floor(box.minX()), by, (int)std::floor(box.maxZ()))
