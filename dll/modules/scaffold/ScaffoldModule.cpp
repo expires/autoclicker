@@ -82,62 +82,40 @@ namespace ScaffoldModule
             || !isAir(lv, (int)std::floor(box.maxX()), by, (int)std::floor(box.maxZ()));
     }
 
+    static bool leadOverAir(jobject lv, AABB& box, int by, double ndx, double ndz, double look)
+    {
+        const double ax = ndx * look, az = ndz * look;
+        const double x0 = box.minX() + ax, x1 = box.maxX() + ax;
+        const double z0 = box.minZ() + az, z1 = box.maxZ() + az;
+        return isAir(lv, (int)std::floor(x0), by, (int)std::floor(z0))
+            || isAir(lv, (int)std::floor(x1), by, (int)std::floor(z0))
+            || isAir(lv, (int)std::floor(x0), by, (int)std::floor(z1))
+            || isAir(lv, (int)std::floor(x1), by, (int)std::floor(z1));
+    }
+
     static bool shouldShift(jobject lv, AABB& box, int by, double dx, double dz)
     {
-        static bool   isLatching = false;
-        static double lastNdx    = 0.0;
-        static double lastNdz    = 0.0;
+        static bool   latched = false;
+        static double lastNdx = 0.0;
+        static double lastNdz = 0.0;
 
         const double dl = std::sqrt(dx * dx + dz * dz);
         double ndx = lastNdx;
         double ndz = lastNdz;
-
         if (dl > 1e-4) {
             ndx = dx / dl;
             ndz = dz / dl;
             lastNdx = ndx;
             lastNdz = ndz;
         }
+        if (std::abs(ndx) < 1e-3 && std::abs(ndz) < 1e-3) return false;
 
-        // If we've never moved, we can't shift
-        if (std::abs(ndx) < 0.001 && std::abs(ndz) < 0.001) return false;
-
-        const int cx = (int)std::floor((box.minX() + box.maxX()) * 0.5);
-        const int cz = (int)std::floor((box.minZ() + box.maxZ()) * 0.5);
-
-        // Projected "target" block in movement direction
-        const int nx = (int)std::floor(((box.minX() + box.maxX()) * 0.5) + (ndx * 0.45));
-        const int nz = (int)std::floor(((box.minZ() + box.maxZ()) * 0.5) + (ndz * 0.45));
-
-        // Distance to the edge of the current block
-        const double boundX = (ndx >= 0) ? (double)cx + 1.0 : (double)cx;
-        const double boundZ = (ndz >= 0) ? (double)cz + 1.0 : (double)cz;
-
-        double past = 0;
-        if (std::abs(ndx) > 0.01) {
-            double leadX = (ndx > 0) ? box.maxX() : box.minX();
-            past = (std::max)(past, std::abs(leadX - boundX));
-        }
-        if (std::abs(ndz) > 0.01) {
-            double leadZ = (ndz > 0) ? box.maxZ() : box.minZ();
-            past = (std::max)(past, std::abs(leadZ - boundZ));
-        }
-
-        if (!isLatching) {
-            // Trigger shift at 90% (0.54)
-            if (isAir(lv, nx, by, nz) && past > 0.535) {
-                isLatching = true;
-            }
+        if (!latched) {
+            if (leadOverAir(lv, box, by, ndx, ndz, 0.30)) latched = true;
         } else {
-            // Stay latched until:
-            // 1. We are safely back on the block (past < 0.15)
-            // 2. OR the block in front is now solid (we placed a block)
-            if (past < 0.15 || !isAir(lv, nx, by, nz)) {
-                isLatching = false;
-            }
+            if (!leadOverAir(lv, box, by, ndx, ndz, 0.05)) latched = false;
         }
-
-        return isLatching;
+        return latched;
     }
 
     void Release()
