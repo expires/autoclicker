@@ -48,6 +48,56 @@ namespace OverlayWidgets
         return IM_COL32(r, g, B, A);
     }
 
+    bool RowCheckbox(const char* label, bool* v)
+    {
+        using namespace ImGui;
+        ImGuiWindow* window = GetCurrentWindow();
+        if (window->SkipItems) return false;
+
+        const float  w    = GetContentRegionAvail().x;
+        const float  rowH = Theme::M::CheckRowH;
+        const ImVec2 pos  = window->DC.CursorPos;
+        const ImRect bb(pos, ImVec2(pos.x + w, pos.y + rowH));
+
+        ImGuiID id = window->GetID(label);
+        ItemSize(bb);
+        if (!ItemAdd(bb, id)) return false;
+
+        bool hovered, held;
+        bool pressed = ButtonBehavior(bb, id, &hovered, &held);
+        if (hovered) SetMouseCursor(ImGuiMouseCursor_Hand);
+        if (pressed) { *v = !*v; MarkItemEdited(id); }
+
+        ImGuiStorage* storage = &window->StateStorage;
+        float anim = storage->GetFloat(id, *v ? 1.0f : 0.0f);
+        anim = ImLerp(anim, *v ? 1.0f : 0.0f, 0.20f);
+        storage->SetFloat(id, anim);
+
+        const float  pillW = Theme::M::PillW;
+        const float  pillH = Theme::M::PillH;
+        const ImVec2 pMin(bb.Max.x - pillW, bb.Min.y + (rowH - pillH) * 0.5f);
+        const ImVec2 pMax(bb.Max.x, pMin.y + pillH);
+        const float  rad = pillH * 0.5f;
+
+        ImDrawList* dl = window->DrawList;
+
+        const ImU32 trackOff = GetColorU32(ImGuiCol_FrameBg);
+        const ImU32 trackOn  = ColorConvertFloat4ToU32(FromHex(Theme::AccentTrack));
+        const ImU32 track    = LerpU32(trackOff, trackOn, anim);
+        dl->AddRectFilled(pMin, pMax, track, rad);
+        dl->AddRect(pMin, pMax, GetColorU32(ImGuiCol_Border), rad, 0, 1.0f);
+
+        const float knobX = pMin.x + rad + anim * (pillW - pillH);
+        const float knobY = pMin.y + rad;
+        const float knobR = rad - Theme::M::KnobInset;
+        dl->AddCircleFilled(ImVec2(knobX, knobY), knobR, IM_COL32(255, 255, 255, 236));
+
+        ImVec2 labelSz = CalcTextSize(label, nullptr, true);
+        RenderText(ImVec2(bb.Min.x, bb.GetCenter().y - labelSz.y * 0.5f), label);
+
+        return pressed;
+    }
+
     static const char* GetVirtualKeyName(int vk)
     {
         if (vk == 0) return "NONE";
