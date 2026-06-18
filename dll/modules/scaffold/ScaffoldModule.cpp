@@ -1,3 +1,6 @@
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
 #include "ScaffoldModule.h"
 #include <Windows.h>
 #include "../../config/Settings.h"
@@ -102,11 +105,11 @@ namespace ScaffoldModule
             double past = 0;
             if (std::abs(ndx) > 0.1) {
                 double leadX = (ndx > 0) ? box.maxX() : box.minX();
-                past = std::max(past, std::abs(leadX - boundX));
+                past = (std::max)(past, std::abs(leadX - boundX));
             }
             if (std::abs(ndz) > 0.1) {
                 double leadZ = (ndz > 0) ? box.maxZ() : box.minZ();
-                past = std::max(past, std::abs(leadZ - boundZ));
+                past = (std::max)(past, std::abs(leadZ - boundZ));
             }
 
             // Hitbox width is 0.6. 90% is 0.54. 
