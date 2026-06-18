@@ -8,7 +8,7 @@ namespace OverlayTabs
     {
         using namespace OverlayWidgets;
         bool dirty = false;
-        dirty |= RowCheckbox("Enabled",  &g_settings.espEnabled);
+        dirty |= ModuleHeader("Enabled", &g_settings.espEnabled, &g_settings.espKey);
         if (g_settings.espEnabled) {
             dirty |= RowCheckbox("Box",                &g_settings.drawBox);
             dirty |= RowCheckbox("Name",               &g_settings.drawName);

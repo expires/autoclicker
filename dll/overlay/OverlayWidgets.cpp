@@ -48,7 +48,95 @@ namespace OverlayWidgets
         return IM_COL32(r, g, B, A);
     }
 
-    bool RowCheckbox(const char* label, bool* v)
+    bool KeybindSquare(const char* id, int* vk, float size, bool allowMouse)
+    {
+        using namespace ImGui;
+        ImGuiWindow* window = GetCurrentWindow();
+        if (window->SkipItems) return false;
+
+        const float s = (size > 0.0f) ? size : Theme::M::CheckRowH;
+        const ImVec2 pos = window->DC.CursorPos;
+        const ImRect bb(pos, ImVec2(pos.x + s, pos.y + s));
+
+        ImGuiID gid = window->GetID(id);
+        ItemSize(bb);
+        if (!ItemAdd(bb, gid)) return false;
+
+        bool hovered, held;
+        bool pressed = ButtonBehavior(bb, gid, &hovered, &held);
+
+        if (pressed) {
+            if (s_kbActiveId == gid) {
+                s_kbActiveId = 0;
+            } else {
+                s_kbActiveId = gid;
+                for (int k = 0; k < 256; ++k)
+                    s_kbExcluded[k] = (GetAsyncKeyState(k) & 0x8000) != 0;
+            }
+        }
+
+        if (hovered && IsMouseClicked(ImGuiMouseButton_Right)) {
+            if (*vk != 0) { *vk = 0; MarkItemEdited(gid); }
+            if (s_kbActiveId == gid) s_kbActiveId = 0;
+        }
+
+        const bool listening = (s_kbActiveId == gid);
+        bool changed = false;
+
+        if (listening) {
+            s_keybindListening = true;
+            if (GetAsyncKeyState(VK_ESCAPE) & 0x8000) {
+                s_kbActiveId = 0;
+            } else {
+                for (int k = 0; k < 256; ++k) {
+                    if (s_kbExcluded[k] && !(GetAsyncKeyState(k) & 0x8000))
+                        s_kbExcluded[k] = false;
+                }
+                const int menuVk = (g_settings.menuKey > 0 && g_settings.menuKey <= 0xFE) ? g_settings.menuKey : VK_RSHIFT;
+                const int loopStart = allowMouse ? 0x01 : 0x07;
+                for (int k = loopStart; k <= 0xFE; ++k) {
+                    if (k == VK_SHIFT || k == VK_CONTROL || k == VK_MENU || k == VK_ESCAPE || k == menuVk) continue;
+                    if (!allowMouse && (k == VK_LBUTTON || k == VK_RBUTTON)) continue;
+                    if (s_kbExcluded[k]) continue;
+                    if (!(GetAsyncKeyState(k) & 0x8000)) continue;
+                    *vk = k;
+                    changed = true;
+                    MarkItemEdited(gid);
+                    s_kbActiveId = 0;
+                    break;
+                }
+            }
+        }
+
+        ImDrawList* dl = window->DrawList;
+        const ImU32 bg = listening ? ColorConvertFloat4ToU32(FromHex(Theme::KeybindListening)) : (hovered ? GetColorU32(ImGuiCol_FrameBgHovered) : GetColorU32(ImGuiCol_FrameBg));
+        const float r = Theme::M::KeybindRound;
+        const float pad = Theme::px(4.0f);
+        const ImRect inner(bb.Min + ImVec2(pad, pad), bb.Max - ImVec2(pad, pad));
+
+        dl->AddRectFilled(inner.Min, inner.Max, bg, r);
+        dl->AddRect(inner.Min, inner.Max, GetColorU32(ImGuiCol_Border), r, 0, 1.0f);
+        
+        const ImU32 accent = ColorConvertFloat4ToU32(FromHex(Theme::Accent));
+        dl->AddRectFilled(ImVec2(inner.Min.x + 4, inner.Max.y - 3), ImVec2(inner.Max.x - 4, inner.Max.y - 1), accent, 1.0f);
+
+        if (*vk == 0 && !listening) {
+            const float dotR = Theme::px(1.5f);
+            const ImVec2 c = inner.GetCenter();
+            dl->AddCircleFilled(ImVec2(c.x - Theme::px(5.0f), c.y), dotR, GetColorU32(ImGuiCol_TextDisabled));
+            dl->AddCircleFilled(ImVec2(c.x,                   c.y), dotR, GetColorU32(ImGuiCol_TextDisabled));
+            dl->AddCircleFilled(ImVec2(c.x + Theme::px(5.0f), c.y), dotR, GetColorU32(ImGuiCol_TextDisabled));
+        } else {
+            const char* name = listening ? "?" : GetKeyName(*vk);
+            ImVec2 sz = CalcTextSize(name);
+            RenderText(inner.GetCenter() - sz * 0.5f, name);
+        }
+
+        if (hovered) SetMouseCursor(ImGuiMouseCursor_Hand);
+        return changed;
+    }
+
+    bool ModuleHeader(const char* label, bool* v, int* vk)
     {
         using namespace ImGui;
         ImGuiWindow* window = GetCurrentWindow();
@@ -63,43 +151,50 @@ namespace OverlayWidgets
         ItemSize(bb);
         if (!ItemAdd(bb, id)) return false;
 
+        const float  kbW    = rowH;
+        const float  gap    = Theme::M::ListGap;
+        const float  pillW  = Theme::M::PillW;
+        const float  pillH  = Theme::M::PillH;
+        const float  kbPad  = (rowH - pillH) * 0.5f;
+
+        const ImRect kbBB(ImVec2(bb.Max.x - kbW, bb.Min.y), bb.Max);
+        const ImRect pillBB(ImVec2(kbBB.Min.x - gap - pillW, bb.Min.y + kbPad), ImVec2(kbBB.Min.x - gap, bb.Min.y + kbPad + pillH));
+
+        bool changed = false;
         bool hovered, held;
-        bool pressed = ButtonBehavior(bb, id, &hovered, &held);
-        if (hovered) SetMouseCursor(ImGuiMouseCursor_Hand);
-        if (pressed) { *v = !*v; MarkItemEdited(id); }
+        if (ButtonBehavior(pillBB, id, &hovered, &held)) {
+            *v = !*v;
+            MarkItemEdited(id);
+            changed = true;
+        }
 
-        ImGuiStorage* storage = &window->StateStorage;
-        float anim = storage->GetFloat(id, *v ? 1.0f : 0.0f);
-        anim = ImLerp(anim, *v ? 1.0f : 0.0f, 0.20f);
-        storage->SetFloat(id, anim);
-
-        const float  pillW = Theme::M::PillW;
-        const float  pillH = Theme::M::PillH;
-        const ImVec2 pMin(bb.Max.x - pillW, bb.Min.y + (rowH - pillH) * 0.5f);
-        const ImVec2 pMax(bb.Max.x, pMin.y + pillH);
-        const float  rad = pillH * 0.5f;
+        PushID(id);
+        SetCursorScreenPos(kbBB.Min);
+        if (KeybindSquare("##kb", vk, kbW)) changed = true;
+        PopID();
 
         ImDrawList* dl = window->DrawList;
+        float anim = window->StateStorage.GetFloat(id, *v ? 1.0f : 0.0f);
+        anim = ImLerp(anim, *v ? 1.0f : 0.0f, 0.20f);
+        window->StateStorage.SetFloat(id, anim);
 
         const ImU32 trackOff = GetColorU32(ImGuiCol_FrameBg);
         const ImU32 trackOn  = ColorConvertFloat4ToU32(FromHex(Theme::AccentTrack));
         const ImU32 track    = LerpU32(trackOff, trackOn, anim);
-        dl->AddRectFilled(pMin, pMax, track, rad);
-        dl->AddRect(pMin, pMax, GetColorU32(ImGuiCol_Border), rad, 0, 1.0f);
-        dl->AddLine(ImVec2(pMin.x + rad, pMin.y + 1.0f),
-                    ImVec2(pMax.x - rad, pMin.y + 1.0f),
-                    IM_COL32(255, 255, 255, 26), 1.0f);
-
-        const float knobX = pMin.x + rad + anim * (pillW - pillH);
-        const float knobY = pMin.y + rad;
+        const float rad      = pillH * 0.5f;
+        dl->AddRectFilled(pillBB.Min, pillBB.Max, track, rad);
+        dl->AddRect(pillBB.Min, pillBB.Max, GetColorU32(ImGuiCol_Border), rad, 0, 1.0f);
+        const float knobX = pillBB.Min.x + rad + anim * (pillW - pillH);
+        const float knobY = pillBB.Min.y + rad;
         const float knobR = rad - Theme::M::KnobInset;
-        dl->AddCircleFilled(ImVec2(knobX, knobY + 1.0f), knobR, IM_COL32(0, 0, 0, 60));
         dl->AddCircleFilled(ImVec2(knobX, knobY), knobR, IM_COL32(255, 255, 255, 236));
 
         ImVec2 labelSz = CalcTextSize(label, nullptr, true);
         RenderText(ImVec2(bb.Min.x, bb.GetCenter().y - labelSz.y * 0.5f), label);
 
-        return pressed;
+        if (hovered) SetMouseCursor(ImGuiMouseCursor_Hand);
+        SetCursorScreenPos(ImVec2(bb.Min.x, bb.Max.y));
+        return changed;
     }
 
     static const char* GetKeyName(int vk)
@@ -128,95 +223,23 @@ namespace OverlayWidgets
         if (window->SkipItems) return false;
 
         const bool inlineMode = (label[0] == '#' && label[1] == '#');
-        const float  w   = (inlineMode && customWidth > 0.0f) ? customWidth : (inlineMode ? Theme::M::KeybindInlineW : GetContentRegionAvail().x);
-        const float  h   = Theme::M::KeybindH;
+        const float w = (inlineMode && customWidth > 0.0f) ? customWidth : GetContentRegionAvail().x;
+        const float h = Theme::M::CheckRowH;
         const ImVec2 pos = window->DC.CursorPos;
         const ImRect bb(pos, ImVec2(pos.x + w, pos.y + h));
 
-        ImGuiID id = window->GetID(label);
-        ItemSize(bb);
-        if (!ItemAdd(bb, id)) return false;
-
-        const ImRect pill = inlineMode ? bb : ImRect(ImVec2(bb.Max.x - Theme::M::KeybindPillW, bb.Min.y + Theme::M::KeybindPillPad), ImVec2(bb.Max.x, bb.Max.y - Theme::M::KeybindPillPad));
-
-        bool hovered, held;
-        bool pressed = ButtonBehavior(pill, id, &hovered, &held);
-        if (hovered) SetMouseCursor(ImGuiMouseCursor_Hand);
-
-        bool changed = false;
-
-        auto isFilteredVk = [allowMouse](int k) {
-            if (k == VK_LBUTTON || k == VK_RBUTTON) return true;
-            if (!allowMouse && (k == VK_MBUTTON || k == VK_XBUTTON1 || k == VK_XBUTTON2)) return true;
-            if (k == VK_SHIFT || k == VK_CONTROL || k == VK_MENU) return true;
-            return false;
-        };
-
-        if (pressed) {
-            if (s_kbActiveId == id) {
-                s_kbActiveId = 0;
-            } else {
-                s_kbActiveId = id;
-                for (int k = 0; k < 256; ++k)
-                    s_kbExcluded[k] = (GetAsyncKeyState(k) & 0x8000) != 0;
-            }
-        }
-
-        if (IsMouseHoveringRect(pill.Min, pill.Max) && IsMouseClicked(ImGuiMouseButton_Right)) {
-            if (*vk != 0) { *vk = 0; changed = true; }
-            if (s_kbActiveId == id) s_kbActiveId = 0;
-        }
-
-        const bool listening = (s_kbActiveId == id);
-
-        if (listening) {
-            s_keybindListening = true;
-
-            if (GetAsyncKeyState(VK_ESCAPE) & 0x8000) {
-                s_kbActiveId = 0;
-            }
-            else {
-                for (int k = 0; k < 256; ++k) {
-                    if (s_kbExcluded[k] && !(GetAsyncKeyState(k) & 0x8000))
-                        s_kbExcluded[k] = false;
-                }
-
-                const int menuVk = (g_settings.menuKey > 0 && g_settings.menuKey <= 0xFE) ? g_settings.menuKey : VK_RSHIFT;
-                const int loopStart = allowMouse ? 0x01 : 0x07;
-                for (int k = loopStart; k <= 0xFE; ++k) {
-                    if (isFilteredVk(k))  continue;
-                    if (k == VK_ESCAPE)   continue;
-                    if (k == menuVk)      continue;
-                    if (s_kbExcluded[k])  continue;
-                    if (!(GetAsyncKeyState(k) & 0x8000)) continue;
-                    *vk     = k;
-                    changed = true;
-                    s_kbActiveId = 0;
-                    break;
-                }
-            }
-        }
-
         if (!inlineMode) {
+            ItemSize(bb);
+            if (!ItemAdd(bb, window->GetID(label))) return false;
             ImVec2 labelSz = CalcTextSize(label, nullptr, true);
-            PushStyleColor(ImGuiCol_Text, GetColorU32(ImGuiCol_Text));
             RenderText(ImVec2(bb.Min.x, bb.GetCenter().y - labelSz.y * 0.5f), label);
-            PopStyleColor();
         }
 
-        const float pr = Theme::M::KeybindRound;
-        const ImU32 pillBg = listening
-            ? ColorConvertFloat4ToU32(FromHex(Theme::KeybindListening))
-            : (hovered ? GetColorU32(ImGuiCol_FrameBgHovered) : GetColorU32(ImGuiCol_FrameBg));
-            
-        ImDrawList* dl = window->DrawList;
-        dl->AddRectFilled(pill.Min, pill.Max, pillBg, pr);
-        dl->AddRect(pill.Min, pill.Max, GetColorU32(ImGuiCol_Border), pr, 0, 1.0f);
-
-        const char* pillText = listening ? "press a key..." : (*vk ? GetKeyName(*vk) : "NONE");
-        ImVec2 textSz = CalcTextSize(pillText);
-        RenderText(ImVec2(pill.GetCenter().x - textSz.x * 0.5f, pill.GetCenter().y - textSz.y * 0.5f), pillText);
-
+        const float kbW = h;
+        SetCursorScreenPos(ImVec2(bb.Max.x - kbW, bb.Min.y));
+        bool changed = KeybindSquare(label, vk, kbW, allowMouse);
+        
+        if (!inlineMode) SetCursorScreenPos(ImVec2(bb.Min.x, bb.Max.y));
         return changed;
     }
 
