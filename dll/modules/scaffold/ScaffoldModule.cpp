@@ -8,6 +8,7 @@
 #include <cmath>
 #include <random>
 #include <vector>
+#include <algorithm>
 
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
@@ -78,25 +79,40 @@ namespace ScaffoldModule
             || !isAir(lv, (int)std::floor(box.maxX()), by, (int)std::floor(box.maxZ()));
     }
 
-    static bool isCloseToEdge(jobject lv, AABB& box, int by,
-                              double dx, double dz, double edge)
+    static bool shouldShift(jobject lv, AABB& box, int by, double dx, double dz)
     {
         const double dl = std::sqrt(dx * dx + dz * dz);
-        if (dl <= 1e-3) return false;
+        if (dl < 1e-4) return false;
         const double ndx = dx / dl;
         const double ndz = dz / dl;
 
-        const double widthX = box.maxX() - box.minX();
-        const double widthZ = box.maxZ() - box.minZ();
-        
-        // Bias to the TRAILING edge (2% from the back of the player)
-        // This ensures we only shift when the entire body is almost over air.
-        const double biasX = (ndx > 0) ? (box.minX() + widthX * 0.02) : (box.maxX() - widthX * 0.02);
-        const double biasZ = (ndz > 0) ? (box.minZ() + widthZ * 0.02) : (box.maxZ() - widthZ * 0.02);
+        // Current "center" block
+        const int cx = (int)std::floor((box.minX() + box.maxX()) * 0.5);
+        const int cz = (int)std::floor((box.minZ() + box.maxZ()) * 0.5);
 
-        if (isAir(lv, (int)std::floor(biasX + ndx * edge), by, (int)std::floor(biasZ + ndz * edge)))
-            return true;
+        // Next block in movement direction
+        const int nx = (int)std::floor(((box.minX() + box.maxX()) * 0.5) + ndx * 0.45);
+        const int nz = (int)std::floor(((box.minZ() + box.maxZ()) * 0.5) + ndz * 0.45);
 
+        // Only consider shifting if we are moving towards air
+        if (isAir(lv, nx, by, nz)) {
+            const double boundX = (ndx > 0) ? (double)cx + 1.0 : (double)cx;
+            const double boundZ = (ndz > 0) ? (double)cz + 1.0 : (double)cz;
+
+            double past = 0;
+            if (std::abs(ndx) > 0.1) {
+                double leadX = (ndx > 0) ? box.maxX() : box.minX();
+                past = std::max(past, std::abs(leadX - boundX));
+            }
+            if (std::abs(ndz) > 0.1) {
+                double leadZ = (ndz > 0) ? box.maxZ() : box.minZ();
+                past = std::max(past, std::abs(leadZ - boundZ));
+            }
+
+            // Hitbox width is 0.6. 90% is 0.54. 
+            // We shift when 0.54 blocks are past the edge.
+            if (past > 0.535) return true;
+        }
         return false;
     }
 
@@ -124,11 +140,6 @@ namespace ScaffoldModule
         static HWND mcWindow = nullptr;
         if (mcWindow == nullptr) mcWindow = FindWindowW(L"GLFW30", nullptr);
 
-        static std::mt19937 rng(std::random_device{}());
-        static std::uniform_real_distribution<double> edgeRange(0.005, 0.015);
-        static double edge      = edgeRange(rng);
-        static bool   prevSneak = false;
-
         const bool kW = (GetAsyncKeyState('W') & 0x8000) != 0;
         const bool kA = (GetAsyncKeyState('A') & 0x8000) != 0;
         const bool kS = (GetAsyncKeyState('S') & 0x8000) != 0;
@@ -138,7 +149,6 @@ namespace ScaffoldModule
         if (!g_settings.scaffoldEnabled || Overlay::IsMenuVisible()
             || GetForegroundWindow() != mcWindow || kW) {
             setSneak(false);
-            prevSneak = false;
             return;
         }
 
@@ -177,32 +187,21 @@ namespace ScaffoldModule
                                 const jobject lv = level.GetInstance();
 
                                 if (anyCornerSolid(lv, box, by)) {
-                                    double vx = x - xo;
-                                    double vz = z - zo;
-                                    double vlen = std::sqrt(vx * vx + vz * vz);
+                                    double dx = x - xo;
+                                    double dz = z - zo;
 
-                                    if (vlen > 1e-4) {
-                                        double multiplier = (vlen > 0.2) ? 0.3 : 0.6;
-                                        double lookAhead = edge + vlen * multiplier;
-                                        if (isCloseToEdge(lv, box, by, vx, vz, lookAhead))
-                                            wantSneak = true;
-                                    }
-
-
-                                    if (!wantSneak && moveKey) {
+                                    if (std::sqrt(dx * dx + dz * dz) < 1e-4 && moveKey) {
                                         const double yawR = yaw * M_PI / 180.0;
                                         const double fwdX = -std::sin(yawR), fwdZ =  std::cos(yawR);
                                         const double rgtX = -std::cos(yawR), rgtZ = -std::sin(yawR);
-
-                                        double dx = 0.0, dz = 0.0;
                                         if (kW) { dx += fwdX; dz += fwdZ; }
                                         if (kS) { dx -= fwdX; dz -= fwdZ; }
                                         if (kD) { dx += rgtX; dz += rgtZ; }
                                         if (kA) { dx -= rgtX; dz -= rgtZ; }
-
-                                        if (isCloseToEdge(lv, box, by, dx, dz, edge))
-                                            wantSneak = true;
                                     }
+
+                                    if (shouldShift(lv, box, by, dx, dz))
+                                        wantSneak = true;
                                 }
                             }
                         }
@@ -215,8 +214,6 @@ namespace ScaffoldModule
 
         if (decided) {
             setSneak(wantSneak);
-            if (prevSneak && !wantSneak) edge = edgeRange(rng);
-            prevSneak = wantSneak;
         }
     }
 }
