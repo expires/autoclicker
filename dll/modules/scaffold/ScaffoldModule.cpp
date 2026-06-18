@@ -89,14 +89,14 @@ namespace ScaffoldModule
         const double widthX = box.maxX() - box.minX();
         const double widthZ = box.maxZ() - box.minZ();
         
-        const double biasX = (ndx > 0) ? (box.minX() + widthX * 0.05) : (box.maxX() - widthX * 0.05);
-        const double biasZ = (ndz > 0) ? (box.minZ() + widthZ * 0.05) : (box.maxZ() - widthZ * 0.05);
+        const double biasX = (ndx > 0) ? (box.minX() + widthX * 0.15) : (box.maxX() - widthX * 0.15);
+        const double biasZ = (ndz > 0) ? (box.minZ() + widthZ * 0.15) : (box.maxZ() - widthZ * 0.15);
 
         if (isAir(lv, (int)std::floor(biasX + ndx * edge), by, (int)std::floor(biasZ + ndz * edge)))
             return true;
 
-        const double toleranceX = widthX * 0.01;
-        const double toleranceZ = widthZ * 0.01;
+        const double toleranceX = widthX * 0.05;
+        const double toleranceZ = widthZ * 0.05;
 
         struct Pt { double x, z; };
         Pt pts[3];
@@ -113,8 +113,8 @@ namespace ScaffoldModule
                              (ndz > 0) ? (box.minZ() + toleranceZ) : (box.maxZ() - toleranceZ) };
         }
         if (isDiag) {
-            const double diagTolX = widthX * 0.02;
-            const double diagTolZ = widthZ * 0.02;
+            const double diagTolX = widthX * 0.08;
+            const double diagTolZ = widthZ * 0.08;
             pts[count++] = { (ndx > 0) ? (box.minX() + diagTolX) : (box.maxX() - diagTolX),
                              (ndz > 0) ? (box.minZ() + diagTolZ) : (box.maxZ() - diagTolZ) };
         }
@@ -156,7 +156,7 @@ namespace ScaffoldModule
         if (mcWindow == nullptr) mcWindow = FindWindowW(L"GLFW30", nullptr);
 
         static std::mt19937 rng(std::random_device{}());
-        static std::uniform_real_distribution<double> edgeRange(0.001, 0.01);
+        static std::uniform_real_distribution<double> edgeRange(0.005, 0.015);
         static double edge      = edgeRange(rng);
         static bool   prevSneak = false;
 
@@ -213,7 +213,7 @@ namespace ScaffoldModule
                                     double vlen = std::sqrt(vx * vx + vz * vz);
 
                                     if (vlen > 1e-4) {
-                                        double multiplier = (vlen > 0.2) ? 0.05 : 0.1;
+                                        double multiplier = (vlen > 0.2) ? 0.2 : 0.4;
                                         double lookAhead = edge + vlen * multiplier;
                                         if (isCloseToEdge(lv, box, by, vx, vz, lookAhead))
                                             wantSneak = true;
@@ -233,6 +233,19 @@ namespace ScaffoldModule
 
                                         if (isCloseToEdge(lv, box, by, dx, dz, edge))
                                             wantSneak = true;
+                                    }
+
+                                    if (!wantSneak) {
+                                        const double m = 0.05;
+                                        const double widthX = box.maxX() - box.minX();
+                                        const double widthZ = box.maxZ() - box.minZ();
+                                        if (isAir(lv, (int)std::floor(box.minX() + widthX * m), by, (int)std::floor(box.minZ() + widthZ * m))
+                                            || isAir(lv, (int)std::floor(box.maxX() - widthX * m), by, (int)std::floor(box.minZ() + widthZ * m))
+                                            || isAir(lv, (int)std::floor(box.minX() + widthX * m), by, (int)std::floor(box.maxZ() - widthZ * m))
+                                            || isAir(lv, (int)std::floor(box.maxX() - widthX * m), by, (int)std::floor(box.maxZ() - widthZ * m)))
+                                        {
+                                            wantSneak = true;
+                                        }
                                     }
                                 }
                             }
