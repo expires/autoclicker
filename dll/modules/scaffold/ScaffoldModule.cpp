@@ -89,14 +89,14 @@ namespace ScaffoldModule
         const double widthX = box.maxX() - box.minX();
         const double widthZ = box.maxZ() - box.minZ();
         
-        const double biasX = (ndx > 0) ? (box.minX() + widthX * 0.12) : (box.maxX() - widthX * 0.12);
-        const double biasZ = (ndz > 0) ? (box.minZ() + widthZ * 0.12) : (box.maxZ() - widthZ * 0.12);
+        const double biasX = (ndx > 0) ? (box.minX() + widthX * 0.05) : (box.maxX() - widthX * 0.05);
+        const double biasZ = (ndz > 0) ? (box.minZ() + widthZ * 0.05) : (box.maxZ() - widthZ * 0.05);
 
         if (isAir(lv, (int)std::floor(biasX + ndx * edge), by, (int)std::floor(biasZ + ndz * edge)))
             return true;
 
-        const double toleranceX = widthX * 0.02;
-        const double toleranceZ = widthZ * 0.02;
+        const double toleranceX = widthX * 0.01;
+        const double toleranceZ = widthZ * 0.01;
 
         struct Pt { double x, z; };
         Pt pts[3];
@@ -113,8 +113,8 @@ namespace ScaffoldModule
                              (ndz > 0) ? (box.minZ() + toleranceZ) : (box.maxZ() - toleranceZ) };
         }
         if (isDiag) {
-            const double diagTolX = widthX * 0.04;
-            const double diagTolZ = widthZ * 0.04;
+            const double diagTolX = widthX * 0.02;
+            const double diagTolZ = widthZ * 0.02;
             pts[count++] = { (ndx > 0) ? (box.minX() + diagTolX) : (box.maxX() - diagTolX),
                              (ndz > 0) ? (box.minZ() + diagTolZ) : (box.maxZ() - diagTolZ) };
         }
@@ -156,7 +156,7 @@ namespace ScaffoldModule
         if (mcWindow == nullptr) mcWindow = FindWindowW(L"GLFW30", nullptr);
 
         static std::mt19937 rng(std::random_device{}());
-        static std::uniform_real_distribution<double> edgeRange(0.01, 0.02);
+        static std::uniform_real_distribution<double> edgeRange(0.001, 0.01);
         static double edge      = edgeRange(rng);
         static bool   prevSneak = false;
 
@@ -233,16 +233,6 @@ namespace ScaffoldModule
 
                                         if (isCloseToEdge(lv, box, by, dx, dz, edge))
                                             wantSneak = true;
-                                    }
-
-                                    if (!wantSneak) {
-                                        if (isAir(lv, (int)std::floor(box.minX()), by, (int)std::floor(box.minZ()))
-                                            || isAir(lv, (int)std::floor(box.maxX()), by, (int)std::floor(box.minZ()))
-                                            || isAir(lv, (int)std::floor(box.minX()), by, (int)std::floor(box.maxZ()))
-                                            || isAir(lv, (int)std::floor(box.maxX()), by, (int)std::floor(box.maxZ())))
-                                        {
-                                            wantSneak = true;
-                                        }
                                     }
                                 }
                             }

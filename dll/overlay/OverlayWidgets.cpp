@@ -217,7 +217,7 @@ namespace OverlayWidgets
         return changed;
     }
 
-    static const char* GetKeyName(int vk)
+    static const char* GetVirtualKeyName(int vk)
     {
         if (vk == 0) return "NONE";
         static char buf[32];
