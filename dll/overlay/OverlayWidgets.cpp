@@ -102,6 +102,121 @@ namespace OverlayWidgets
         return pressed;
     }
 
+    bool ModuleHeader(const char* label, bool* v, int* vk)
+    {
+        using namespace ImGui;
+        ImGuiWindow* window = GetCurrentWindow();
+        if (window->SkipItems) return false;
+
+        const float  w    = GetContentRegionAvail().x;
+        const float  rowH = Theme::M::CheckRowH;
+        const ImVec2 pos  = window->DC.CursorPos;
+        const ImRect bb(pos, ImVec2(pos.x + w, pos.y + rowH));
+
+        ImGuiID id = window->GetID(label);
+        ItemSize(bb);
+        if (!ItemAdd(bb, id)) return false;
+
+        bool changed = false;
+
+        const float pillW  = Theme::M::PillW;
+        const float pillH  = Theme::M::PillH;
+        const float gap    = Theme::px(8.0f);
+        const float bindW  = Theme::px(60.0f);
+        const float bindH  = Theme::px(22.0f);
+
+        const ImRect pillBB(ImVec2(bb.Max.x - pillW, bb.Min.y + (rowH - pillH) * 0.5f), 
+                            ImVec2(bb.Max.x, bb.Min.y + (rowH - pillH) * 0.5f + pillH));
+        
+        const ImRect bindBB(ImVec2(pillBB.Min.x - gap - bindW, bb.Min.y + (rowH - bindH) * 0.5f),
+                            ImVec2(pillBB.Min.x - gap, bb.Min.y + (rowH - bindH) * 0.5f + bindH));
+
+        // Toggle behavior
+        bool toggleHovered, toggleHeld;
+        if (ButtonBehavior(pillBB, id, &toggleHovered, &toggleHeld)) {
+            *v = !*v;
+            MarkItemEdited(id);
+            changed = true;
+        }
+
+        // Keybind behavior
+        ImGuiID bindId = window->GetID("##bind");
+        bool bindHovered, bindHeld;
+        if (ButtonBehavior(bindBB, bindId, &bindHovered, &bindHeld)) {
+            if (s_kbActiveId == id) {
+                s_kbActiveId = 0;
+            } else {
+                s_kbActiveId = id;
+                for (int k = 0; k < 256; ++k)
+                    s_kbExcluded[k] = (GetAsyncKeyState(k) & 0x8000) != 0;
+            }
+        }
+
+        if (bindHovered && IsMouseClicked(ImGuiMouseButton_Right)) {
+            if (*vk != 0) { *vk = 0; MarkItemEdited(id); changed = true; }
+            if (s_kbActiveId == id) s_kbActiveId = 0;
+        }
+
+        const bool listening = (s_kbActiveId == id);
+        if (listening) {
+            s_keybindListening = true;
+            if (GetAsyncKeyState(VK_ESCAPE) & 0x8000) {
+                s_kbActiveId = 0;
+            } else {
+                for (int k = 0; k < 256; ++k) {
+                    if (s_kbExcluded[k] && !(GetAsyncKeyState(k) & 0x8000))
+                        s_kbExcluded[k] = false;
+                }
+                const int menuVk = (g_settings.menuKey > 0 && g_settings.menuKey <= 0xFE) ? g_settings.menuKey : VK_RSHIFT;
+                for (int k = 0x07; k <= 0xFE; ++k) {
+                    if (k == VK_SHIFT || k == VK_CONTROL || k == VK_MENU || k == VK_ESCAPE || k == menuVk) continue;
+                    if (s_kbExcluded[k]) continue;
+                    if (!(GetAsyncKeyState(k) & 0x8000)) continue;
+                    *vk = k;
+                    changed = true;
+                    MarkItemEdited(id);
+                    s_kbActiveId = 0;
+                    break;
+                }
+            }
+        }
+
+        ImDrawList* dl = window->DrawList;
+
+        // Render Toggle
+        float anim = window->StateStorage.GetFloat(id, *v ? 1.0f : 0.0f);
+        anim = ImLerp(anim, *v ? 1.0f : 0.0f, 0.20f);
+        window->StateStorage.SetFloat(id, anim);
+
+        const ImU32 trackOff = GetColorU32(ImGuiCol_FrameBg);
+        const ImU32 trackOn  = ColorConvertFloat4ToU32(FromHex(Theme::AccentTrack));
+        const ImU32 track    = LerpU32(trackOff, trackOn, anim);
+        const float rad      = pillH * 0.5f;
+        dl->AddRectFilled(pillBB.Min, pillBB.Max, track, rad);
+        dl->AddRect(pillBB.Min, pillBB.Max, GetColorU32(ImGuiCol_Border), rad, 0, 1.0f);
+        const float knobX = pillBB.Min.x + rad + anim * (pillW - pillH);
+        const float knobY = pillBB.Min.y + rad;
+        const float knobR = rad - Theme::M::KnobInset;
+        dl->AddCircleFilled(ImVec2(knobX, knobY), knobR, IM_COL32(255, 255, 255, 236));
+
+        // Render Keybind
+        const ImU32 bindBg = listening ? ColorConvertFloat4ToU32(FromHex(Theme::KeybindListening)) : (bindHovered ? GetColorU32(ImGuiCol_FrameBgHovered) : GetColorU32(ImGuiCol_FrameBg));
+        const float bindR  = Theme::px(4.0f);
+        dl->AddRectFilled(bindBB.Min, bindBB.Max, bindBg, bindR);
+        dl->AddRect(bindBB.Min, bindBB.Max, GetColorU32(ImGuiCol_Border), bindR, 0, 1.0f);
+
+        const char* keyName = listening ? "..." : GetKeyName(*vk);
+        ImVec2 txtSz = CalcTextSize(keyName);
+        RenderText(bindBB.GetCenter() - txtSz * 0.5f, keyName);
+
+        // Render Label
+        ImVec2 labelSz = CalcTextSize(label, nullptr, true);
+        RenderText(ImVec2(bb.Min.x, bb.GetCenter().y - labelSz.y * 0.5f), label);
+
+        if (toggleHovered || bindHovered) SetMouseCursor(ImGuiMouseCursor_Hand);
+        return changed;
+    }
+
     static const char* GetKeyName(int vk)
     {
         if (vk == 0) return "NONE";

@@ -9,6 +9,7 @@ namespace OverlayWidgets
     ImVec4 FromHex(const Theme::Col& c);
 
     bool RowCheckbox(const char* label, bool* v);
+    bool ModuleHeader(const char* label, bool* v, int* vk);
     bool RowSlider(const char* label, int* v, int v_min, int v_max, const char* fmt = "%d");
     bool RowKeybind(const char* label, int* vk, bool allowMouse = false);
     bool RowInputInt(const char* label, int* v, int v_min, int v_max, int step = 1, int fastStep = 10);
