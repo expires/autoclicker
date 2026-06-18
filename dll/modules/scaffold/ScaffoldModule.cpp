@@ -89,14 +89,14 @@ namespace ScaffoldModule
         const double widthX = box.maxX() - box.minX();
         const double widthZ = box.maxZ() - box.minZ();
         
-        const double biasX = (ndx > 0) ? (box.minX() + widthX * 0.35) : (box.maxX() - widthX * 0.35);
-        const double biasZ = (ndz > 0) ? (box.minZ() + widthZ * 0.35) : (box.maxZ() - widthZ * 0.35);
+        const double biasX = (ndx > 0) ? (box.minX() + widthX * 0.12) : (box.maxX() - widthX * 0.12);
+        const double biasZ = (ndz > 0) ? (box.minZ() + widthZ * 0.12) : (box.maxZ() - widthZ * 0.12);
 
         if (isAir(lv, (int)std::floor(biasX + ndx * edge), by, (int)std::floor(biasZ + ndz * edge)))
             return true;
 
-        const double toleranceX = widthX * 0.07;
-        const double toleranceZ = widthZ * 0.07;
+        const double toleranceX = widthX * 0.02;
+        const double toleranceZ = widthZ * 0.02;
 
         struct Pt { double x, z; };
         Pt pts[3];
@@ -113,8 +113,8 @@ namespace ScaffoldModule
                              (ndz > 0) ? (box.minZ() + toleranceZ) : (box.maxZ() - toleranceZ) };
         }
         if (isDiag) {
-            const double diagTolX = widthX * 0.10;
-            const double diagTolZ = widthZ * 0.10;
+            const double diagTolX = widthX * 0.04;
+            const double diagTolZ = widthZ * 0.04;
             pts[count++] = { (ndx > 0) ? (box.minX() + diagTolX) : (box.maxX() - diagTolX),
                              (ndz > 0) ? (box.minZ() + diagTolZ) : (box.maxZ() - diagTolZ) };
         }
@@ -213,7 +213,7 @@ namespace ScaffoldModule
                                     double vlen = std::sqrt(vx * vx + vz * vz);
 
                                     if (vlen > 1e-4) {
-                                        double multiplier = (vlen > 0.2) ? 0.1 : 0.2;
+                                        double multiplier = (vlen > 0.2) ? 0.05 : 0.1;
                                         double lookAhead = edge + vlen * multiplier;
                                         if (isCloseToEdge(lv, box, by, vx, vz, lookAhead))
                                             wantSneak = true;
