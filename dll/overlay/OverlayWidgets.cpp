@@ -48,6 +48,25 @@ namespace OverlayWidgets
         return IM_COL32(r, g, B, A);
     }
 
+    static const char* GetVirtualKeyName(int vk)
+    {
+        if (vk == 0) return "NONE";
+        static char buf[32];
+        UINT scan = MapVirtualKeyW((UINT)vk, MAPVK_VK_TO_VSC);
+        LONG lp   = (LONG)(scan << 16);
+        switch (vk) {
+            case VK_INSERT: case VK_DELETE: case VK_HOME: case VK_END:
+            case VK_PRIOR:  case VK_NEXT:
+            case VK_UP:     case VK_DOWN:  case VK_LEFT: case VK_RIGHT:
+            case VK_DIVIDE: case VK_NUMLOCK:
+                lp |= (1L << 24); break;
+            default: break;
+        }
+        if (GetKeyNameTextA(lp, buf, sizeof(buf)) > 0) return buf;
+        snprintf(buf, sizeof(buf), "VK_%02X", vk);
+        return buf;
+    }
+
     bool RowCheckbox(const char* label, bool* v)
     {
         using namespace ImGui;
@@ -215,25 +234,6 @@ namespace OverlayWidgets
 
         if (toggleHovered || bindHovered) SetMouseCursor(ImGuiMouseCursor_Hand);
         return changed;
-    }
-
-    static const char* GetVirtualKeyName(int vk)
-    {
-        if (vk == 0) return "NONE";
-        static char buf[32];
-        UINT scan = MapVirtualKeyW((UINT)vk, MAPVK_VK_TO_VSC);
-        LONG lp   = (LONG)(scan << 16);
-        switch (vk) {
-            case VK_INSERT: case VK_DELETE: case VK_HOME: case VK_END:
-            case VK_PRIOR:  case VK_NEXT:
-            case VK_UP:     case VK_DOWN:  case VK_LEFT: case VK_RIGHT:
-            case VK_DIVIDE: case VK_NUMLOCK:
-                lp |= (1L << 24); break;
-            default: break;
-        }
-        if (GetVirtualKeyNameTextA(lp, buf, sizeof(buf)) > 0) return buf;
-        snprintf(buf, sizeof(buf), "VK_%02X", vk);
-        return buf;
     }
 
     bool RowKeybind(const char* label, int* vk, float customWidth, bool allowMouse)
