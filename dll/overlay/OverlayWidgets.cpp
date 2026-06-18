@@ -205,7 +205,7 @@ namespace OverlayWidgets
         dl->AddRectFilled(bindBB.Min, bindBB.Max, bindBg, bindR);
         dl->AddRect(bindBB.Min, bindBB.Max, GetColorU32(ImGuiCol_Border), bindR, 0, 1.0f);
 
-        const char* keyName = listening ? "..." : GetKeyName(*vk);
+        const char* keyName = listening ? "..." : GetVirtualKeyName(*vk);
         ImVec2 txtSz = CalcTextSize(keyName);
         RenderText(bindBB.GetCenter() - txtSz * 0.5f, keyName);
 
@@ -231,7 +231,7 @@ namespace OverlayWidgets
                 lp |= (1L << 24); break;
             default: break;
         }
-        if (GetKeyNameTextA(lp, buf, sizeof(buf)) > 0) return buf;
+        if (GetVirtualKeyNameTextA(lp, buf, sizeof(buf)) > 0) return buf;
         snprintf(buf, sizeof(buf), "VK_%02X", vk);
         return buf;
     }
@@ -328,7 +328,7 @@ namespace OverlayWidgets
         dl->AddRectFilled(pill.Min, pill.Max, pillBg, pr);
         dl->AddRect(pill.Min, pill.Max, GetColorU32(ImGuiCol_Border), pr, 0, 1.0f);
 
-        const char* pillText = listening ? "press a key..." : (*vk ? GetKeyName(*vk) : "NONE");
+        const char* pillText = listening ? "press a key..." : (*vk ? GetVirtualKeyName(*vk) : "NONE");
         ImVec2 textSz = CalcTextSize(pillText);
         RenderText(ImVec2(pill.GetCenter().x - textSz.x * 0.5f, pill.GetCenter().y - textSz.y * 0.5f), pillText);
 
