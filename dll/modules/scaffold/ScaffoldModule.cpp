@@ -86,30 +86,36 @@ namespace ScaffoldModule
         const double ndx = dx / dl;
         const double ndz = dz / dl;
 
-        std::vector<std::pair<double, double>> points;
+        const double widthX = box.maxX() - box.minX();
+        const double widthZ = box.maxZ() - box.minZ();
+        const double toleranceX = widthX * 0.03;
+        const double toleranceZ = widthZ * 0.03;
+
+        struct Pt { double x, z; };
+        Pt pts[3];
+        int count = 0;
+
         if (std::abs(ndx) > 0.4) {
-            double x = (ndx > 0) ? box.maxX() : box.minX();
-            points.push_back({x, box.minZ()});
-            points.push_back({x, box.maxZ()});
-            points.push_back({x, (box.minZ() + box.maxZ()) / 2.0});
+            pts[count++] = { (ndx > 0) ? (box.minX() + toleranceX) : (box.maxX() - toleranceX), 
+                             (box.minZ() + box.maxZ()) / 2.0 };
         }
         if (std::abs(ndz) > 0.4) {
-            double z = (ndz > 0) ? box.maxZ() : box.minZ();
-            points.push_back({box.minX(), z});
-            points.push_back({box.maxX(), z});
-            points.push_back({(box.minX() + box.maxX()) / 2.0, z});
+            pts[count++] = { (box.minX() + box.maxX()) / 2.0,
+                             (ndz > 0) ? (box.minZ() + toleranceZ) : (box.maxZ() - toleranceZ) };
+        }
+        if (std::abs(ndx) > 0.4 && std::abs(ndz) > 0.4) {
+            pts[count++] = { (ndx > 0) ? (box.minX() + toleranceX) : (box.maxX() - toleranceX),
+                             (ndz > 0) ? (box.minZ() + toleranceZ) : (box.maxZ() - toleranceZ) };
         }
 
-        if (points.empty()) {
-            points.push_back({(box.minX() + box.maxX()) / 2.0, (box.minZ() + box.maxZ()) / 2.0});
-        }
+        for (int i = 0; i < count; ++i) {
+            const int bx = (int)std::floor(pts[i].x);
+            const int bz = (int)std::floor(pts[i].z);
+            const int nbx = (int)std::floor(pts[i].x + ndx * edge);
+            const int nbz = (int)std::floor(pts[i].z + ndz * edge);
 
-        for (const auto& p : points) {
-            for (int i = 1; i <= 6; ++i) {
-                const double t = edge * (double)i / 6.0;
-                if (isAir(lv, (int)std::floor(p.first + ndx * t), by, (int)std::floor(p.second + ndz * t)))
-                    return true;
-            }
+            if ((nbx != bx || nbz != bz) && isAir(lv, nbx, by, nbz))
+                return true;
         }
         return false;
     }
@@ -139,7 +145,7 @@ namespace ScaffoldModule
         if (mcWindow == nullptr) mcWindow = FindWindowW(L"GLFW30", nullptr);
 
         static std::mt19937 rng(std::random_device{}());
-        static std::uniform_real_distribution<double> edgeRange(0.02, 0.08);
+        static std::uniform_real_distribution<double> edgeRange(0.01, 0.03);
         static double edge      = edgeRange(rng);
         static bool   prevSneak = false;
 
@@ -196,7 +202,7 @@ namespace ScaffoldModule
                                     double vlen = std::sqrt(vx * vx + vz * vz);
 
                                     if (vlen > 1e-4) {
-                                        double lookAhead = edge + vlen * 3.0;
+                                        double lookAhead = edge + vlen * 1.5;
                                         if (isCloseToEdge(lv, box, by, vx, vz, lookAhead))
                                             wantSneak = true;
                                     }
