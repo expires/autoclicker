@@ -23,11 +23,12 @@ jobject ItemStack::GetInstance()
 
 Item ItemStack::getItem()
 {
+    if (this->instance == nullptr) return Item(nullptr);
     jmethodID getItem = lc->env->GetMethodID(this->GetClass(),
         MTD_ItemStack_getItem, DESC_ItemStack_getItem);
-
-    jobject rtn = lc->env->CallObjectMethod(this->GetInstance(), getItem);
-
+    if (!getItem) { lc->env->ExceptionClear(); return Item(nullptr); }
+    jobject rtn = lc->env->CallObjectMethod(this->instance, getItem);
+    if (lc->env->ExceptionCheck()) { lc->env->ExceptionClear(); return Item(nullptr); }
     return Item(rtn);
 }
 

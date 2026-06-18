@@ -31,7 +31,7 @@ file(READ "${MAPPING_FILE}" MAPPING_JSON)
 foreach(KEY
     class_Minecraft class_LocalPlayer class_Screen class_HitResult class_HitResultType
     class_MultiPlayerGameMode class_Gui class_ChatComponent class_LivingEntity class_Entity
-    class_Component class_InteractionHand class_ItemStack class_GameType class_EntityHitResult class_Item
+    class_Component class_InteractionHand class_ItemStack class_GameType class_EntityHitResult class_Item class_BlockItem
     fld_Minecraft_instance desc_Minecraft_instance
     fld_Minecraft_player   desc_Minecraft_player
     fld_Minecraft_gui      desc_Minecraft_gui
@@ -233,6 +233,8 @@ file(GLOB AUTOBLOCK_HEADERS    "modules/autoblock/*.h")
 file(GLOB AUTOBLOCK_SOURCES    "modules/autoblock/*.cpp")
 file(GLOB FRIENDS_HEADERS      "modules/friends/*.h")
 file(GLOB FRIENDS_SOURCES      "modules/friends/*.cpp")
+file(GLOB SCAFFOLD_HEADERS     "modules/scaffold/*.h")
+file(GLOB SCAFFOLD_SOURCES     "modules/scaffold/*.cpp")
 file(GLOB OVERLAY_HEADERS      "overlay/*.h" "overlay/tabs/*.h")
 file(GLOB OVERLAY_SOURCES      "overlay/*.cpp" "overlay/tabs/*.cpp")
 file(GLOB NETWORK_HEADERS      "network/*.h")
@@ -258,6 +260,8 @@ add_library(${PROJECT_NAME} SHARED
     ${AUTOBLOCK_SOURCES}
     ${FRIENDS_HEADERS}
     ${FRIENDS_SOURCES}
+    ${SCAFFOLD_HEADERS}
+    ${SCAFFOLD_SOURCES}
     ${SDK_SOURCES}
     ${SDK_HEADERS}
     ${OVERLAY_HEADERS}
@@ -284,6 +288,8 @@ source_group("Header Files\\Autoblock" FILES ${AUTOBLOCK_HEADERS})
 source_group("Source Files\\Autoblock" FILES ${AUTOBLOCK_SOURCES})
 source_group("Header Files\\Friends"     FILES ${FRIENDS_HEADERS})
 source_group("Source Files\\Friends"     FILES ${FRIENDS_SOURCES})
+source_group("Header Files\\Scaffold"    FILES ${SCAFFOLD_HEADERS})
+source_group("Source Files\\Scaffold"    FILES ${SCAFFOLD_SOURCES})
 source_group("Header Files\\Overlay"     FILES ${OVERLAY_HEADERS})
 source_group("Source Files\\Overlay"     FILES ${OVERLAY_SOURCES})
 source_group("Header Files\\Network"     FILES ${NETWORK_HEADERS})

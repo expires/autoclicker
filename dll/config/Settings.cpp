@@ -66,6 +66,8 @@ void Settings::Save()
     fprintf(f, "autoblockCooldown=%d\n",     autoblockCooldown);
     fprintf(f, "autoblockKey=%d\n",          autoblockKey);
 
+    fprintf(f, "scaffoldEnabled=%d\n", scaffoldEnabled ? 1 : 0);
+
     fprintf(f, "friendKey=%d\n", friendKey);
 
     {
@@ -133,6 +135,7 @@ void Settings::Load()
         else if (k == "autoblockDelay")        autoblockDelay        = val;
         else if (k == "autoblockCooldown")     autoblockCooldown     = val;
         else if (k == "autoblockKey")          autoblockKey          = val;
+        else if (k == "scaffoldEnabled")       scaffoldEnabled       = (val != 0);
         else if (k == "friendKey")               friendKey               = val;
         else if (k == "friendCount") {
 

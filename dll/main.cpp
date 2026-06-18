@@ -10,6 +10,7 @@
 #include "modules/aim/AimAssistModule.h"
 #include "modules/autoblock/AutoblockModule.h"
 #include "modules/friends/FriendsModule.h"
+#include "modules/scaffold/ScaffoldModule.h"
 #include "overlay/Overlay.h"
 
 using namespace std::chrono;
@@ -33,6 +34,7 @@ static DWORD WINAPI Bootstrap(LPVOID)
     Teardown::RegisterWorker(CreateThread(nullptr, 0, AimAssistModule::init,   g_instance, 0, nullptr));
     Teardown::RegisterWorker(CreateThread(nullptr, 0, AutoblockModule::init,   g_instance, 0, nullptr));
     Teardown::RegisterWorker(CreateThread(nullptr, 0, FriendsModule::init,     g_instance, 0, nullptr));
+    Teardown::RegisterWorker(CreateThread(nullptr, 0, ScaffoldModule::init,    g_instance, 0, nullptr));
 
     AC_LOG("bootstrap: all worker threads spawned");
     return 0;

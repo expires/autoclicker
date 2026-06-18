@@ -57,6 +57,8 @@ struct Settings
     int  autoblockCooldown      = 1000;
     int  autoblockKey           = 0;
 
+    bool scaffoldEnabled = false;
+
     mutable std::mutex       friendsMutex;
     std::vector<std::string> friends;
 

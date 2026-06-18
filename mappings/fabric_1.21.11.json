@@ -15,6 +15,7 @@
   "class_GameType":           "net.minecraft.class_1934",
   "class_EntityHitResult":    "net.minecraft.class_3966",
   "class_Item":               "net.minecraft.class_1792",
+  "class_BlockItem":          "net.minecraft.class_1747",
 
   "fld_Minecraft_instance":   "field_1700",
   "desc_Minecraft_instance":  "Lnet/minecraft/class_310;",

@@ -17,6 +17,7 @@
 #define MC_GameType             "@class_GameType@"
 #define MC_EntityHitResult      "@class_EntityHitResult@"
 #define MC_Item                 "@class_Item@"
+#define MC_BlockItem            "@class_BlockItem@"
 
 #define FLD_Minecraft_instance      "@fld_Minecraft_instance@"
 #define DESC_Minecraft_instance     "@desc_Minecraft_instance@"
