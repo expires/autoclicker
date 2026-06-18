@@ -86,6 +86,11 @@ namespace ScaffoldModule
         const double ndx = dx / dl;
         const double ndz = dz / dl;
 
+        const double centerX = (box.minX() + box.maxX()) / 2.0;
+        const double centerZ = (box.minZ() + box.maxZ()) / 2.0;
+        if (isAir(lv, (int)std::floor(centerX + ndx * edge), by, (int)std::floor(centerZ + ndz * edge)))
+            return true;
+
         const double widthX = box.maxX() - box.minX();
         const double widthZ = box.maxZ() - box.minZ();
         const double toleranceX = widthX * 0.03;
@@ -97,10 +102,10 @@ namespace ScaffoldModule
 
         if (std::abs(ndx) > 0.4) {
             pts[count++] = { (ndx > 0) ? (box.minX() + toleranceX) : (box.maxX() - toleranceX), 
-                             (box.minZ() + box.maxZ()) / 2.0 };
+                             centerZ };
         }
         if (std::abs(ndz) > 0.4) {
-            pts[count++] = { (box.minX() + box.maxX()) / 2.0,
+            pts[count++] = { centerX,
                              (ndz > 0) ? (box.minZ() + toleranceZ) : (box.maxZ() - toleranceZ) };
         }
         if (std::abs(ndx) > 0.4 && std::abs(ndz) > 0.4) {
