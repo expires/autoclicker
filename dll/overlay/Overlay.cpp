@@ -16,6 +16,7 @@
 #include "../config/Settings.h"
 #include "../logger/Logger.h"
 #include "../modules/esp/EspModule.h"
+#include "../modules/scaffold/ScaffoldModule.h"
 #include "../SDK/Lunar.h"
 #include "../SDK/Minecraft.h"
 #include "../SDK/Vec3.h"
@@ -589,6 +590,7 @@ static BOOL WINAPI hk_wglSwapBuffers(HDC hdc)
         if (!s_renderDrained)
         {
             AC_LOG("overlay: render thread draining");
+            ScaffoldModule::Release();
             if (s_initialized)
             {
                 if (s_hwnd && s_origProc)
@@ -769,6 +771,8 @@ static BOOL WINAPI hk_wglSwapBuffers(HDC hdc)
         s_scaffoldKeyHeldPrev = scaffoldHeld;
         s_destructKeyHeldPrev = destructHeld;
     }
+
+    ScaffoldModule::Tick();
 
     const bool needFrame = s_visible || g_settings.espEnabled;
     if (needFrame)

@@ -1,16 +1,12 @@
 #include "ScaffoldModule.h"
+#include <Windows.h>
 #include "../../config/Settings.h"
 #include "../../SDK/Minecraft.h"
-#include "../../SDK/BlockPos.h"
-#include "../../SDK/BlockState.h"
 #include "Mappings.h"
-#include "../autoclicker/AutoclickerModule.h"
 #include "../../overlay/Overlay.h"
-#include "../../logger/Logger.h"
 #include <chrono>
 #include <cmath>
 #include <random>
-#include <thread>
 
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
@@ -18,11 +14,6 @@
 
 namespace ScaffoldModule
 {
-    static bool jvmReady()
-    {
-        return lc->vm != nullptr && lc->classesLoaded.load(std::memory_order_acquire);
-    }
-
     static void setSneak(bool down)
     {
         static bool cur = false;
@@ -36,12 +27,34 @@ namespace ScaffoldModule
         SendInput(1, &in, sizeof(INPUT));
     }
 
-    static bool isAir(Level& level, int bx, int by, int bz)
+    // Resolves the class/method ids once and reuses them, and calls getBlockState
+    // directly on the level instance (no per-read GetClass mutex / GetMethodID).
+    // Render-thread only, so the statics are single-threaded.
+    static bool isAir(jobject levelInstance, int bx, int by, int bz)
     {
-        BlockPos bp = BlockPos::make(bx, by, bz);
-        if (!bp.GetInstance()) return false;
-        BlockState bs = level.getBlockState(bp);
-        return !bs.blocksMotion();
+        static jclass    bpCls = nullptr, lvCls = nullptr, bsCls = nullptr;
+        static jmethodID bpCtor = nullptr, getBS = nullptr, blocksMotion = nullptr;
+
+        if (getBS == nullptr) {
+            bpCls = lc->GetClass(MC_BlockPos);
+            lvCls = lc->GetClass(MC_ClientLevel);
+            bsCls = lc->GetClass(MC_BlockState);
+            if (!bpCls || !lvCls || !bsCls) return false;
+            bpCtor       = lc->env->GetMethodID(bpCls, "<init>", "(III)V");
+            getBS        = lc->env->GetMethodID(lvCls, MTD_Level_getBlockState, DESC_Level_getBlockState);
+            blocksMotion = lc->env->GetMethodID(bsCls, MTD_BlockState_blocksMotion, "()Z");
+            if (!bpCtor || !getBS || !blocksMotion) { lc->env->ExceptionClear(); getBS = nullptr; return false; }
+        }
+
+        jobject bp = lc->env->NewObject(bpCls, bpCtor, (jint)bx, (jint)by, (jint)bz);
+        if (bp == nullptr || lc->env->ExceptionCheck()) { lc->env->ExceptionClear(); return false; }
+        jobject bs = lc->env->CallObjectMethod(levelInstance, getBS, bp);
+        lc->env->DeleteLocalRef(bp);
+        if (bs == nullptr || lc->env->ExceptionCheck()) { lc->env->ExceptionClear(); return false; }
+        const jboolean solid = lc->env->CallBooleanMethod(bs, blocksMotion);
+        lc->env->DeleteLocalRef(bs);
+        if (lc->env->ExceptionCheck()) { lc->env->ExceptionClear(); return false; }
+        return solid != JNI_TRUE;
     }
 
     static bool holdingBlock(Player& local)
@@ -59,136 +72,132 @@ namespace ScaffoldModule
                lc->env->IsInstanceOf(item.GetInstance(), cls) == JNI_TRUE;
     }
 
-    static bool anyCornerSolid(Level& level, double x, double z, int by)
+    static bool anyCornerSolid(jobject lv, double x, double z, int by)
     {
         constexpr double H = 0.3;
-        return !isAir(level, (int)std::floor(x - H), by, (int)std::floor(z - H))
-            || !isAir(level, (int)std::floor(x + H), by, (int)std::floor(z - H))
-            || !isAir(level, (int)std::floor(x - H), by, (int)std::floor(z + H))
-            || !isAir(level, (int)std::floor(x + H), by, (int)std::floor(z + H));
+        return !isAir(lv, (int)std::floor(x - H), by, (int)std::floor(z - H))
+            || !isAir(lv, (int)std::floor(x + H), by, (int)std::floor(z - H))
+            || !isAir(lv, (int)std::floor(x - H), by, (int)std::floor(z + H))
+            || !isAir(lv, (int)std::floor(x + H), by, (int)std::floor(z + H));
     }
 
-    static bool isCloseToEdge(Level& level, double x, double z, int by,
+    static bool isCloseToEdge(jobject lv, double x, double z, int by,
                               double dx, double dz, double edge)
     {
         const double dl = std::sqrt(dx * dx + dz * dz);
-        if (dl <= 1e-3)
-            return false;
+        if (dl <= 1e-3) return false;
         dx /= dl; dz /= dl;
 
         constexpr int STEPS = 6;
         for (int i = 1; i <= STEPS; ++i) {
             const double t = edge * (double)i / STEPS;
-            if (isAir(level, (int)std::floor(x + dx * t), by, (int)std::floor(z + dz * t)))
+            if (isAir(lv, (int)std::floor(x + dx * t), by, (int)std::floor(z + dz * t)))
                 return true;
         }
         return false;
     }
 
-    DWORD WINAPI init(LPVOID)
+    void Release()
     {
-        AC_LOG("scaffold: thread start");
-        while (!AutoclickerModule::destruct && !jvmReady())
-            std::this_thread::sleep_for(std::chrono::milliseconds(100));
-        if (AutoclickerModule::destruct) return 0;
+        setSneak(false);
+    }
 
-        if (lc->vm->AttachCurrentThread(reinterpret_cast<void**>(&lc->env), nullptr) != JNI_OK)
-            return 0;
-        if (lc->env == nullptr) return 0;
-        AC_LOG("scaffold: attached; entering loop");
+    void Tick()
+    {
+        if (lc->env == nullptr) {
+            if (lc->vm == nullptr || !lc->classesLoaded.load(std::memory_order_acquire)) return;
+            JNIEnv* e = nullptr;
+            if (lc->vm->GetEnv(reinterpret_cast<void**>(&e), JNI_VERSION_1_6) == JNI_OK && e)
+                lc->env = e;
+        }
+        if (lc->env == nullptr) return;
 
-        Minecraft  mc;
-        const HWND mcWindow = FindWindowW(L"GLFW30", nullptr);
-        if (mcWindow == nullptr) {
-            lc->vm->DetachCurrentThread();
-            return 0;
+        static auto last = std::chrono::steady_clock::now();
+        const auto now = std::chrono::steady_clock::now();
+        if (std::chrono::duration_cast<std::chrono::milliseconds>(now - last).count() < 10)
+            return;
+        last = now;
+
+        static HWND mcWindow = nullptr;
+        if (mcWindow == nullptr) mcWindow = FindWindowW(L"GLFW30", nullptr);
+
+        static std::mt19937 rng(std::random_device{}());
+        static std::uniform_real_distribution<double> edgeRange(0.4, 0.6);
+        static double edge      = edgeRange(rng);
+        static bool   prevSneak = false;
+
+        const bool kW = (GetAsyncKeyState('W') & 0x8000) != 0;
+        const bool kA = (GetAsyncKeyState('A') & 0x8000) != 0;
+        const bool kS = (GetAsyncKeyState('S') & 0x8000) != 0;
+        const bool kD = (GetAsyncKeyState('D') & 0x8000) != 0;
+        const bool moveKey = kW || kA || kS || kD;
+
+        if (!g_settings.scaffoldEnabled || Overlay::IsMenuVisible()
+            || GetForegroundWindow() != mcWindow || !moveKey) {
+            setSneak(false);
+            prevSneak = false;
+            return;
         }
 
-        std::mt19937 rng(std::random_device{}());
-        std::uniform_real_distribution<double> edgeRange(0.4, 0.6);
-        double edge      = edgeRange(rng);
-        bool   prevSneak = false;
+        bool decided   = false;
+        bool wantSneak = false;
 
-        while (!AutoclickerModule::destruct)
-        {
-            std::this_thread::sleep_for(std::chrono::milliseconds(10));
-
-            const bool enabled = g_settings.scaffoldEnabled;
-            const bool fg      = (GetForegroundWindow() == mcWindow);
-            const bool menu    = Overlay::IsMenuVisible();
-            const bool kW = (GetAsyncKeyState('W') & 0x8000) != 0;
-            const bool kA = (GetAsyncKeyState('A') & 0x8000) != 0;
-            const bool kS = (GetAsyncKeyState('S') & 0x8000) != 0;
-            const bool kD = (GetAsyncKeyState('D') & 0x8000) != 0;
-            const bool moveKey = kW || kA || kS || kD;
-
-            bool decided   = false;
-            bool wantSneak = false;
-
-            if (enabled && fg && !menu && moveKey && lc->env->PushLocalFrame(64) == 0)
-            {
-                if (mc.isPaused()) {
+        if (lc->env->PushLocalFrame(64) == 0) {
+            Minecraft mc;
+            if (mc.isPaused()) {
+                decided = true;
+            }
+            else {
+                if (lc->env->ExceptionCheck()) lc->env->ExceptionClear();
+                Screen screen = mc.GetScreen();
+                if (lc->env->ExceptionCheck()) lc->env->ExceptionClear();
+                if (screen.GetInstance() != nullptr) {
                     decided = true;
                 }
                 else {
-                    if (lc->env->ExceptionCheck()) lc->env->ExceptionClear();
-                    Screen screen = mc.GetScreen();
-                    if (lc->env->ExceptionCheck()) lc->env->ExceptionClear();
-                    if (screen.GetInstance() != nullptr) {
-                        decided = true;
-                    }
-                    else {
-                        Player local = mc.GetLocalPlayer();
-                        Level  level = mc.GetLevel();
-                        if (local.GetInstance() != nullptr && level.GetInstance() != nullptr) {
-                            Vec3 pos = local.getPosition();
-                            if (pos.GetInstance() != nullptr) {
-                                const double x   = pos.getX();
-                                const double y   = pos.getY();
-                                const double z   = pos.getZ();
-                                const float  yaw = local.getYRot();
+                    Player local = mc.GetLocalPlayer();
+                    Level  level = mc.GetLevel();
+                    if (local.GetInstance() != nullptr && level.GetInstance() != nullptr) {
+                        Vec3 pos = local.getPosition();
+                        if (pos.GetInstance() != nullptr) {
+                            const double x   = pos.getX();
+                            const double y   = pos.getY();
+                            const double z   = pos.getZ();
+                            const float  yaw = local.getYRot();
 
-                                decided = true;
+                            decided = true;
 
-                                if (holdingBlock(local)) {
-                                    const int by = (int)std::floor(y) - 1;
+                            if (holdingBlock(local)) {
+                                const int     by = (int)std::floor(y) - 1;
+                                const jobject lv = level.GetInstance();
 
-                                    if (anyCornerSolid(level, x, z, by)) {
-                                        const double yawR = yaw * M_PI / 180.0;
-                                        const double fwdX = -std::sin(yawR), fwdZ =  std::cos(yawR);
-                                        const double rgtX = -std::cos(yawR), rgtZ = -std::sin(yawR);
+                                if (anyCornerSolid(lv, x, z, by)) {
+                                    const double yawR = yaw * M_PI / 180.0;
+                                    const double fwdX = -std::sin(yawR), fwdZ =  std::cos(yawR);
+                                    const double rgtX = -std::cos(yawR), rgtZ = -std::sin(yawR);
 
-                                        double dx = 0.0, dz = 0.0;
-                                        if (kW) { dx += fwdX; dz += fwdZ; }
-                                        if (kS) { dx -= fwdX; dz -= fwdZ; }
-                                        if (kD) { dx += rgtX; dz += rgtZ; }
-                                        if (kA) { dx -= rgtX; dz -= rgtZ; }
+                                    double dx = 0.0, dz = 0.0;
+                                    if (kW) { dx += fwdX; dz += fwdZ; }
+                                    if (kS) { dx -= fwdX; dz -= fwdZ; }
+                                    if (kD) { dx += rgtX; dz += rgtZ; }
+                                    if (kA) { dx -= rgtX; dz -= rgtZ; }
 
-                                        if (isCloseToEdge(level, x, z, by, dx, dz, edge))
-                                            wantSneak = true;
-                                    }
+                                    if (isCloseToEdge(lv, x, z, by, dx, dz, edge))
+                                        wantSneak = true;
                                 }
                             }
                         }
                     }
                 }
-                if (lc->env->ExceptionCheck()) lc->env->ExceptionClear();
-                lc->env->PopLocalFrame(nullptr);
             }
-
-            if (!enabled || menu || !fg || !moveKey) {
-                setSneak(false);
-            }
-            else if (decided) {
-                setSneak(wantSneak);
-                if (prevSneak && !wantSneak) edge = edgeRange(rng);
-                prevSneak = wantSneak;
-            }
+            if (lc->env->ExceptionCheck()) lc->env->ExceptionClear();
+            lc->env->PopLocalFrame(nullptr);
         }
 
-        setSneak(false);
-        AC_LOG("scaffold: loop exit; detaching");
-        lc->vm->DetachCurrentThread();
-        return 0;
+        if (decided) {
+            setSneak(wantSneak);
+            if (prevSneak && !wantSneak) edge = edgeRange(rng);
+            prevSneak = wantSneak;
+        }
     }
 }
