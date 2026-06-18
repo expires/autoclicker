@@ -44,24 +44,57 @@ namespace ScaffoldModule
         return !bs.blocksMotion();
     }
 
-    static int blockHeldStage(Player& local)
+    static bool holdingBlock(Player& local)
     {
         Inventory inv = local.getInventory();
-        if (inv.GetInstance() == nullptr) return 0;
-
+        if (inv.GetInstance() == nullptr) return false;
         const int sel = inv.getSelected();
-        if (sel < 0 || sel > 8) return 1;
-
+        if (sel < 0 || sel > 8) return false;
         ItemStack stack = inv.getItem(sel);
-        if (stack.GetInstance() == nullptr || stack.isEmpty()) return 2;
-
+        if (stack.GetInstance() == nullptr || stack.isEmpty()) return false;
         Item item = stack.getItem();
-        if (item.GetInstance() == nullptr) return 3;
-
+        if (item.GetInstance() == nullptr) return false;
         jclass cls = lc->GetClass(MC_BlockItem);
-        if (cls == nullptr) return 4;
+        return cls != nullptr &&
+               lc->env->IsInstanceOf(item.GetInstance(), cls) == JNI_TRUE;
+    }
 
-        return (lc->env->IsInstanceOf(item.GetInstance(), cls) == JNI_TRUE) ? 6 : 5;
+    static bool anyCornerSolid(Level& level, double x, double z, int by)
+    {
+        constexpr double H = 0.3;
+        return !isAir(level, (int)std::floor(x - H), by, (int)std::floor(z - H))
+            || !isAir(level, (int)std::floor(x + H), by, (int)std::floor(z - H))
+            || !isAir(level, (int)std::floor(x - H), by, (int)std::floor(z + H))
+            || !isAir(level, (int)std::floor(x + H), by, (int)std::floor(z + H));
+    }
+
+    static bool anyCornerAir(Level& level, double x, double z, int by)
+    {
+        constexpr double H = 0.3;
+        return isAir(level, (int)std::floor(x - H), by, (int)std::floor(z - H))
+            || isAir(level, (int)std::floor(x + H), by, (int)std::floor(z - H))
+            || isAir(level, (int)std::floor(x - H), by, (int)std::floor(z + H))
+            || isAir(level, (int)std::floor(x + H), by, (int)std::floor(z + H));
+    }
+
+    static bool isCloseToEdge(Level& level, double x, double z, int by,
+                              double dx, double dz, double edge)
+    {
+        if (anyCornerAir(level, x, z, by))
+            return true;
+
+        const double dl = std::sqrt(dx * dx + dz * dz);
+        if (dl <= 1e-3)
+            return false;
+        dx /= dl; dz /= dl;
+
+        constexpr int STEPS = 6;
+        for (int i = 1; i <= STEPS; ++i) {
+            const double t = edge * (double)i / STEPS;
+            if (isAir(level, (int)std::floor(x + dx * t), by, (int)std::floor(z + dz * t)))
+                return true;
+        }
+        return false;
     }
 
     DWORD WINAPI init(LPVOID)
@@ -84,8 +117,8 @@ namespace ScaffoldModule
         }
 
         std::mt19937 rng(std::random_device{}());
-        std::uniform_real_distribution<double> marginDist(0.05, 0.1);
-        double margin    = marginDist(rng);
+        std::uniform_real_distribution<double> edgeRange(0.4, 0.6);
+        double edge      = edgeRange(rng);
         bool   prevSneak = false;
 
         while (!AutoclickerModule::destruct)
@@ -99,7 +132,7 @@ namespace ScaffoldModule
             const bool kA = (GetAsyncKeyState('A') & 0x8000) != 0;
             const bool kS = (GetAsyncKeyState('S') & 0x8000) != 0;
             const bool kD = (GetAsyncKeyState('D') & 0x8000) != 0;
-            const bool moveKey = kA || kS || kD;
+            const bool moveKey = kW || kA || kS || kD;
 
             bool decided   = false;
             bool wantSneak = false;
@@ -122,56 +155,29 @@ namespace ScaffoldModule
                         if (local.GetInstance() != nullptr && level.GetInstance() != nullptr) {
                             Vec3 pos = local.getPosition();
                             if (pos.GetInstance() != nullptr) {
-                                const double x     = pos.getX();
-                                const double y     = pos.getY();
-                                const double z     = pos.getZ();
-                                const float  yaw   = local.getYRot();
-                                const float  pitch = local.getXRot();
+                                const double x   = pos.getX();
+                                const double y   = pos.getY();
+                                const double z   = pos.getZ();
+                                const float  yaw = local.getYRot();
 
                                 decided = true;
 
-                                if (pitch > 30.0f && blockHeldStage(local) == 6) {
-                                    const double yawR = yaw * M_PI / 180.0;
-                                    const double fwdX = -std::sin(yawR), fwdZ =  std::cos(yawR);
-                                    const double rgtX = -std::cos(yawR), rgtZ = -std::sin(yawR);
+                                if (holdingBlock(local)) {
+                                    const int by = (int)std::floor(y) - 1;
 
-                                    double mdx = 0.0, mdz = 0.0;
-                                    if (kW) { mdx += fwdX; mdz += fwdZ; }
-                                    if (kS) { mdx -= fwdX; mdz -= fwdZ; }
-                                    if (kD) { mdx += rgtX; mdz += rgtZ; }
-                                    if (kA) { mdx -= rgtX; mdz -= rgtZ; }
+                                    if (anyCornerSolid(level, x, z, by)) {
+                                        const double yawR = yaw * M_PI / 180.0;
+                                        const double fwdX = -std::sin(yawR), fwdZ =  std::cos(yawR);
+                                        const double rgtX = -std::cos(yawR), rgtZ = -std::sin(yawR);
 
-                                    const double mlen = std::sqrt(mdx * mdx + mdz * mdz);
-                                    if (mlen > 1e-3) {
-                                        mdx /= mlen; mdz /= mlen;
+                                        double dx = 0.0, dz = 0.0;
+                                        if (kW) { dx += fwdX; dz += fwdZ; }
+                                        if (kS) { dx -= fwdX; dz -= fwdZ; }
+                                        if (kD) { dx += rgtX; dz += rgtZ; }
+                                        if (kA) { dx -= rgtX; dz -= rgtZ; }
 
-                                        const int by = (int)std::floor(y) - 1;
-                                        constexpr double HALF = 0.3;
-
-                                        const int sgnX = (mdx >  0.01) ? 1 : ((mdx < -0.01) ? -1 : 0);
-                                        const int sgnZ = (mdz >  0.01) ? 1 : ((mdz < -0.01) ? -1 : 0);
-
-                                        const int refX = (sgnX != 0) ? (int)std::floor(x - sgnX * HALF) : (int)std::floor(x);
-                                        const int refZ = (sgnZ != 0) ? (int)std::floor(z - sgnZ * HALF) : (int)std::floor(z);
-
-                                        if (!isAir(level, refX, by, refZ)) {
-                                            bool edge = false;
-
-                                            if (sgnX != 0) {
-                                                const double distX = (sgnX < 0) ? ((x - HALF) - refX)
-                                                                                : ((refX + 1) - (x + HALF));
-                                                if (distX <= margin && isAir(level, refX + sgnX, by, refZ))
-                                                    edge = true;
-                                            }
-                                            if (sgnZ != 0) {
-                                                const double distZ = (sgnZ < 0) ? ((z - HALF) - refZ)
-                                                                                : ((refZ + 1) - (z + HALF));
-                                                if (distZ <= margin && isAir(level, refX, by, refZ + sgnZ))
-                                                    edge = true;
-                                            }
-
-                                            wantSneak = edge;
-                                        }
+                                        if (isCloseToEdge(level, x, z, by, dx, dz, edge))
+                                            wantSneak = true;
                                     }
                                 }
                             }
@@ -187,7 +193,7 @@ namespace ScaffoldModule
             }
             else if (decided) {
                 setSneak(wantSneak);
-                if (prevSneak && !wantSneak) margin = marginDist(rng);
+                if (prevSneak && !wantSneak) edge = edgeRange(rng);
                 prevSneak = wantSneak;
             }
         }
