@@ -84,39 +84,52 @@ namespace ScaffoldModule
 
     static bool shouldShift(jobject lv, AABB& box, int by, double dx, double dz)
     {
+        static bool isLatching = false;
         const double dl = std::sqrt(dx * dx + dz * dz);
-        if (dl < 1e-4) return false;
-        const double ndx = dx / dl;
-        const double ndz = dz / dl;
-
+        
         // Current "center" block
         const int cx = (int)std::floor((box.minX() + box.maxX()) * 0.5);
         const int cz = (int)std::floor((box.minZ() + box.maxZ()) * 0.5);
 
-        // Next block in movement direction
-        const int nx = (int)std::floor(((box.minX() + box.maxX()) * 0.5) + ndx * 0.45);
-        const int nz = (int)std::floor(((box.minZ() + box.maxZ()) * 0.5) + ndz * 0.45);
-
-        // Only consider shifting if we are moving towards air
-        if (isAir(lv, nx, by, nz)) {
-            const double boundX = (ndx > 0) ? (double)cx + 1.0 : (double)cx;
-            const double boundZ = (ndz > 0) ? (double)cz + 1.0 : (double)cz;
-
-            double past = 0;
-            if (std::abs(ndx) > 0.1) {
-                double leadX = (ndx > 0) ? box.maxX() : box.minX();
-                past = (std::max)(past, std::abs(leadX - boundX));
-            }
-            if (std::abs(ndz) > 0.1) {
-                double leadZ = (ndz > 0) ? box.maxZ() : box.minZ();
-                past = (std::max)(past, std::abs(leadZ - boundZ));
-            }
-
-            // Hitbox width is 0.6. 90% is 0.54. 
-            // We shift when 0.54 blocks are past the edge.
-            if (past > 0.535) return true;
+        // Movement direction
+        double ndx = 0, ndz = 0;
+        if (dl > 1e-4) {
+            ndx = dx / dl;
+            ndz = dz / dl;
         }
-        return false;
+
+        // Next block in movement direction
+        const int nx = (int)std::floor(((box.minX() + box.maxX()) * 0.5) + (ndx * 0.45));
+        const int nz = (int)std::floor(((box.minZ() + box.maxZ()) * 0.5) + (ndz * 0.45));
+
+        // Check distance past the edge of the current center block
+        const double boundX = (ndx >= 0) ? (double)cx + 1.0 : (double)cx;
+        const double boundZ = (ndz >= 0) ? (double)cz + 1.0 : (double)cz;
+
+        double past = 0;
+        if (std::abs(ndx) > 0.01) {
+            double leadX = (ndx > 0) ? box.maxX() : box.minX();
+            past = (std::max)(past, std::abs(leadX - boundX));
+        }
+        if (std::abs(ndz) > 0.01) {
+            double leadZ = (ndz > 0) ? box.maxZ() : box.minZ();
+            past = (std::max)(past, std::abs(leadZ - boundZ));
+        }
+
+        // 90% threshold to START shifting (0.54)
+        // 50% threshold to STOP shifting (0.30) to provide hysteresis/latching
+        if (!isLatching) {
+            if (isAir(lv, nx, by, nz) && past > 0.535) {
+                isLatching = true;
+            }
+        } else {
+            // Stay shifting until we are mostly back on a block
+            if (past < 0.30 || !anyCornerSolid(lv, box, by)) {
+                isLatching = false;
+            }
+        }
+
+        return isLatching;
     }
 
     void Release()
