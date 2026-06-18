@@ -111,7 +111,7 @@ namespace ScaffoldModule
         if (std::abs(ndx) < 1e-3 && std::abs(ndz) < 1e-3) return false;
 
         if (!latched) {
-            if (leadOverAir(lv, box, by, ndx, ndz, 0.10)) latched = true;
+            if (leadOverAir(lv, box, by, ndx, ndz, 0.05)) latched = true;
         } else {
             if (!leadOverAir(lv, box, by, ndx, ndz, 0.30)) latched = false;
         }
