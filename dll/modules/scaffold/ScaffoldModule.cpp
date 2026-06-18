@@ -81,24 +81,24 @@ namespace ScaffoldModule
             return 0;
         }
 
+        auto lastLog = std::chrono::steady_clock::now();
+
         while (!AutoclickerModule::destruct)
         {
             std::this_thread::sleep_for(std::chrono::milliseconds(10));
 
-            if (!g_settings.scaffoldEnabled
-                || Overlay::IsMenuVisible()
-                || GetForegroundWindow() != mcWindow)
-            {
-                setSneak(false);
-                continue;
-            }
+            const bool enabled = g_settings.scaffoldEnabled;
+            const bool fg      = (GetForegroundWindow() == mcWindow);
+            const bool menu    = Overlay::IsMenuVisible();
+            const bool sKey    = (GetAsyncKeyState('S') & 0x8000) != 0;
 
-            if (!(GetAsyncKeyState('S') & 0x8000)) { setSneak(false); continue; }
+            bool   decided   = false;
+            bool   wantSneak = false;
+            int    dbgBlock = -1, dbgGround = -1, dbgNbrAir = -1;
+            float  dbgPitch = 0.0f;
+            double dbgDist = 9.0, dbgX = 0, dbgY = 0, dbgZ = 0;
 
-            bool decided   = false;
-            bool wantSneak = false;
-
-            if (lc->env->PushLocalFrame(64) == 0)
+            if (enabled && fg && !menu && sKey && lc->env->PushLocalFrame(64) == 0)
             {
                 if (mc.isPaused()) {
                     decided = true;
@@ -121,15 +121,19 @@ namespace ScaffoldModule
                                 const double z     = pos.getZ();
                                 const float  yaw   = local.getYRot();
                                 const float  pitch = local.getXRot();
+                                dbgPitch = pitch; dbgX = x; dbgY = y; dbgZ = z;
 
                                 decided = true;
 
-                                if (pitch > 0.0f && holdingBlock(local)) {
+                                dbgBlock = holdingBlock(local) ? 1 : 0;
+
+                                if (pitch > 0.0f && dbgBlock == 1) {
                                     const int bx = (int)std::floor(x);
                                     const int bz = (int)std::floor(z);
                                     const int by = (int)std::floor(y) - 1;
 
-                                    if (!isAir(level, bx, by, bz)) {
+                                    dbgGround = isAir(level, bx, by, bz) ? 0 : 1;
+                                    if (dbgGround == 1) {
                                         const double yawR = yaw * M_PI / 180.0;
                                         const double dxb =  std::sin(yawR);
                                         const double dzb = -std::cos(yawR);
@@ -145,8 +149,10 @@ namespace ScaffoldModule
                                             if (dzb < 0.0) { distToEdge = (z - HALF) - bz;       nbz = bz - 1; }
                                             else           { distToEdge = (bz + 1) - (z + HALF); nbz = bz + 1; }
                                         }
+                                        dbgDist = distToEdge;
 
-                                        if (distToEdge <= MARGIN && isAir(level, nbx, by, nbz))
+                                        dbgNbrAir = isAir(level, nbx, by, nbz) ? 1 : 0;
+                                        if (distToEdge <= MARGIN && dbgNbrAir == 1)
                                             wantSneak = true;
                                     }
                                 }
@@ -158,7 +164,16 @@ namespace ScaffoldModule
                 lc->env->PopLocalFrame(nullptr);
             }
 
-            if (decided) setSneak(wantSneak);
+            if (!enabled || menu || !fg || !sKey) setSneak(false);
+            else if (decided)                     setSneak(wantSneak);
+
+            const auto now = std::chrono::steady_clock::now();
+            if (enabled &&
+                std::chrono::duration_cast<std::chrono::milliseconds>(now - lastLog).count() >= 300) {
+                lastLog = now;
+                AC_LOG("scaffold: en=%d fg=%d menu=%d S=%d | pitch=%.1f block=%d ground=%d dist=%.3f nbrAir=%d sneak=%d pos=(%.2f,%.2f,%.2f)",
+                       enabled, fg, menu, sKey, dbgPitch, dbgBlock, dbgGround, dbgDist, dbgNbrAir, wantSneak, dbgX, dbgY, dbgZ);
+            }
         }
 
         setSneak(false);
