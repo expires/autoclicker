@@ -114,7 +114,7 @@ namespace ScaffoldModule
         if (mcWindow == nullptr) mcWindow = FindWindowW(L"GLFW30", nullptr);
 
         static std::mt19937 rng(std::random_device{}());
-        static std::uniform_real_distribution<double> leanDist(0.05, 0.25);
+        static std::uniform_real_distribution<double> leanDist(0.20, 0.29);
         static double lean      = leanDist(rng);
         static double lastNdx   = 0.0;
         static double lastNdz   = 0.0;
