@@ -61,7 +61,6 @@ void Settings::Save()
     fprintf(f, "aimKey=%d\n",        aimKey);
 
     fprintf(f, "autoblockEnabled=%d\n",      autoblockEnabled      ? 1 : 0);
-    fprintf(f, "autoblockRequireSword=%d\n", autoblockRequireSword ? 1 : 0);
     fprintf(f, "autoblockDelay=%d\n",        autoblockDelay);
     fprintf(f, "autoblockCooldown=%d\n",     autoblockCooldown);
     fprintf(f, "autoblockKey=%d\n",          autoblockKey);
@@ -132,7 +131,6 @@ void Settings::Load()
         else if (k == "aimRange")      aimRange      = val;
         else if (k == "aimKey")        aimKey        = val;
         else if (k == "autoblockEnabled")      autoblockEnabled      = (val != 0);
-        else if (k == "autoblockRequireSword") autoblockRequireSword = (val != 0);
         else if (k == "autoblockDelay")        autoblockDelay        = val;
         else if (k == "autoblockCooldown")     autoblockCooldown     = val;
         else if (k == "autoblockKey")          autoblockKey          = val;

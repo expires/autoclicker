@@ -132,9 +132,9 @@ namespace OverlayWidgets
         const ImVec2 pos  = window->DC.CursorPos;
         const ImRect bb(pos, ImVec2(pos.x + w, pos.y + rowH));
 
-        ImGuiID id = window->GetID(label);
+        ImGuiID id     = window->GetID(label);
+        ImGuiID bindId = window->GetID("##bind");
         ItemSize(bb);
-        if (!ItemAdd(bb, id)) return false;
 
         bool changed = false;
 
@@ -144,36 +144,36 @@ namespace OverlayWidgets
         const float bindW  = Theme::px(60.0f);
         const float bindH  = Theme::px(22.0f);
 
-        const ImRect pillBB(ImVec2(bb.Max.x - pillW, bb.Min.y + (rowH - pillH) * 0.5f), 
+        const ImRect pillBB(ImVec2(bb.Max.x - pillW, bb.Min.y + (rowH - pillH) * 0.5f),
                             ImVec2(bb.Max.x, bb.Min.y + (rowH - pillH) * 0.5f + pillH));
-        
+
         const ImRect bindBB(ImVec2(pillBB.Min.x - gap - bindW, bb.Min.y + (rowH - bindH) * 0.5f),
                             ImVec2(pillBB.Min.x - gap, bb.Min.y + (rowH - bindH) * 0.5f + bindH));
 
-        // Toggle behavior
-        bool toggleHovered, toggleHeld;
-        if (ButtonBehavior(pillBB, id, &toggleHovered, &toggleHeld)) {
-            *v = !*v;
-            MarkItemEdited(id);
-            changed = true;
-        }
-
-        // Keybind behavior
-        ImGuiID bindId = window->GetID("##bind");
-        bool bindHovered, bindHeld;
-        if (ButtonBehavior(bindBB, bindId, &bindHovered, &bindHeld)) {
-            if (s_kbActiveId == id) {
-                s_kbActiveId = 0;
-            } else {
-                s_kbActiveId = id;
-                for (int k = 0; k < 256; ++k)
-                    s_kbExcluded[k] = (GetAsyncKeyState(k) & 0x8000) != 0;
+        bool toggleHovered = false, toggleHeld = false;
+        if (ItemAdd(pillBB, id)) {
+            if (ButtonBehavior(pillBB, id, &toggleHovered, &toggleHeld)) {
+                *v = !*v;
+                MarkItemEdited(id);
+                changed = true;
             }
         }
 
-        if (bindHovered && IsMouseClicked(ImGuiMouseButton_Right)) {
-            if (*vk != 0) { *vk = 0; MarkItemEdited(id); changed = true; }
-            if (s_kbActiveId == id) s_kbActiveId = 0;
+        bool bindHovered = false, bindHeld = false;
+        if (ItemAdd(bindBB, bindId)) {
+            if (ButtonBehavior(bindBB, bindId, &bindHovered, &bindHeld)) {
+                if (s_kbActiveId == id) {
+                    s_kbActiveId = 0;
+                } else {
+                    s_kbActiveId = id;
+                    for (int k = 0; k < 256; ++k)
+                        s_kbExcluded[k] = (GetAsyncKeyState(k) & 0x8000) != 0;
+                }
+            }
+            if (bindHovered && IsMouseClicked(ImGuiMouseButton_Right)) {
+                if (*vk != 0) { *vk = 0; MarkItemEdited(id); changed = true; }
+                if (s_kbActiveId == id) s_kbActiveId = 0;
+            }
         }
 
         const bool listening = (s_kbActiveId == id);

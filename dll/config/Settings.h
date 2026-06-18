@@ -52,7 +52,6 @@ struct Settings
     int  aimKey        = 0;
 
     bool autoblockEnabled       = false;
-    bool autoblockRequireSword  = true;
     int  autoblockDelay         = 100;
     int  autoblockCooldown      = 1000;
     int  autoblockKey           = 0;

@@ -159,7 +159,7 @@ namespace AutoblockModule
             if (Overlay::IsMenuVisible())              continue;
             if (GetForegroundWindow() != mcWindow)     continue;
 
-            if (g_settings.autoblockRequireSword) {
+            {
                 const std::string name = SelectedItemName(mc);
                 if (!ContainsCi(name, "sword")) continue;
             }

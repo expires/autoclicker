@@ -12,7 +12,6 @@ namespace OverlayTabs
 
         ImGui::PushID("autoblock");
         dirty |= ModuleHeader("Autoblock", &g_settings.autoblockEnabled, &g_settings.autoblockKey);
-        dirty |= RowCheckbox("Require Sword",  &g_settings.autoblockRequireSword);
         dirty |= RowSlider  ("Delay (ms)",     &g_settings.autoblockDelay,    30, 1000);
         {
             int cooldownSec = g_settings.autoblockCooldown / 1000;
