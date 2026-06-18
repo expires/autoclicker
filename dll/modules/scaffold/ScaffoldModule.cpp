@@ -148,22 +148,30 @@ namespace ScaffoldModule
                                         const int by = (int)std::floor(y) - 1;
                                         constexpr double HALF = 0.3;
 
-                                        int    rbx, rbz, nbx, nbz;
-                                        double distToEdge;
-                                        if (std::fabs(mdx) >= std::fabs(mdz)) {
-                                            rbz = (int)std::floor(z); nbz = rbz;
-                                            if (mdx < 0.0) { rbx = (int)std::floor(x + HALF); distToEdge = (x - HALF) - rbx;       nbx = rbx - 1; }
-                                            else           { rbx = (int)std::floor(x - HALF); distToEdge = (rbx + 1) - (x + HALF); nbx = rbx + 1; }
-                                        } else {
-                                            rbx = (int)std::floor(x); nbx = rbx;
-                                            if (mdz < 0.0) { rbz = (int)std::floor(z + HALF); distToEdge = (z - HALF) - rbz;       nbz = rbz - 1; }
-                                            else           { rbz = (int)std::floor(z - HALF); distToEdge = (rbz + 1) - (z + HALF); nbz = rbz + 1; }
-                                        }
+                                        const int sgnX = (mdx >  0.01) ? 1 : ((mdx < -0.01) ? -1 : 0);
+                                        const int sgnZ = (mdz >  0.01) ? 1 : ((mdz < -0.01) ? -1 : 0);
 
-                                        if (!isAir(level, rbx, by, rbz) &&
-                                            distToEdge <= margin &&
-                                            isAir(level, nbx, by, nbz))
-                                            wantSneak = true;
+                                        const int refX = (sgnX != 0) ? (int)std::floor(x - sgnX * HALF) : (int)std::floor(x);
+                                        const int refZ = (sgnZ != 0) ? (int)std::floor(z - sgnZ * HALF) : (int)std::floor(z);
+
+                                        if (!isAir(level, refX, by, refZ)) {
+                                            bool edge = false;
+
+                                            if (sgnX != 0) {
+                                                const double distX = (sgnX < 0) ? ((x - HALF) - refX)
+                                                                                : ((refX + 1) - (x + HALF));
+                                                if (distX <= margin && isAir(level, refX + sgnX, by, refZ))
+                                                    edge = true;
+                                            }
+                                            if (sgnZ != 0) {
+                                                const double distZ = (sgnZ < 0) ? ((z - HALF) - refZ)
+                                                                                : ((refZ + 1) - (z + HALF));
+                                                if (distZ <= margin && isAir(level, refX, by, refZ + sgnZ))
+                                                    edge = true;
+                                            }
+
+                                            wantSneak = edge;
+                                        }
                                     }
                                 }
                             }
