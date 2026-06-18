@@ -114,13 +114,16 @@ namespace ScaffoldModule
         if (mcWindow == nullptr) mcWindow = FindWindowW(L"GLFW30", nullptr);
 
         static std::mt19937 rng(std::random_device{}());
-        static std::uniform_real_distribution<double> leanDist(0.20, 0.29);
+        static std::uniform_real_distribution<double> leanDist(0.20, 0.28);
         static double lean      = leanDist(rng);
         static double lastNdx   = 0.0;
         static double lastNdz   = 0.0;
         static bool   prevSneak = false;
 
         const bool kW = (GetAsyncKeyState('W') & 0x8000) != 0;
+        const bool kA = (GetAsyncKeyState('A') & 0x8000) != 0;
+        const bool kS = (GetAsyncKeyState('S') & 0x8000) != 0;
+        const bool kD = (GetAsyncKeyState('D') & 0x8000) != 0;
 
         if (!g_settings.scaffoldEnabled || Overlay::IsMenuVisible()
             || GetForegroundWindow() != mcWindow || kW) {
@@ -150,16 +153,23 @@ namespace ScaffoldModule
                     if (local.GetInstance() != nullptr && level.GetInstance() != nullptr) {
                         AABB box = local.getBoundingBox();
                         if (box.GetInstance() != nullptr) {
-                            const double y  = local.getY();
-                            const double vx = local.getX() - local.getXo();
-                            const double vz = local.getZ() - local.getZo();
+                            const double y   = local.getY();
+                            const float  yaw = local.getYRot();
 
                             decided = true;
 
+                            const double yawR = yaw * M_PI / 180.0;
+                            const double fwdX = -std::sin(yawR), fwdZ =  std::cos(yawR);
+                            const double rgtX = -std::cos(yawR), rgtZ = -std::sin(yawR);
+                            double dx = 0.0, dz = 0.0;
+                            if (kS) { dx -= fwdX; dz -= fwdZ; }
+                            if (kA) { dx -= rgtX; dz -= rgtZ; }
+                            if (kD) { dx += rgtX; dz += rgtZ; }
+
                             double ndx = lastNdx, ndz = lastNdz;
-                            const double vl = std::sqrt(vx * vx + vz * vz);
-                            if (vl > 1e-4) {
-                                ndx = vx / vl; ndz = vz / vl;
+                            const double dl = std::sqrt(dx * dx + dz * dz);
+                            if (dl > 1e-4) {
+                                ndx = dx / dl; ndz = dz / dl;
                                 lastNdx = ndx; lastNdz = ndz;
                             }
 
