@@ -8,7 +8,7 @@ namespace OverlayTabs
     {
         using namespace OverlayWidgets;
         bool dirty = false;
-        dirty |= ModuleHeader("Enabled", &g_settings.acEnabled, &g_settings.acKey);
+        dirty |= RowCheckbox("Enabled",         &g_settings.acEnabled);
         dirty |= RowCheckbox("Break Blocks",    &g_settings.breakBlocks);
         dirty |= RowCheckbox("Inventory Click", &g_settings.inventoryClick);
         dirty |= RowSlider  ("CPS",             &g_settings.cps, 1, 20);

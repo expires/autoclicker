@@ -11,7 +11,7 @@ namespace OverlayTabs
         bool dirty = false;
 
         ImGui::PushID("autoblock");
-        dirty |= ModuleHeader("Autoblock", &g_settings.autoblockEnabled, &g_settings.autoblockKey);
+        dirty |= RowCheckbox("Autoblock",      &g_settings.autoblockEnabled);
         dirty |= RowCheckbox("Require Sword",  &g_settings.autoblockRequireSword);
         dirty |= RowSlider  ("Delay (ms)",     &g_settings.autoblockDelay,    30, 1000);
         {
@@ -28,7 +28,7 @@ namespace OverlayTabs
         ImGui::Dummy(ImVec2(0, Theme::M::BodyPad));
 
         ImGui::PushID("scaffold");
-        dirty |= ModuleHeader("Legit Scaffold", &g_settings.scaffoldEnabled, &g_settings.scaffoldKey);
+        dirty |= RowCheckbox("Legit Scaffold", &g_settings.scaffoldEnabled);
         ImGui::PopID();
 
         return dirty;
