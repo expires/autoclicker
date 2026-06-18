@@ -43,23 +43,25 @@ namespace ScaffoldModule
         return !bs.blocksMotion();
     }
 
-    static bool holdingBlock(Player& local)
+    // stage: 0=no inv, 1=bad sel, 2=empty, 3=item null, 4=class null, 5=not block, 6=block
+    static int blockHeldStage(Player& local)
     {
         Inventory inv = local.getInventory();
-        if (inv.GetInstance() == nullptr) return false;
+        if (inv.GetInstance() == nullptr) return 0;
 
         const int sel = inv.getSelected();
-        if (sel < 0 || sel > 8) return false;
+        if (sel < 0 || sel > 8) return 1;
 
         ItemStack stack = inv.getItem(sel);
-        if (stack.GetInstance() == nullptr || stack.isEmpty()) return false;
+        if (stack.GetInstance() == nullptr || stack.isEmpty()) return 2;
 
         Item item = stack.getItem();
-        if (item.GetInstance() == nullptr) return false;
+        if (item.GetInstance() == nullptr) return 3;
 
         jclass cls = lc->GetClass(MC_BlockItem);
-        return cls != nullptr &&
-               lc->env->IsInstanceOf(item.GetInstance(), cls) == JNI_TRUE;
+        if (cls == nullptr) return 4;
+
+        return (lc->env->IsInstanceOf(item.GetInstance(), cls) == JNI_TRUE) ? 6 : 5;
     }
 
     DWORD WINAPI init(LPVOID)
@@ -125,9 +127,9 @@ namespace ScaffoldModule
 
                                 decided = true;
 
-                                dbgBlock = holdingBlock(local) ? 1 : 0;
+                                dbgBlock = blockHeldStage(local);
 
-                                if (pitch > 0.0f && dbgBlock == 1) {
+                                if (pitch > 0.0f && dbgBlock == 6) {
                                     const int bx = (int)std::floor(x);
                                     const int bz = (int)std::floor(z);
                                     const int by = (int)std::floor(y) - 1;
