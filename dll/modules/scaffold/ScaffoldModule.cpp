@@ -123,13 +123,8 @@ namespace ScaffoldModule
         static double lastNdz   = 0.0;
         static bool   prevSneak = false;
 
-        const bool kW = (GetAsyncKeyState('W') & 0x8000) != 0;
-        const bool kA = (GetAsyncKeyState('A') & 0x8000) != 0;
-        const bool kS = (GetAsyncKeyState('S') & 0x8000) != 0;
-        const bool kD = (GetAsyncKeyState('D') & 0x8000) != 0;
-
         if (!g_settings.scaffoldEnabled || Overlay::IsMenuVisible()
-            || GetForegroundWindow() != mcWindow || kW) {
+            || GetForegroundWindow() != mcWindow) {
             setSneak(false);
             prevSneak = false;
             return;
@@ -159,26 +154,34 @@ namespace ScaffoldModule
                             const double y   = local.getY();
                             const float  yaw = local.getYRot();
                             const double vx  = local.getX() - local.getXo();
+                            const double vy  = local.getY() - local.getYo();
                             const double vz  = local.getZ() - local.getZo();
 
                             decided = true;
 
-                            const double yawR = yaw * M_PI / 180.0;
-                            const double fwdX = -std::sin(yawR), fwdZ =  std::cos(yawR);
-                            const double rgtX = -std::cos(yawR), rgtZ = -std::sin(yawR);
-                            double dx = 0.0, dz = 0.0;
-                            if (kS) { dx -= fwdX; dz -= fwdZ; }
-                            if (kA) { dx -= rgtX; dz -= rgtZ; }
-                            if (kD) { dx += rgtX; dz += rgtZ; }
+                            const double yawR  = yaw * M_PI / 180.0;
+                            const double lookX = -std::sin(yawR);
+                            const double lookZ =  std::cos(yawR);
+
+                            const double hspeed = std::sqrt(vx * vx + vz * vz);
+                            const double fwdDot = vx * lookX + vz * lookZ;
+
+                            constexpr double MIN_MOVE_SPEED = 0.015;
+                            constexpr double FORWARD_SPEED  = 0.040;
+                            constexpr double RISE_SPEED     = 0.100;
+                            constexpr double TOWER_HSPEED   = 0.040;
 
                             double ndx = lastNdx, ndz = lastNdz;
-                            const double dl = std::sqrt(dx * dx + dz * dz);
-                            if (dl > 1e-4) {
-                                ndx = dx / dl; ndz = dz / dl;
+                            if (hspeed > MIN_MOVE_SPEED) {
+                                ndx = vx / hspeed; ndz = vz / hspeed;
                                 lastNdx = ndx; lastNdz = ndz;
                             }
 
-                            if (holdingBlock(local) && (std::abs(ndx) > 1e-3 || std::abs(ndz) > 1e-3)) {
+                            const bool movingForward = fwdDot > FORWARD_SPEED;
+                            const bool towering      = vy > RISE_SPEED && hspeed < TOWER_HSPEED;
+
+                            if (holdingBlock(local) && !movingForward && !towering
+                                && (std::abs(ndx) > 1e-3 || std::abs(ndz) > 1e-3)) {
                                 const int     by = (int)std::floor(y) - 1;
                                 const jobject lv = level.GetInstance();
 
