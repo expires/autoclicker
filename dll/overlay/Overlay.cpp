@@ -12,6 +12,7 @@
 #include "imgui_impl_win32.h"
 #include "imgui_impl_opengl3.h"
 #include "OverlayWidgets.h"
+#include "Notifications.h"
 #include "tabs/Tabs.h"
 #include "../config/Settings.h"
 #include "../logger/Logger.h"
@@ -779,12 +780,17 @@ static BOOL WINAPI hk_wglSwapBuffers(HDC hdc)
             (g_settings.selfDestructKey > 0 && g_settings.selfDestructKey <= 0xFE) &&
             (GetAsyncKeyState(g_settings.selfDestructKey) & 0x8000);
 
+        auto notifyToggle = [](const char* name, bool on) {
+            Notifications::Push(std::string(name) + (on ? " enabled" : " disabled"),
+                on ? Notifications::Kind::Enabled : Notifications::Kind::Disabled);
+        };
+
         if (!listeningSuppress) {
-            if (espHeld      && !s_espKeyHeldPrev)      g_settings.espEnabled  = !g_settings.espEnabled;
-            if (acHeld       && !s_acKeyHeldPrev)       g_settings.acEnabled   = !g_settings.acEnabled;
-            if (aimHeld      && !s_aimKeyHeldPrev)      g_settings.aimEnabled  = !g_settings.aimEnabled;
-            if (scaffoldHeld && !s_scaffoldKeyHeldPrev) g_settings.scaffoldEnabled = !g_settings.scaffoldEnabled;
-            if (destructHeld && !s_destructKeyHeldPrev) g_settings.selfDestruct = true;
+            if (espHeld      && !s_espKeyHeldPrev)      { g_settings.espEnabled      = !g_settings.espEnabled;      notifyToggle("ESP", g_settings.espEnabled); }
+            if (acHeld       && !s_acKeyHeldPrev)       { g_settings.acEnabled       = !g_settings.acEnabled;       notifyToggle("Autoclicker", g_settings.acEnabled); }
+            if (aimHeld      && !s_aimKeyHeldPrev)      { g_settings.aimEnabled      = !g_settings.aimEnabled;      notifyToggle("Aim assist", g_settings.aimEnabled); }
+            if (scaffoldHeld && !s_scaffoldKeyHeldPrev) { g_settings.scaffoldEnabled = !g_settings.scaffoldEnabled; notifyToggle("Scaffold", g_settings.scaffoldEnabled); }
+            if (destructHeld && !s_destructKeyHeldPrev) { g_settings.selfDestruct = true; Notifications::Push("Unloading...", Notifications::Kind::Alert); }
         }
         s_espKeyHeldPrev      = espHeld;
         s_acKeyHeldPrev       = acHeld;
@@ -795,7 +801,7 @@ static BOOL WINAPI hk_wglSwapBuffers(HDC hdc)
 
     ScaffoldModule::Tick();
 
-    const bool needFrame = s_visible || g_settings.espEnabled;
+    const bool needFrame = s_visible || g_settings.espEnabled || Notifications::HasActive();
     if (needFrame)
     {
         ImGui_ImplOpenGL3_NewFrame();
@@ -877,7 +883,7 @@ static BOOL WINAPI hk_wglSwapBuffers(HDC hdc)
             const ImVec2 revSz = ImGui::CalcTextSize(revStr.c_str());
             ImGui::SetCursorPos(ImVec2(winSize.x - MARGIN - revSz.x - Theme::M::TitlePadX,
                                        MARGIN + (TOPBAR_H - revSz.y) * 0.5f));
-            ImGui::TextDisabled("%s", revStr.c_str());
+            ImGui::TextLinkOpenURL(revStr.c_str(), "https://github.com/expires/autoclicker");
 
             ImGui::SetCursorPos(ImVec2(0, BODY_Y));
             ImGui::BeginChild("##sidebar", ImVec2(SIDEBAR_W, winSize.y - BODY_Y),
@@ -947,6 +953,8 @@ static BOOL WINAPI hk_wglSwapBuffers(HDC hdc)
 
             ImGui::End();
         }
+
+        Notifications::Render(display.x, display.y);
 
         ImGui::Render();
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());

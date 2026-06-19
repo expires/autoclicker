@@ -59,6 +59,8 @@ struct Settings
     bool scaffoldEnabled = false;
     int  scaffoldKey     = 0;
 
+    bool notificationsEnabled = true;
+
     mutable std::mutex       friendsMutex;
     std::vector<std::string> friends;
 

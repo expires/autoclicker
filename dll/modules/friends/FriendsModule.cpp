@@ -4,6 +4,7 @@
 #include "Mappings.h"
 #include "../autoclicker/AutoclickerModule.h"
 #include "../../overlay/Overlay.h"
+#include "../../overlay/Notifications.h"
 #include "../../logger/Logger.h"
 #include <cctype>
 #include <chrono>
@@ -54,26 +55,19 @@ namespace FriendsModule
         return out;
     }
 
-    static bool ToggleFriend(const std::string& name)
+    static int ToggleFriend(const std::string& name)
     {
-        if (name.empty()) return false;
+        if (name.empty()) return 0;
 
-        bool changed = false;
-        {
-            std::lock_guard<std::mutex> lk(g_settings.friendsMutex);
-            for (auto it = g_settings.friends.begin(); it != g_settings.friends.end(); ++it) {
-                if (*it == name) {
-                    g_settings.friends.erase(it);
-                    changed = true;
-                    break;
-                }
-            }
-            if (!changed) {
-                g_settings.friends.push_back(name);
-                changed = true;
+        std::lock_guard<std::mutex> lk(g_settings.friendsMutex);
+        for (auto it = g_settings.friends.begin(); it != g_settings.friends.end(); ++it) {
+            if (*it == name) {
+                g_settings.friends.erase(it);
+                return -1;
             }
         }
-        return changed;
+        g_settings.friends.push_back(name);
+        return 1;
     }
 
     DWORD WINAPI init(LPVOID )
@@ -113,7 +107,16 @@ namespace FriendsModule
             if (downNow && !prevDown) {
                 const std::string name = HoveredPlayerName(mc);
                 if (!name.empty()) {
-                    if (ToggleFriend(name)) g_settings.Save();
+                    const int r = ToggleFriend(name);
+                    if (r != 0) {
+                        g_settings.Save();
+                        if (r > 0)
+                            Notifications::Push("Added " + name + " as friend",
+                                                Notifications::Kind::Enabled);
+                        else
+                            Notifications::Push("Removed " + name + " from friends",
+                                                Notifications::Kind::Disabled);
+                    }
                 }
             }
 

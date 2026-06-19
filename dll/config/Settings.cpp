@@ -68,6 +68,8 @@ void Settings::Save()
     fprintf(f, "scaffoldEnabled=%d\n", scaffoldEnabled ? 1 : 0);
     fprintf(f, "scaffoldKey=%d\n",     scaffoldKey);
 
+    fprintf(f, "notificationsEnabled=%d\n", notificationsEnabled ? 1 : 0);
+
     fprintf(f, "friendKey=%d\n", friendKey);
 
     {
@@ -136,6 +138,7 @@ void Settings::Load()
         else if (k == "autoblockKey")          autoblockKey          = val;
         else if (k == "scaffoldEnabled")       scaffoldEnabled       = (val != 0);
         else if (k == "scaffoldKey")           scaffoldKey           = val;
+        else if (k == "notificationsEnabled")  notificationsEnabled  = (val != 0);
         else if (k == "friendKey")               friendKey               = val;
         else if (k == "friendCount") {
 

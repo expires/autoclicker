@@ -13,22 +13,11 @@ namespace OverlayTabs
         bool dirty = false;
         
         ImGui::PushID("keybinds");
-        ImGui::PushFont(ImGui::GetIO().Fonts->Fonts[1]);
-        ImGui::TextUnformatted("Keybinds");
-        ImGui::PopFont();
-
         ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0, Theme::M::KeybindGap));
         dirty |= RowKeybind("Menu",                    &g_settings.menuKey);
         dirty |= RowKeybind("Self-Destruct",   &g_settings.selfDestructKey);
         ImGui::PopStyleVar();
-
         ImGui::PopID();
-
-        ImGui::Dummy(ImVec2(0, Theme::M::BodyPad));
-        ImGui::TextDisabled("Source & updates:");
-        ImGui::SameLine(0, Theme::M::ListGap);
-        ImGui::TextLinkOpenURL("github.com/expires/autoclicker",
-                               "https://github.com/expires/autoclicker");
 
         return dirty;
     }
