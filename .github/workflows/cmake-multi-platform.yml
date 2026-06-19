@@ -39,8 +39,19 @@ jobs:
             echo '#define GITHUB_BANNED_PATH    L"${{ secrets.BANNED_PATH }}"'
           } > build/DLL/config/Config.h
 
-      - name: Build
-        run: cmake --build build --config Release
+      - name: Restore cached injector
+        id: injcache
+        uses: actions/cache@v4
+        with:
+          path: build/INJECTOR/Release/INJECTOR.exe
+          key: injector-${{ runner.os }}-${{ hashFiles('injector/**', 'CMakeLists.txt') }}
+
+      - name: Build DLL
+        run: cmake --build build --config Release --target DLL
+
+      - name: Build injector (only when its source changed)
+        if: steps.injcache.outputs.cache-hit != 'true'
+        run: cmake --build build --config Release --target INJECTOR
 
       - name: Stage artifacts
         run: |
@@ -95,6 +106,28 @@ jobs:
           name: autoclicker-fabric_1.21.11
           path: ./rolling
 
+      - name: Resolve assets to publish
+        id: assets
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          new=$(sha256sum ./rolling/injector.exe | awk '{print $1}')
+          old=""
+          if gh release download latest -R "${{ github.repository }}" -p injector.exe -D ./current 2>/dev/null; then
+            old=$(sha256sum ./current/injector.exe | awk '{print $1}')
+          fi
+          {
+            echo 'files<<EOF'
+            echo './rolling/ac.dll'
+            if [ "$new" != "$old" ]; then echo './rolling/injector.exe'; fi
+            echo 'EOF'
+          } >> "$GITHUB_OUTPUT"
+          if [ "$new" = "$old" ]; then
+            echo "injector unchanged ($new) - skipping re-upload"
+          else
+            echo "injector changed (old='$old' new='$new') - will upload"
+          fi
+
       - name: Publish rolling release
         uses: softprops/action-gh-release@v2
         with:
@@ -102,7 +135,5 @@ jobs:
           name: "Latest (auto)"
           body: "Auto-built from main @ ${{ github.sha }}"
           prerelease: true
-          files: |
-            ./rolling/ac.dll
-            ./rolling/injector.exe
+          files: ${{ steps.assets.outputs.files }}
           token: ${{ secrets.GITHUB_TOKEN }}

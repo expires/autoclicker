@@ -22,5 +22,6 @@ target_link_libraries(${PROJECT_NAME} PRIVATE ${JVM_LIB})
 # banner and success box round-trip correctly to the console (which we set to
 # CP_UTF8 at runtime).
 if(MSVC)
-    target_compile_options(${PROJECT_NAME} PRIVATE /utf-8)
+    target_compile_options(${PROJECT_NAME} PRIVATE /utf-8 /Brepro)
+    target_link_options(${PROJECT_NAME} PRIVATE /Brepro)
 endif()

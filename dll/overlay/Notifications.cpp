@@ -20,9 +20,9 @@ namespace
     std::vector<Toast> g_toasts;
     std::mutex         g_mutex;
 
-    constexpr double FADE_IN  = 0.10;
-    constexpr double HOLD     = 0.80;
-    constexpr double FADE_OUT = 0.20;
+    constexpr double FADE_IN  = 0.20;
+    constexpr double HOLD     = 1.40;
+    constexpr double FADE_OUT = 0.40;
     constexpr double LIFETIME = HOLD + FADE_OUT;
     constexpr size_t MAX_TOASTS = 6;
 
@@ -57,7 +57,6 @@ namespace Notifications
 
     void Render(float dispW, float dispH)
     {
-        (void)dispW;
         std::lock_guard<std::mutex> lk(g_mutex);
         if (g_toasts.empty()) return;
 
@@ -82,6 +81,7 @@ namespace Notifications
         constexpr float GAP         = 8.0f;
         constexpr float ROUNDING    = 6.0f;
 
+        const float rightX = dispW - MARGIN_X;
         float y = dispH - MARGIN_BOT;
 
         for (auto it = g_toasts.rbegin(); it != g_toasts.rend(); ++it)
@@ -99,8 +99,8 @@ namespace Notifications
             const float  boxH = ts.y + PAD_Y * 2.0f;
 
             const float slide = (e < FADE_IN) ? (1.0f - a) * 22.0f : 0.0f;
-            const float x0    = MARGIN_X - slide;
-            const float x1    = x0 + boxW;
+            const float x1    = rightX + slide;
+            const float x0    = x1 - boxW;
             const float y1    = y;
             const float y0    = y1 - boxH;
 
