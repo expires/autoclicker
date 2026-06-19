@@ -22,7 +22,7 @@ namespace OverlayTabs
         ImGui::Dummy(ImVec2(0, Theme::M::BodyPad));
 
         ImGui::PushID("notifications");
-        dirty |= RowCheckbox("Keybind notifications", &g_settings.notificationsEnabled);
+        dirty |= RowCheckbox("Notifications", &g_settings.notificationsEnabled);
         ImGui::PopID();
 
         return dirty;
