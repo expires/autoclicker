@@ -8,7 +8,8 @@ Component::Component(jobject instance)
 
 jclass Component::GetClass()
 {
-    return lc->GetClass(MC_Component);
+    static jclass c = nullptr;
+    return JClass(c, MC_Component);
 }
 
 void Component::Cleanup()
@@ -23,8 +24,14 @@ jobject Component::GetInstance()
 
 std::string Component::getString()
 {
-    jclass cls = lc->env->GetObjectClass(this->GetInstance());
-    jmethodID getStringMethod = lc->env->GetMethodID(cls, MTD_Component_getString, "()Ljava/lang/String;");
+    static jmethodID cachedMethod = nullptr;
+    JMethod(cachedMethod, this->GetClass(), MTD_Component_getString, "()Ljava/lang/String;");
+    jmethodID getStringMethod = cachedMethod;
+    if (!getStringMethod)
+    {
+        jclass cls = lc->env->GetObjectClass(this->GetInstance());
+        getStringMethod = lc->env->GetMethodID(cls, MTD_Component_getString, "()Ljava/lang/String;");
+    }
     if (!getStringMethod || lc->env->ExceptionCheck())
     {
         lc->env->ExceptionClear();

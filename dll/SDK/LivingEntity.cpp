@@ -3,16 +3,18 @@
 
 jclass LivingEntity::GetClass()
 {
-    return lc->GetClass(MC_LivingEntity);
+    static jclass c = nullptr;
+    return JClass(c, MC_LivingEntity);
 }
 
 ItemStack LivingEntity::getItemInHand()
 {
-	jmethodID getItemInHandMethod = lc->env->GetMethodID(this->GetClass(),
-		MTD_LivingEntity_getItemInHand, DESC_LivingEntity_getItemInHand);
+	static jmethodID getItemInHandMethod = nullptr;
+	JMethod(getItemInHandMethod, this->GetClass(), MTD_LivingEntity_getItemInHand, DESC_LivingEntity_getItemInHand);
 
-	jclass interactionHandClass = lc->GetClass(MC_InteractionHand);
-	jfieldID mainHandField = lc->env->GetStaticFieldID(interactionHandClass,
+	static jclass interactionHandClass = nullptr;
+	static jfieldID mainHandField = nullptr;
+	JStaticField(mainHandField, JClass(interactionHandClass, MC_InteractionHand),
 		FLD_InteractionHand_MAIN, DESC_InteractionHand_MAIN);
 	jobject mainHand = lc->env->GetStaticObjectField(interactionHandClass, mainHandField);
 
@@ -26,15 +28,15 @@ ItemStack LivingEntity::getItemInHand()
 
 bool LivingEntity::isUsingItem()
 {
-	jmethodID isUsingItem = lc->env->GetMethodID(this->GetClass(),
-		MTD_LivingEntity_isUsingItem, "()Z");
+	static jmethodID isUsingItem = nullptr;
+	JMethod(isUsingItem, this->GetClass(), MTD_LivingEntity_isUsingItem, "()Z");
 	return lc->env->CallBooleanMethod(this->GetInstance(), isUsingItem);
 }
 
 float LivingEntity::getHealth()
 {
-	jmethodID m = lc->env->GetMethodID(this->GetClass(),
-		MTD_LivingEntity_getHealth, "()F");
+	static jmethodID m = nullptr;
+	JMethod(m, this->GetClass(), MTD_LivingEntity_getHealth, "()F");
 	if (!m) { lc->env->ExceptionClear(); return -1.0f; }
 	jfloat v = lc->env->CallFloatMethod(this->GetInstance(), m);
 	if (lc->env->ExceptionCheck()) { lc->env->ExceptionClear(); return -1.0f; }
@@ -43,8 +45,8 @@ float LivingEntity::getHealth()
 
 float LivingEntity::getMaxHealth()
 {
-	jmethodID m = lc->env->GetMethodID(this->GetClass(),
-		MTD_LivingEntity_getMaxHealth, "()F");
+	static jmethodID m = nullptr;
+	JMethod(m, this->GetClass(), MTD_LivingEntity_getMaxHealth, "()F");
 	if (!m) { lc->env->ExceptionClear(); return -1.0f; }
 	jfloat v = lc->env->CallFloatMethod(this->GetInstance(), m);
 	if (lc->env->ExceptionCheck()) { lc->env->ExceptionClear(); return -1.0f; }

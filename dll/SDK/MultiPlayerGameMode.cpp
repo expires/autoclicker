@@ -8,7 +8,8 @@ MultiPlayerGameMode::MultiPlayerGameMode(jobject instance)
 
 jclass MultiPlayerGameMode::GetClass()
 {
-	return lc->GetClass(MC_MultiPlayerGameMode);
+	static jclass c = nullptr;
+	return JClass(c, MC_MultiPlayerGameMode);
 }
 
 void MultiPlayerGameMode::Cleanup()
@@ -23,22 +24,27 @@ jobject MultiPlayerGameMode::GetInstance()
 
 bool MultiPlayerGameMode::isDestroying()
 {
-	jmethodID isDestroying = lc->env->GetMethodID(this->GetClass(), MTD_MPGM_isDestroying, "()Z");
+	static jmethodID isDestroying = nullptr;
+	JMethod(isDestroying, this->GetClass(), MTD_MPGM_isDestroying, "()Z");
 	return lc->env->CallBooleanMethod(this->GetInstance(), isDestroying);
 }
 
 int MultiPlayerGameMode::getDestroyStage()
 {
-	jmethodID destroyStage = lc->env->GetMethodID(this->GetClass(), MTD_MPGM_getDestroyStage, "()I");
+	static jmethodID destroyStage = nullptr;
+	JMethod(destroyStage, this->GetClass(), MTD_MPGM_getDestroyStage, "()I");
 	return lc->env->CallIntMethod(this->GetInstance(), destroyStage);
 }
 
 int MultiPlayerGameMode::getPlayerMode()
 {
-	jmethodID getPlayerMode = lc->env->GetMethodID(this->GetClass(), MTD_MPGM_getPlayerMode, DESC_MPGM_getPlayerMode);
+	static jmethodID getPlayerMode = nullptr;
+	JMethod(getPlayerMode, this->GetClass(), MTD_MPGM_getPlayerMode, DESC_MPGM_getPlayerMode);
 	jobject typeObj = lc->env->CallObjectMethod(this->GetInstance(), getPlayerMode);
 
-	jclass typeClass = lc->env->GetObjectClass(typeObj);
-	jmethodID ordinalMethod = lc->env->GetMethodID(typeClass, "ordinal", "()I");
+	static jclass typeClass = nullptr;
+	static jmethodID ordinalMethod = nullptr;
+	if (!typeClass) JClass(typeClass, MC_GameType);
+	JMethod(ordinalMethod, typeClass, "ordinal", "()I");
 	return lc->env->CallIntMethod(typeObj, ordinalMethod);
 }

@@ -179,6 +179,8 @@ namespace EspModule
             lc->env->PopLocalFrame(nullptr);
 
             Publish(back);
+
+            std::this_thread::sleep_for(std::chrono::milliseconds(5));
         }
 
         AC_LOG("esp: loop exit; detaching");

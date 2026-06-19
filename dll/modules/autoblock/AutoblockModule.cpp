@@ -72,7 +72,8 @@ namespace AutoblockModule
             if (ehr.GetInstance() != nullptr) {
                 Entity ent = ehr.getEntity();
                 if (ent.GetInstance() != nullptr) {
-                    jclass leClass = lc->GetClass(MC_LivingEntity);
+                    static jclass leClass = nullptr;
+                    JClass(leClass, MC_LivingEntity);
                     if (leClass != nullptr &&
                         lc->env->IsInstanceOf(ent.GetInstance(), leClass) == JNI_TRUE)
                     {

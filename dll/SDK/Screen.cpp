@@ -8,7 +8,8 @@ Screen::Screen(jobject instance)
 
 jclass Screen::GetClass()
 {
-	return lc->GetClass(MC_Screen);
+	static jclass c = nullptr;
+	return JClass(c, MC_Screen);
 }
 
 void Screen::Cleanup()
@@ -23,12 +24,14 @@ jobject Screen::GetInstance()
 
 bool Screen::isPauseScreen()
 {
-	jmethodID isPauseScreen = lc->env->GetMethodID(this->GetClass(), MTD_Screen_isPauseScreen, "()Z");
+	static jmethodID isPauseScreen = nullptr;
+	JMethod(isPauseScreen, this->GetClass(), MTD_Screen_isPauseScreen, "()Z");
 	return lc->env->CallBooleanMethod(this->GetInstance(), isPauseScreen);
 }
 
 bool Screen::shouldCloseOnEsc()
 {
-	jmethodID shouldCloseOnEsc = lc->env->GetMethodID(this->GetClass(), MTD_Screen_shouldCloseOnEsc, "()Z");
+	static jmethodID shouldCloseOnEsc = nullptr;
+	JMethod(shouldCloseOnEsc, this->GetClass(), MTD_Screen_shouldCloseOnEsc, "()Z");
 	return lc->env->CallBooleanMethod(this->GetInstance(), shouldCloseOnEsc);
 }

@@ -3,12 +3,14 @@
 
 jclass Minecraft::GetClass()
 {
-	return lc->GetClass(MC_Minecraft);
+	static jclass c = nullptr;
+	return JClass(c, MC_Minecraft);
 }
 
 jobject Minecraft::GetInstance()
 {
-	jfieldID getMinecraft = lc->env->GetStaticFieldID(this->GetClass(), FLD_Minecraft_instance, DESC_Minecraft_instance);
+	static jfieldID getMinecraft = nullptr;
+	JStaticField(getMinecraft, this->GetClass(), FLD_Minecraft_instance, DESC_Minecraft_instance);
 	jobject rtn = lc->env->GetStaticObjectField(this->GetClass(), getMinecraft);
 
 	if (rtn == nullptr)
@@ -19,7 +21,8 @@ jobject Minecraft::GetInstance()
 
 Player Minecraft::GetLocalPlayer()
 {
-	jfieldID getPlayer = lc->env->GetFieldID(this->GetClass(), FLD_Minecraft_player, DESC_Minecraft_player);
+	static jfieldID getPlayer = nullptr;
+	JField(getPlayer, this->GetClass(), FLD_Minecraft_player, DESC_Minecraft_player);
 	jobject rtn = lc->env->GetObjectField(this->GetInstance(), getPlayer);
 
 	if (rtn == nullptr)
@@ -30,7 +33,8 @@ Player Minecraft::GetLocalPlayer()
 
 Gui Minecraft::GetGui()
 {
-	jfieldID getGui = lc->env->GetFieldID(this->GetClass(), FLD_Minecraft_gui, DESC_Minecraft_gui);
+	static jfieldID getGui = nullptr;
+	JField(getGui, this->GetClass(), FLD_Minecraft_gui, DESC_Minecraft_gui);
 	jobject rtn = lc->env->GetObjectField(this->GetInstance(), getGui);
 
 	if (rtn == nullptr)
@@ -41,7 +45,8 @@ Gui Minecraft::GetGui()
 
 MultiPlayerGameMode Minecraft::GetMultiPlayerGameMode()
 {
-	jfieldID getMPGM = lc->env->GetFieldID(this->GetClass(), FLD_Minecraft_gameMode, DESC_Minecraft_gameMode);
+	static jfieldID getMPGM = nullptr;
+	JField(getMPGM, this->GetClass(), FLD_Minecraft_gameMode, DESC_Minecraft_gameMode);
 	jobject rtn = lc->env->GetObjectField(this->GetInstance(), getMPGM);
 
 	if (rtn == nullptr)
@@ -52,7 +57,8 @@ MultiPlayerGameMode Minecraft::GetMultiPlayerGameMode()
 
 Screen Minecraft::GetScreen()
 {
-	jfieldID getScreen = lc->env->GetFieldID(this->GetClass(), FLD_Minecraft_screen, DESC_Minecraft_screen);
+	static jfieldID getScreen = nullptr;
+	JField(getScreen, this->GetClass(), FLD_Minecraft_screen, DESC_Minecraft_screen);
 	jobject rtn = lc->env->GetObjectField(this->GetInstance(), getScreen);
 
 	if (rtn == nullptr)
@@ -63,13 +69,15 @@ Screen Minecraft::GetScreen()
 
 bool Minecraft::isPaused()
 {
-	jmethodID isPaused = lc->env->GetMethodID(this->GetClass(), MTD_Minecraft_isPaused, "()Z");
+	static jmethodID isPaused = nullptr;
+	JMethod(isPaused, this->GetClass(), MTD_Minecraft_isPaused, "()Z");
 	return lc->env->CallBooleanMethod(this->GetInstance(), isPaused);
 }
 
 HitResult Minecraft::getHitResult()
 {
-	jfieldID getHitResult = lc->env->GetFieldID(this->GetClass(), FLD_Minecraft_hitResult, DESC_Minecraft_hitResult);
+	static jfieldID getHitResult = nullptr;
+	JField(getHitResult, this->GetClass(), FLD_Minecraft_hitResult, DESC_Minecraft_hitResult);
 	jobject rtn = lc->env->GetObjectField(this->GetInstance(), getHitResult);
 
 	if (rtn == nullptr)
@@ -80,22 +88,24 @@ HitResult Minecraft::getHitResult()
 
 Level Minecraft::GetLevel()
 {
-	jfieldID f = lc->env->GetFieldID(this->GetClass(), FLD_Minecraft_level, DESC_Minecraft_level);
+	static jfieldID f = nullptr;
+	JField(f, this->GetClass(), FLD_Minecraft_level, DESC_Minecraft_level);
 	jobject rtn = lc->env->GetObjectField(this->GetInstance(), f);
 	return Level(rtn);
 }
 
 GameRenderer Minecraft::GetGameRenderer()
 {
-	jfieldID f = lc->env->GetFieldID(this->GetClass(), FLD_Minecraft_gameRenderer, DESC_Minecraft_gameRenderer);
+	static jfieldID f = nullptr;
+	JField(f, this->GetClass(), FLD_Minecraft_gameRenderer, DESC_Minecraft_gameRenderer);
 	jobject rtn = lc->env->GetObjectField(this->GetInstance(), f);
 	return GameRenderer(rtn);
 }
 
 DeltaTracker Minecraft::GetDeltaTracker()
 {
-	jmethodID m = lc->env->GetMethodID(this->GetClass(),
-		MTD_Minecraft_getDeltaTracker, DESC_Minecraft_getDeltaTracker);
+	static jmethodID m = nullptr;
+	JMethod(m, this->GetClass(), MTD_Minecraft_getDeltaTracker, DESC_Minecraft_getDeltaTracker);
 	if (!m) { lc->env->ExceptionClear(); return DeltaTracker(nullptr); }
 	jobject rtn = lc->env->CallObjectMethod(this->GetInstance(), m);
 	if (lc->env->ExceptionCheck()) { lc->env->ExceptionClear(); return DeltaTracker(nullptr); }
@@ -104,8 +114,8 @@ DeltaTracker Minecraft::GetDeltaTracker()
 
 void Minecraft::setScreen(jobject screen)
 {
-	jmethodID m = lc->env->GetMethodID(this->GetClass(),
-		MTD_Minecraft_setScreen, DESC_Minecraft_setScreen);
+	static jmethodID m = nullptr;
+	JMethod(m, this->GetClass(), MTD_Minecraft_setScreen, DESC_Minecraft_setScreen);
 	if (!m) { lc->env->ExceptionClear(); return; }
 	lc->env->CallVoidMethod(this->GetInstance(), m, screen);
 	if (lc->env->ExceptionCheck()) lc->env->ExceptionClear();
@@ -113,9 +123,11 @@ void Minecraft::setScreen(jobject screen)
 
 jobject Minecraft::newPauseScreen(bool showMenu)
 {
-	jclass cls = lc->GetClass(MC_PauseScreen);
+	static jclass cls = nullptr;
+	JClass(cls, MC_PauseScreen);
 	if (!cls) return nullptr;
-	jmethodID ctor = lc->env->GetMethodID(cls, "<init>", "(Z)V");
+	static jmethodID ctor = nullptr;
+	JMethod(ctor, cls, "<init>", "(Z)V");
 	if (!ctor) { lc->env->ExceptionClear(); return nullptr; }
 	jobject obj = lc->env->NewObject(cls, ctor, (jboolean)showMenu);
 	if (lc->env->ExceptionCheck()) { lc->env->ExceptionClear(); return nullptr; }
@@ -124,8 +136,8 @@ jobject Minecraft::newPauseScreen(bool showMenu)
 
 void Minecraft::pauseGame(bool pauseOnly)
 {
-	jmethodID m = lc->env->GetMethodID(this->GetClass(),
-		MTD_Minecraft_pauseGame, DESC_Minecraft_pauseGame);
+	static jmethodID m = nullptr;
+	JMethod(m, this->GetClass(), MTD_Minecraft_pauseGame, DESC_Minecraft_pauseGame);
 	if (!m) { lc->env->ExceptionClear(); return; }
 	lc->env->CallVoidMethod(this->GetInstance(), m, (jboolean)pauseOnly);
 	if (lc->env->ExceptionCheck()) lc->env->ExceptionClear();

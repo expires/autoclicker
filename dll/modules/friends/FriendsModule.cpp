@@ -33,7 +33,8 @@ namespace FriendsModule
                 Entity ent = ehr.getEntity();
                 if (ent.GetInstance() != nullptr) {
 
-                    jclass apClass = lc->GetClass(MC_AbstractClientPlayer);
+                    static jclass apClass = nullptr;
+                    JClass(apClass, MC_AbstractClientPlayer);
                     if (apClass != nullptr &&
                         lc->env->IsInstanceOf(ent.GetInstance(), apClass) == JNI_TRUE)
                     {

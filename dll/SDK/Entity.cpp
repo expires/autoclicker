@@ -9,7 +9,8 @@ Entity::Entity(jobject instance)
 
 jclass Entity::GetClass()
 {
-    return lc->GetClass(MC_Entity);
+    static jclass c = nullptr;
+    return JClass(c, MC_Entity);
 }
 
 void Entity::Cleanup()
@@ -24,8 +25,8 @@ jobject Entity::GetInstance()
 
 Component Entity::getName()
 {
-    jmethodID name = lc->env->GetMethodID(this->GetClass(),
-        MTD_Entity_getName, DESC_Entity_getName);
+    static jmethodID name = nullptr;
+    JMethod(name, this->GetClass(), MTD_Entity_getName, DESC_Entity_getName);
 
     if (!name || lc->env->ExceptionCheck())
     {
@@ -46,7 +47,8 @@ Component Entity::getName()
 
 std::string Entity::getUUID()
 {
-    jmethodID getUUIDMethod = lc->env->GetMethodID(this->GetClass(), MTD_Entity_getUUID, DESC_Entity_getUUID);
+    static jmethodID getUUIDMethod = nullptr;
+    JMethod(getUUIDMethod, this->GetClass(), MTD_Entity_getUUID, DESC_Entity_getUUID);
     if (!getUUIDMethod || lc->env->ExceptionCheck()) { lc->env->ExceptionClear(); return ""; }
 
     jobject uuidObj = lc->env->CallObjectMethod(this->GetInstance(), getUUIDMethod);
@@ -67,8 +69,8 @@ std::string Entity::getUUID()
 
 Component Entity::getTypeName()
 {
-    jmethodID typeName = lc->env->GetMethodID(this->GetClass(),
-        MTD_Entity_getTypeName, DESC_Entity_getTypeName);
+    static jmethodID typeName = nullptr;
+    JMethod(typeName, this->GetClass(), MTD_Entity_getTypeName, DESC_Entity_getTypeName);
 
     jobject rtn = lc->env->CallObjectMethod(this->GetInstance(), typeName);
 
@@ -79,10 +81,9 @@ static uint32_t readLocalColor(jobject component)
 {
     if (!component) return 0;
 
-    jclass compCls = lc->GetClass(MC_Component);
-    if (!compCls) return 0;
-    jmethodID getStyleM = lc->env->GetMethodID(compCls,
-        MTD_Component_getStyle, DESC_Component_getStyle);
+    static jclass compCls = nullptr;
+    static jmethodID getStyleM = nullptr;
+    JMethod(getStyleM, JClass(compCls, MC_Component), MTD_Component_getStyle, DESC_Component_getStyle);
     if (!getStyleM) { lc->env->ExceptionClear(); return 0; }
 
     jobject style = lc->env->CallObjectMethod(component, getStyleM);
@@ -91,10 +92,9 @@ static uint32_t readLocalColor(jobject component)
         return 0;
     }
 
-    jclass styleCls = lc->GetClass(MC_Style);
-    if (!styleCls) { lc->env->DeleteLocalRef(style); return 0; }
-    jmethodID getColorM = lc->env->GetMethodID(styleCls,
-        MTD_Style_getColor, DESC_Style_getColor);
+    static jclass styleCls = nullptr;
+    static jmethodID getColorM = nullptr;
+    JMethod(getColorM, JClass(styleCls, MC_Style), MTD_Style_getColor, DESC_Style_getColor);
     if (!getColorM) {
         lc->env->ExceptionClear();
         lc->env->DeleteLocalRef(style);
@@ -108,10 +108,9 @@ static uint32_t readLocalColor(jobject component)
         return 0;
     }
 
-    jclass colorCls = lc->GetClass(MC_TextColor);
-    if (!colorCls) { lc->env->DeleteLocalRef(textColor); return 0; }
-    jmethodID getValueM = lc->env->GetMethodID(colorCls,
-        MTD_TextColor_getValue, "()I");
+    static jclass colorCls = nullptr;
+    static jmethodID getValueM = nullptr;
+    JMethod(getValueM, JClass(colorCls, MC_TextColor), MTD_TextColor_getValue, "()I");
     if (!getValueM) {
         lc->env->ExceptionClear();
         lc->env->DeleteLocalRef(textColor);
@@ -136,10 +135,9 @@ static void flattenComponent(jobject component, uint32_t inheritedColor,
     const uint32_t local     = readLocalColor(component);
     const uint32_t effective = local ? local : inheritedColor;
 
-    jclass compCls = lc->GetClass(MC_Component);
-    if (!compCls) return;
-    jmethodID getSiblingsM = lc->env->GetMethodID(compCls,
-        MTD_Component_getSiblings, DESC_Component_getSiblings);
+    static jclass compCls = nullptr;
+    static jmethodID getSiblingsM = nullptr;
+    JMethod(getSiblingsM, JClass(compCls, MC_Component), MTD_Component_getSiblings, DESC_Component_getSiblings);
     if (!getSiblingsM) {
         lc->env->ExceptionClear();
         Component c(component);
@@ -152,17 +150,11 @@ static void flattenComponent(jobject component, uint32_t inheritedColor,
     if (lc->env->ExceptionCheck()) { lc->env->ExceptionClear(); siblings = nullptr; }
 
     jint n = 0;
-    jclass    listCls = nullptr;
-    jmethodID sizeM   = nullptr;
-    jmethodID getM    = nullptr;
-    if (siblings) {
-        listCls = lc->env->FindClass("java/util/List");
-        if (listCls) {
-            sizeM = lc->env->GetMethodID(listCls, "size", "()I");
-            getM  = lc->env->GetMethodID(listCls, "get",  "(I)Ljava/lang/Object;");
-            if (sizeM && getM) n = lc->env->CallIntMethod(siblings, sizeM);
-        }
-    }
+    static jclass    listCls = nullptr;
+    static jmethodID sizeM   = nullptr;
+    static jmethodID getM    = nullptr;
+    if (siblings && JListOps(listCls, sizeM, getM))
+        n = lc->env->CallIntMethod(siblings, sizeM);
 
     if (n == 0) {
 
@@ -180,7 +172,6 @@ static void flattenComponent(jobject component, uint32_t inheritedColor,
         }
     }
 
-    if (listCls) lc->env->DeleteLocalRef(listCls);
     if (siblings) lc->env->DeleteLocalRef(siblings);
 }
 
@@ -196,18 +187,20 @@ std::vector<std::pair<std::string, uint32_t>> Entity::getFormattedNameChunks()
     if (nameC.GetInstance() == nullptr) return chunks;
 
     jobject formatted = nullptr;
-    jmethodID getTeamM = lc->env->GetMethodID(this->GetClass(),
-        MTD_Entity_getTeam, DESC_Entity_getTeam);
+    static jmethodID getTeamM = nullptr;
+    JMethod(getTeamM, this->GetClass(), MTD_Entity_getTeam, DESC_Entity_getTeam);
     if (getTeamM)
     {
         jobject team = lc->env->CallObjectMethod(this->instance, getTeamM);
         if (lc->env->ExceptionCheck()) { lc->env->ExceptionClear(); team = nullptr; }
         if (team)
         {
-            jclass teamCls = lc->GetClass(MC_PlayerTeam);
+            static jclass teamCls = nullptr;
+            JClass(teamCls, MC_PlayerTeam);
             if (teamCls)
             {
-                jmethodID formatM = lc->env->GetStaticMethodID(teamCls,
+                static jmethodID formatM = nullptr;
+                JStaticMethod(formatM, teamCls,
                     MTD_PlayerTeam_formatNameForTeam, DESC_PlayerTeam_formatNameForTeam);
                 if (formatM)
                 {
@@ -234,7 +227,8 @@ std::vector<std::pair<std::string, uint32_t>> Entity::getFormattedNameChunks()
 
 Vec3 Entity::getPosition()
 {
-    jfieldID f = lc->env->GetFieldID(this->GetClass(), FLD_Entity_position, DESC_Entity_position);
+    static jfieldID f = nullptr;
+    if (!JField(f, this->GetClass(), FLD_Entity_position, DESC_Entity_position)) return Vec3(nullptr);
     jobject v = lc->env->GetObjectField(this->instance, f);
     return Vec3(v);
 }
@@ -244,43 +238,48 @@ double Entity::getZ() { return getPosition().getZ(); }
 
 double Entity::getXo()
 {
-    jfieldID f = lc->env->GetFieldID(this->GetClass(), FLD_Entity_xo, "D");
+    static jfieldID f = nullptr;
+    if (!JField(f, this->GetClass(), FLD_Entity_xo, "D")) return 0.0;
     return lc->env->GetDoubleField(this->instance, f);
 }
 double Entity::getYo()
 {
-    jfieldID f = lc->env->GetFieldID(this->GetClass(), FLD_Entity_yo, "D");
+    static jfieldID f = nullptr;
+    if (!JField(f, this->GetClass(), FLD_Entity_yo, "D")) return 0.0;
     return lc->env->GetDoubleField(this->instance, f);
 }
 double Entity::getZo()
 {
-    jfieldID f = lc->env->GetFieldID(this->GetClass(), FLD_Entity_zo, "D");
+    static jfieldID f = nullptr;
+    if (!JField(f, this->GetClass(), FLD_Entity_zo, "D")) return 0.0;
     return lc->env->GetDoubleField(this->instance, f);
 }
 
 float Entity::getYRot()
 {
-    jfieldID f = lc->env->GetFieldID(this->GetClass(), FLD_Entity_yRot, "F");
+    static jfieldID f = nullptr;
+    if (!JField(f, this->GetClass(), FLD_Entity_yRot, "F")) return 0.0f;
     return lc->env->GetFloatField(this->instance, f);
 }
 float Entity::getXRot()
 {
-    jfieldID f = lc->env->GetFieldID(this->GetClass(), FLD_Entity_xRot, "F");
+    static jfieldID f = nullptr;
+    if (!JField(f, this->GetClass(), FLD_Entity_xRot, "F")) return 0.0f;
     return lc->env->GetFloatField(this->instance, f);
 }
 
 AABB Entity::getBoundingBox()
 {
-    jmethodID m = lc->env->GetMethodID(this->GetClass(),
-        MTD_Entity_getBoundingBox, DESC_Entity_getBoundingBox);
+    static jmethodID m = nullptr;
+    if (!JMethod(m, this->GetClass(), MTD_Entity_getBoundingBox, DESC_Entity_getBoundingBox)) return AABB(nullptr);
     jobject b = lc->env->CallObjectMethod(this->instance, m);
     return AABB(b);
 }
 
 jobject Entity::getTeamRaw()
 {
-    jmethodID m = lc->env->GetMethodID(this->GetClass(),
-        MTD_Entity_getTeam, DESC_Entity_getTeam);
+    static jmethodID m = nullptr;
+    JMethod(m, this->GetClass(), MTD_Entity_getTeam, DESC_Entity_getTeam);
     if (!m) { lc->env->ExceptionClear(); return nullptr; }
     jobject t = lc->env->CallObjectMethod(this->instance, m);
     if (lc->env->ExceptionCheck()) { lc->env->ExceptionClear(); return nullptr; }

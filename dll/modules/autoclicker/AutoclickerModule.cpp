@@ -119,7 +119,8 @@ namespace AutoclickerModule
                     Screen screen = mc->GetScreen();
                     if (lc->env->ExceptionCheck()) lc->env->ExceptionClear();
                     if (screen.GetInstance() != nullptr) {
-                        jclass acs = lc->GetClass(MC_AbstractContainerScreen);
+                        static jclass acs = nullptr;
+                        JClass(acs, MC_AbstractContainerScreen);
                         if (acs != nullptr &&
                             lc->env->IsInstanceOf(screen.GetInstance(), acs) == JNI_TRUE)
                             inContainer = true;

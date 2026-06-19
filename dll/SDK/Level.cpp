@@ -1,13 +1,13 @@
 #include "Level.h"
 #include "Mappings.h"
 
-jclass Level::GetClass() { return lc->GetClass(MC_ClientLevel); }
+jclass Level::GetClass() { static jclass c = nullptr; return JClass(c, MC_ClientLevel); }
 
 BlockState Level::getBlockState(BlockPos& pos)
 {
     if (!instance || !pos.GetInstance()) return BlockState(nullptr);
-    jmethodID m = lc->env->GetMethodID(this->GetClass(),
-        MTD_Level_getBlockState, DESC_Level_getBlockState);
+    static jmethodID m = nullptr;
+    JMethod(m, this->GetClass(), MTD_Level_getBlockState, DESC_Level_getBlockState);
     if (!m) { lc->env->ExceptionClear(); return BlockState(nullptr); }
     jobject r = lc->env->CallObjectMethod(this->instance, m, pos.GetInstance());
     if (lc->env->ExceptionCheck()) { lc->env->ExceptionClear(); return BlockState(nullptr); }
@@ -18,16 +18,17 @@ std::vector<Player> Level::players()
 {
     std::vector<Player> out;
 
-    jmethodID m = lc->env->GetMethodID(this->GetClass(),
-        MTD_ClientLevel_players, DESC_ClientLevel_players);
+    static jmethodID m = nullptr;
+    JMethod(m, this->GetClass(), MTD_ClientLevel_players, DESC_ClientLevel_players);
     if (!m) { lc->env->ExceptionClear(); return out; }
 
     jobject list = lc->env->CallObjectMethod(this->instance, m);
     if (!list || lc->env->ExceptionCheck()) { lc->env->ExceptionClear(); return out; }
 
-    jclass listCls = lc->env->FindClass("java/util/List");
-    jmethodID sizeM = lc->env->GetMethodID(listCls, "size", "()I");
-    jmethodID getM  = lc->env->GetMethodID(listCls, "get",  "(I)Ljava/lang/Object;");
+    static jclass listCls = nullptr;
+    static jmethodID sizeM = nullptr;
+    static jmethodID getM  = nullptr;
+    if (!JListOps(listCls, sizeM, getM)) { lc->env->DeleteLocalRef(list); return out; }
 
     jint n = lc->env->CallIntMethod(list, sizeM);
     out.reserve(n);
@@ -38,6 +39,5 @@ std::vector<Player> Level::players()
     }
 
     lc->env->DeleteLocalRef(list);
-    lc->env->DeleteLocalRef(listCls);
     return out;
 }

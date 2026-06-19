@@ -1,23 +1,26 @@
 #include "Camera.h"
 #include "Mappings.h"
 
-jclass Camera::GetClass() { return lc->GetClass(MC_Camera); }
+jclass Camera::GetClass() { static jclass c = nullptr; return JClass(c, MC_Camera); }
 
 Vec3 Camera::getPosition()
 {
-    jfieldID f = lc->env->GetFieldID(this->GetClass(), FLD_Camera_position, DESC_Camera_position);
+    static jfieldID f = nullptr;
+    if (!JField(f, this->GetClass(), FLD_Camera_position, DESC_Camera_position)) return Vec3(nullptr);
     jobject  v = lc->env->GetObjectField(this->instance, f);
     return Vec3(v);
 }
 
 float Camera::getXRot()
 {
-    jfieldID f = lc->env->GetFieldID(this->GetClass(), FLD_Camera_xRot, "F");
+    static jfieldID f = nullptr;
+    if (!JField(f, this->GetClass(), FLD_Camera_xRot, "F")) return 0.0f;
     return lc->env->GetFloatField(this->instance, f);
 }
 
 float Camera::getYRot()
 {
-    jfieldID f = lc->env->GetFieldID(this->GetClass(), FLD_Camera_yRot, "F");
+    static jfieldID f = nullptr;
+    if (!JField(f, this->GetClass(), FLD_Camera_yRot, "F")) return 0.0f;
     return lc->env->GetFloatField(this->instance, f);
 }

@@ -69,7 +69,8 @@ namespace ScaffoldModule
         if (stack.GetInstance() == nullptr || stack.isEmpty()) return false;
         Item item = stack.getItem();
         if (item.GetInstance() == nullptr) return false;
-        jclass cls = lc->GetClass(MC_BlockItem);
+        static jclass cls = nullptr;
+        JClass(cls, MC_BlockItem);
         return cls != nullptr &&
                lc->env->IsInstanceOf(item.GetInstance(), cls) == JNI_TRUE;
     }

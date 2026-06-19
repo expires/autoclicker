@@ -8,7 +8,8 @@ EntityHitResult::EntityHitResult(jobject instance)
 
 jclass EntityHitResult::GetClass()
 {
-    return lc->GetClass(MC_EntityHitResult);
+    static jclass c = nullptr;
+    return JClass(c, MC_EntityHitResult);
 }
 
 void EntityHitResult::Cleanup()
@@ -23,8 +24,8 @@ jobject EntityHitResult::GetInstance()
 
 Entity EntityHitResult::getEntity()
 {
-    jmethodID getEntity = lc->env->GetMethodID(this->GetClass(),
-        MTD_EntityHitResult_getEntity, DESC_EntityHitResult_getEntity);
+    static jmethodID getEntity = nullptr;
+    JMethod(getEntity, this->GetClass(), MTD_EntityHitResult_getEntity, DESC_EntityHitResult_getEntity);
     jobject rtn = lc->env->CallObjectMethod(this->GetInstance(), getEntity);
 
     return Entity(rtn);

@@ -8,7 +8,8 @@ Item::Item(jobject instance)
 
 jclass Item::GetClass()
 {
-    return lc->GetClass(MC_Item);
+    static jclass c = nullptr;
+    return JClass(c, MC_Item);
 }
 
 void Item::Cleanup()
@@ -23,8 +24,8 @@ jobject Item::GetInstance()
 
 Component Item::getName(jobject itemStack)
 {
-    jmethodID name = lc->env->GetMethodID(this->GetClass(),
-        MTD_Item_getName, DESC_Item_getName);
+    static jmethodID name = nullptr;
+    JMethod(name, this->GetClass(), MTD_Item_getName, DESC_Item_getName);
 
     jobject rtn = lc->env->CallObjectMethod(this->GetInstance(), name, itemStack);
 

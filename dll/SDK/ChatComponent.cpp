@@ -8,7 +8,8 @@ ChatComponent::ChatComponent(jobject instance)
 
 jclass ChatComponent::GetClass()
 {
-    return lc->GetClass(MC_ChatComponent);
+    static jclass c = nullptr;
+    return JClass(c, MC_ChatComponent);
 }
 
 void ChatComponent::Cleanup()

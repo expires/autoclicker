@@ -8,7 +8,8 @@ Gui::Gui(jobject instance)
 
 jclass Gui::GetClass()
 {
-    return lc->GetClass(MC_Gui);
+    static jclass c = nullptr;
+    return JClass(c, MC_Gui);
 }
 
 void Gui::Cleanup()
@@ -23,8 +24,8 @@ jobject Gui::GetInstance()
 
 ChatComponent Gui::getChat()
 {
-    jmethodID getChat = lc->env->GetMethodID(this->GetClass(),
-        MTD_Gui_getChat, DESC_Gui_getChat);
+    static jmethodID getChat = nullptr;
+    JMethod(getChat, this->GetClass(), MTD_Gui_getChat, DESC_Gui_getChat);
     jobject rtn = lc->env->CallObjectMethod(this->GetInstance(), getChat);
 
     if (rtn == nullptr)
