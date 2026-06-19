@@ -19,6 +19,7 @@
 #include "../modules/scaffold/ScaffoldModule.h"
 #include "../SDK/Lunar.h"
 #include "../SDK/Minecraft.h"
+#include "../SDK/Screen.h"
 #include "../SDK/Vec3.h"
 #include "Revision.h"
 #include "LogoData.h"
@@ -168,6 +169,24 @@ static void EnsureRenderThreadEnv()
     JNIEnv* env = nullptr;
     if (lc->vm->GetEnv(reinterpret_cast<void**>(&env), JNI_VERSION_1_6) == JNI_OK && env)
         lc->env = env;
+}
+
+static bool IsGameScreenOpen()
+{
+    EnsureRenderThreadEnv();
+    if (lc->env == nullptr) return false;
+    if (lc->env->PushLocalFrame(8) != 0) { lc->env->ExceptionClear(); return false; }
+
+    bool open = false;
+    Minecraft mc;
+    if (mc.GetInstance() != nullptr) {
+        Screen screen = mc.GetScreen();
+        open = (screen.GetInstance() != nullptr);
+    }
+
+    if (lc->env->ExceptionCheck()) lc->env->ExceptionClear();
+    lc->env->PopLocalFrame(nullptr);
+    return open;
 }
 
 static void RefreshCameraFromRenderThread(EspModule::CameraState& cam, float& partial)
@@ -716,7 +735,9 @@ static BOOL WINAPI hk_wglSwapBuffers(HDC hdc)
         const bool escEdge  = s_visible && !listeningSuppress &&
                               ((GetAsyncKeyState(VK_ESCAPE) & 1) != 0);
 
-        if (menuEdge || escEdge) {
+        const bool openBlocked = menuEdge && !s_visible && IsGameScreenOpen();
+
+        if ((menuEdge && !openBlocked) || escEdge) {
             const bool wasVisible = s_visible;
             s_visible = menuEdge ? !s_visible : false;
             ClipCursor(nullptr);

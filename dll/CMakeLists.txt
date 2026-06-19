@@ -271,7 +271,7 @@ add_library(${PROJECT_NAME} SHARED
     ${NETWORK_SOURCES}
 )
 
-target_link_libraries(${PROJECT_NAME} PRIVATE ${JVM_LIB} imgui minhook winhttp)
+target_link_libraries(${PROJECT_NAME} PRIVATE ${JVM_LIB} imgui minhook winhttp winmm)
 target_include_directories(${PROJECT_NAME} PRIVATE ${stb_SOURCE_DIR})
 add_dependencies(${PROJECT_NAME} generate_revision_h)
 
