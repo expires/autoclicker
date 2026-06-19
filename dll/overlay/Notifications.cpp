@@ -78,17 +78,14 @@ namespace Notifications
             ? io.Fonts->Fonts[0]
             : ImGui::GetFont();
 
-        // Increased scale and padding
         constexpr float FONT_SIZE  = 25.5f;
         constexpr float PAD_X      = 22.0f;
         constexpr float PAD_Y      = 14.0f;
-        constexpr float MARGIN_X   = 16.0f;
-        constexpr float MARGIN_BOT = 16.0f;
         constexpr float GAP        = 12.0f;
         constexpr float ROUNDING   = 8.0f;
+        constexpr float TOP_MARGIN = 40.0f;
 
-        const float rightX = dispW - MARGIN_X;
-        float y = dispH - MARGIN_BOT;
+        float y = TOP_MARGIN;
 
         for (auto it = g_toasts.rbegin(); it != g_toasts.rend(); ++it)
         {
@@ -103,7 +100,7 @@ namespace Notifications
                 alpha = 1.0f;
             else
                 alpha = 1.0f -
-                static_cast<float>((elapsed - HOLD) / FADE_OUT);
+                    static_cast<float>((elapsed - HOLD) / FADE_OUT);
 
             alpha = std::clamp(alpha, 0.0f, 1.0f);
 
@@ -117,30 +114,31 @@ namespace Notifications
             const float boxW = textSize.x + PAD_X * 2.0f;
             const float boxH = textSize.y + PAD_Y * 2.0f;
 
+            // Slide down from above
             const float slide =
                 (elapsed < FADE_IN)
-                ? (1.0f - alpha) * 22.0f
+                ? (1.0f - alpha) * 40.0f
                 : 0.0f;
 
-            const float x1 = rightX + slide;
-            const float x0 = x1 - boxW;
+            const float x0 = (dispW - boxW) * 0.5f;
+            const float x1 = x0 + boxW;
 
-            const float y1 = y;
-            const float y0 = y1 - boxH;
+            const float y0 = y - slide;
+            const float y1 = y0 + boxH;
 
             const ImU32 bg =
                 IM_COL32(
                     18,
                     19,
                     24,
-                    static_cast<int>(236 * alpha));
+                    static_cast<int>(120 * alpha));
 
             const ImU32 border =
                 IM_COL32(
                     80,
                     90,
                     110,
-                    static_cast<int>(170 * alpha));
+                    static_cast<int>(140 * alpha));
 
             const ImU32 textColor =
                 IM_COL32(
@@ -172,7 +170,7 @@ namespace Notifications
                 textColor,
                 it->text.c_str());
 
-            y = y0 - GAP;
+            y = y1 + GAP;
         }
     }
 }
