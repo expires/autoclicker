@@ -24,7 +24,7 @@ namespace
     constexpr double HOLD     = 1.40;
     constexpr double FADE_OUT = 0.40;
     constexpr double LIFETIME = HOLD + FADE_OUT;
-    constexpr size_t MAX_TOASTS = 6;
+    constexpr size_t MAX_TOASTS = 2;
 }
 
 namespace Notifications
@@ -131,7 +131,7 @@ namespace Notifications
                     18,
                     19,
                     24,
-                    static_cast<int>(120 * alpha));
+                    static_cast<int>(160 * alpha));
 
             const ImU32 border =
                 IM_COL32(
