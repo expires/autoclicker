@@ -223,7 +223,7 @@ static void DrawEsp(float dispW, float dispH)
     ImDrawList* dl = ImGui::GetBackgroundDrawList();
     const float maxDistSq = (float)g_settings.maxDistance * (float)g_settings.maxDistance;
 
-    const double pt = (double)partial;
+    const double pt = (double)snap.partialTick;
 
     for (const auto& t : snap.targets)
     {

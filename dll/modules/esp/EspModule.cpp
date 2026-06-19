@@ -180,7 +180,7 @@ namespace EspModule
 
             Publish(back);
 
-            std::this_thread::sleep_for(std::chrono::milliseconds(5));
+            std::this_thread::sleep_for(std::chrono::milliseconds(2));
         }
 
         AC_LOG("esp: loop exit; detaching");
