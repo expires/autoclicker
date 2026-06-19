@@ -1,5 +1,4 @@
 #include <Windows.h>
-#include <timeapi.h>
 #include <thread>
 
 #include "config/Settings.h"
@@ -16,22 +15,11 @@
 using namespace std::chrono;
 
 static HINSTANCE g_instance = nullptr;
-static bool      g_timerRaised = false;
 
 static DWORD WINAPI Bootstrap(LPVOID)
 {
     Logger::Init();
     AC_LOG("bootstrap: start");
-
-    if (timeBeginPeriod(1) == 0)
-    {
-        g_timerRaised = true;
-        AC_LOG("bootstrap: raised system timer resolution to 1ms");
-    }
-    else
-    {
-        AC_LOG("bootstrap: timeBeginPeriod(1) failed");
-    }
 
     g_settings.Load();
     AC_LOG("bootstrap: settings loaded");
@@ -63,11 +51,6 @@ BOOL APIENTRY DllMain(const HINSTANCE instance, const DWORD reason, LPVOID reser
         AC_LOG("dllmain: process detach");
         g_settings.Save();
         Overlay::Shutdown();
-        if (g_timerRaised && reserved == nullptr)
-        {
-            timeEndPeriod(1);
-            AC_LOG("dllmain: released system timer resolution");
-        }
         Logger::Shutdown();
     }
     return TRUE;
