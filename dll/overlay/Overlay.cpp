@@ -700,6 +700,7 @@ static BOOL WINAPI hk_wglSwapBuffers(HDC hdc)
             SetWindowLongPtrW(s_hwnd, GWLP_WNDPROC, reinterpret_cast<LONG_PTR>(HookedWndProc)));
 
         s_initialized = true;
+        Notifications::Push("Successfully injected", Notifications::Kind::Info);
     }
 
     {

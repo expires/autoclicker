@@ -78,11 +78,11 @@ namespace Notifications
             ? io.Fonts->Fonts[0]
             : ImGui::GetFont();
 
-        constexpr float FONT_SIZE  = 25.5f;
-        constexpr float PAD_X      = 22.0f;
-        constexpr float PAD_Y      = 14.0f;
-        constexpr float GAP        = 12.0f;
-        constexpr float ROUNDING   = 8.0f;
+        constexpr float FONT_SIZE  = 20.4f;
+        constexpr float PAD_X      = 17.6f;
+        constexpr float PAD_Y      = 11.2f;
+        constexpr float GAP        = 9.6f;
+        constexpr float ROUNDING   = 6.4f;
         constexpr float TOP_MARGIN = 40.0f;
 
         float y = TOP_MARGIN;
