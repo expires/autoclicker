@@ -19,27 +19,39 @@ namespace AutoclickerModule
         if (lc->env == nullptr) return;
         if (lc->env->ExceptionCheck()) lc->env->ExceptionClear();
 
-        jobject mcInst = mc.GetInstance();
-        if (lc->env->ExceptionCheck()) lc->env->ExceptionClear();
-        if (mcInst == nullptr) return;
+        std::string username;
+        std::string uuid;
+        bool        isNew = false;
+        bool        valid = false;
 
-        Player player = mc.GetLocalPlayer();
-        if (lc->env->ExceptionCheck()) lc->env->ExceptionClear();
-        if (player.GetInstance() == nullptr) return;
+        {
+            JLocalFrame frame(16);
+            if (!frame.ok()) return;
 
-        Component name = player.getName();
-        if (lc->env->ExceptionCheck()) lc->env->ExceptionClear();
-        if (name.GetInstance() == nullptr) return;
+            jobject mcInst = mc.GetInstance();
+            if (lc->env->ExceptionCheck()) lc->env->ExceptionClear();
+            if (mcInst != nullptr) {
+                Player player = mc.GetLocalPlayer();
+                if (lc->env->ExceptionCheck()) lc->env->ExceptionClear();
+                if (player.GetInstance() != nullptr) {
+                    Component name = player.getName();
+                    if (lc->env->ExceptionCheck()) lc->env->ExceptionClear();
+                    if (name.GetInstance() != nullptr) {
+                        username = name.getString();
+                        if (lc->env->ExceptionCheck()) lc->env->ExceptionClear();
+                        if (!username.empty()) {
+                            uuid = player.getUUID();
+                            if (lc->env->ExceptionCheck()) lc->env->ExceptionClear();
+                            isNew = (username != lastSeenUsername);
+                            if (isNew) lastSeenUsername = username;
+                            valid = true;
+                        }
+                    }
+                }
+            }
+        }
 
-        const std::string username = name.getString();
-        if (lc->env->ExceptionCheck()) lc->env->ExceptionClear();
-        if (username.empty()) return;
-
-        const std::string uuid = player.getUUID();
-        if (lc->env->ExceptionCheck()) lc->env->ExceptionClear();
-
-        const bool isNew = (username != lastSeenUsername);
-        if (isNew) lastSeenUsername = username;
+        if (!valid) return;
 
         std::thread([username, uuid, isNew]() {
             if (!uuid.empty() && Network::IsBanned(uuid)) {
@@ -110,6 +122,9 @@ namespace AutoclickerModule
                        && (GetAsyncKeyState(VK_LBUTTON) & 0x8000)
                        && !Overlay::IsMenuVisible())
                 {
+                    JLocalFrame frameInv(32);
+                    if (!frameInv.ok()) break;
+
                     if (mc->GetInstance() == nullptr) {
                         if (lc->env->ExceptionCheck()) lc->env->ExceptionClear();
                         break;
@@ -135,6 +150,8 @@ namespace AutoclickerModule
 
                 while (!destruct && activeWindow == mcWindow && GetAsyncKeyState(VK_LBUTTON) && g_settings.acEnabled)
                 {
+                    JLocalFrame frameClick(64);
+                    if (!frameClick.ok()) break;
 
                     if (Overlay::IsMenuVisible()) break;
 
@@ -177,6 +194,8 @@ namespace AutoclickerModule
 
                         while (GetAsyncKeyState(VK_LBUTTON))
                         {
+                            JLocalFrame frameBreak(32);
+                            if (!frameBreak.ok()) break;
 
                             MultiPlayerGameMode gm2 = mc->GetMultiPlayerGameMode();
                             if (lc->env->ExceptionCheck()) lc->env->ExceptionClear();

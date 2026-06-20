@@ -80,6 +80,29 @@ inline jmethodID JStaticMethod(jmethodID &slot, jclass cls, const char *name, co
     return slot;
 }
 
+class JLocalFrame
+{
+public:
+    explicit JLocalFrame(jint capacity = 16)
+    {
+        ok_ = lc->env->PushLocalFrame(capacity) == 0;
+        if (!ok_)
+            lc->env->ExceptionClear();
+    }
+    ~JLocalFrame()
+    {
+        if (ok_)
+            lc->env->PopLocalFrame(nullptr);
+    }
+    bool ok() const { return ok_; }
+
+    JLocalFrame(const JLocalFrame &) = delete;
+    JLocalFrame &operator=(const JLocalFrame &) = delete;
+
+private:
+    bool ok_ = false;
+};
+
 inline bool JListOps(jclass &cls, jmethodID &sizeM, jmethodID &getM)
 {
     if (!cls)
