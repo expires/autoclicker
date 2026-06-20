@@ -729,6 +729,10 @@ static BOOL WINAPI hk_wglSwapBuffers(HDC hdc)
         const bool listeningSuppress = OverlayWidgets::IsKeybindListening();
         OverlayWidgets::ResetKeybindListening();
 
+        const bool gameForeground  = (s_hwnd != nullptr && GetForegroundWindow() == s_hwnd);
+        const bool gameScreenOpen  = IsGameScreenOpen();
+        const bool keybindsBlocked = !gameForeground || gameScreenOpen;
+
         const bool menuValid = (g_settings.menuKey > 0 && g_settings.menuKey <= 0xFE);
         const int  menuVk    = menuValid ? g_settings.menuKey : VK_RSHIFT;
         const bool menuEdge  = (GetAsyncKeyState(menuVk) & 1) != 0;
@@ -736,7 +740,7 @@ static BOOL WINAPI hk_wglSwapBuffers(HDC hdc)
         const bool escEdge  = s_visible && !listeningSuppress &&
                               ((GetAsyncKeyState(VK_ESCAPE) & 1) != 0);
 
-        const bool openBlocked = menuEdge && !s_visible && IsGameScreenOpen();
+        const bool openBlocked = menuEdge && !s_visible && keybindsBlocked;
 
         if ((menuEdge && !openBlocked) || escEdge) {
             const bool wasVisible = s_visible;
@@ -785,7 +789,7 @@ static BOOL WINAPI hk_wglSwapBuffers(HDC hdc)
                 on ? Notifications::Kind::Enabled : Notifications::Kind::Disabled);
         };
 
-        if (!listeningSuppress) {
+        if (!listeningSuppress && !keybindsBlocked) {
             if (espHeld      && !s_espKeyHeldPrev)      { g_settings.espEnabled      = !g_settings.espEnabled;      notifyToggle("ESP", g_settings.espEnabled); }
             if (acHeld       && !s_acKeyHeldPrev)       { g_settings.acEnabled       = !g_settings.acEnabled;       notifyToggle("Autoclicker", g_settings.acEnabled); }
             if (aimHeld      && !s_aimKeyHeldPrev)      { g_settings.aimEnabled      = !g_settings.aimEnabled;      notifyToggle("Aim assist", g_settings.aimEnabled); }
