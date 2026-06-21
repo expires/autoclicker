@@ -12,8 +12,15 @@ jobs:
   build:
     runs-on: windows-latest
     strategy:
+      fail-fast: false
       matrix:
-        mapping: [fabric_1.21.11]
+        include:
+          - mapping: fabric_1.21.11
+            asset: ac_1.21.11.dll
+            alias: ac.dll
+          - mapping: lunar_1.8.9
+            asset: ac_1.8.9.dll
+            alias: ""
 
     steps:
       - name: Checkout
@@ -54,10 +61,14 @@ jobs:
         run: cmake --build build --config Release --target INJECTOR
 
       - name: Stage artifacts
+        shell: bash
         run: |
-          mkdir release
-          copy build\DLL\Release\DLL.dll release\ac.dll
-          copy build\INJECTOR\Release\INJECTOR.exe release\injector.exe
+          mkdir -p release
+          cp build/DLL/Release/DLL.dll "release/${{ matrix.asset }}"
+          if [ -n "${{ matrix.alias }}" ]; then
+            cp build/DLL/Release/DLL.dll "release/${{ matrix.alias }}"
+          fi
+          cp build/INJECTOR/Release/INJECTOR.exe release/injector.exe
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
@@ -68,7 +79,7 @@ jobs:
   release:
     if: startsWith(github.ref, 'refs/tags/')
     needs: build
-    runs-on: windows-latest
+    runs-on: ubuntu-latest
     permissions:
       contents: write
 
@@ -76,22 +87,26 @@ jobs:
       - name: Download all artifacts
         uses: actions/download-artifact@v4
         with:
-          path: release
+          path: dl
 
-      - name: Rename DLLs for release
+      - name: Assemble release assets
         run: |
-          rename release\autoclicker-fabric_1.21.11\ac.dll ac_fabric_1.21.11.dll
+          mkdir -p release
+          cp dl/autoclicker-fabric_1.21.11/ac.dll          release/ac.dll
+          cp dl/autoclicker-fabric_1.21.11/ac_1.21.11.dll  release/ac_1.21.11.dll
+          cp dl/autoclicker-lunar_1.8.9/ac_1.8.9.dll       release/ac_1.8.9.dll
+          cp dl/autoclicker-fabric_1.21.11/injector.exe    release/injector.exe
 
       - name: Create release
         uses: softprops/action-gh-release@v2
         with:
-          files: release/**/*
+          files: release/*
           token: ${{ secrets.GITHUB_TOKEN }}
 
   # Rolling release for the injector to fetch. Each push to main replaces the
-  # assets on the 'latest' tag so injector.exe's hardcoded URL
-  #   github.com/expires/autoclicker/releases/latest/download/ac.dll
-  # always points at the freshest DLL.
+  # assets on the 'latest' tag. The injector resolves the DLL by detected
+  # version (ac_1.21.11.dll / ac_1.8.9.dll); ac.dll is kept as a back-compat
+  # alias (the 1.21 build) so older injectors keep working.
   release-rolling:
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     needs: build
@@ -100,11 +115,18 @@ jobs:
       contents: write
 
     steps:
-      - name: Download build artifact
+      - name: Download all artifacts
         uses: actions/download-artifact@v4
         with:
-          name: autoclicker-fabric_1.21.11
-          path: ./rolling
+          path: dl
+
+      - name: Assemble rolling assets
+        run: |
+          mkdir -p rolling
+          cp dl/autoclicker-fabric_1.21.11/ac.dll          rolling/ac.dll
+          cp dl/autoclicker-fabric_1.21.11/ac_1.21.11.dll  rolling/ac_1.21.11.dll
+          cp dl/autoclicker-lunar_1.8.9/ac_1.8.9.dll       rolling/ac_1.8.9.dll
+          cp dl/autoclicker-fabric_1.21.11/injector.exe    rolling/injector.exe
 
       - name: Resolve assets to publish
         id: assets
@@ -119,6 +141,8 @@ jobs:
           {
             echo 'files<<EOF'
             echo './rolling/ac.dll'
+            echo './rolling/ac_1.21.11.dll'
+            echo './rolling/ac_1.8.9.dll'
             if [ "$new" != "$old" ]; then echo './rolling/injector.exe'; fi
             echo 'EOF'
           } >> "$GITHUB_OUTPUT"
@@ -134,6 +158,64 @@ jobs:
           tag_name: latest
           name: "Latest (auto)"
           body: "Auto-built from main @ ${{ github.sha }}"
+          prerelease: true
+          files: ${{ steps.assets.outputs.files }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+  # Rolling dev channel. Each push to development replaces the assets on the
+  # 'dev' tag. The development-branch injector fetches from this tag, so 1.8.9
+  # can be tested without disturbing the stable 'latest' release built from main.
+  release-rolling-dev:
+    if: github.ref == 'refs/heads/development' && github.event_name == 'push'
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: dl
+
+      - name: Assemble rolling assets
+        run: |
+          mkdir -p rolling
+          cp dl/autoclicker-fabric_1.21.11/ac.dll          rolling/ac.dll
+          cp dl/autoclicker-fabric_1.21.11/ac_1.21.11.dll  rolling/ac_1.21.11.dll
+          cp dl/autoclicker-lunar_1.8.9/ac_1.8.9.dll       rolling/ac_1.8.9.dll
+          cp dl/autoclicker-fabric_1.21.11/injector.exe    rolling/injector.exe
+
+      - name: Resolve assets to publish
+        id: assets
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          new=$(sha256sum ./rolling/injector.exe | awk '{print $1}')
+          old=""
+          if gh release download dev -R "${{ github.repository }}" -p injector.exe -D ./current 2>/dev/null; then
+            old=$(sha256sum ./current/injector.exe | awk '{print $1}')
+          fi
+          {
+            echo 'files<<EOF'
+            echo './rolling/ac.dll'
+            echo './rolling/ac_1.21.11.dll'
+            echo './rolling/ac_1.8.9.dll'
+            if [ "$new" != "$old" ]; then echo './rolling/injector.exe'; fi
+            echo 'EOF'
+          } >> "$GITHUB_OUTPUT"
+          if [ "$new" = "$old" ]; then
+            echo "injector unchanged ($new) - skipping re-upload"
+          else
+            echo "injector changed (old='$old' new='$new') - will upload"
+          fi
+
+      - name: Publish rolling dev release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: dev
+          name: "Dev (auto)"
+          body: "Auto-built from development @ ${{ github.sha }}"
           prerelease: true
           files: ${{ steps.assets.outputs.files }}
           token: ${{ secrets.GITHUB_TOKEN }}

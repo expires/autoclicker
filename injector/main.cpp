@@ -9,8 +9,11 @@
 #pragma comment(lib, "urlmon.lib")
 #pragma comment(lib, "advapi32.lib")
 
-static const char* DLL_URL =
-    "https://github.com/expires/autoclicker/releases/download/latest/ac.dll";
+static const char* DLL_URL_BASE =
+    "https://github.com/expires/autoclicker/releases/download/dev/";
+
+static const char* DLL_MODERN = "ac_1.21.11.dll";
+static const char* DLL_LEGACY = "ac_1.8.9.dll";
 
 #define ANSI_RESET   "\x1b[0m"
 #define ANSI_BOLD    "\x1b[1m"
@@ -76,20 +79,64 @@ static void WaitForKey()
     printf("\n");
 }
 
-DWORD GetProcessId(const wchar_t* procName)
+struct GameWindow
 {
-    HANDLE snap = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
-    PROCESSENTRY32W entry = { sizeof(entry) };
+    HWND    hwnd   = nullptr;
+    DWORD   pid    = 0;
+    bool    found  = false;
+    bool    legacy = false;
+    wchar_t title[256] = {};
+};
+
+static bool IsJavaProcess(DWORD pid)
+{
+    HANDLE h = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, FALSE, pid);
+    if (!h) return false;
+    wchar_t path[MAX_PATH] = {};
+    DWORD   sz = MAX_PATH;
+    const bool ok = QueryFullProcessImageNameW(h, 0, path, &sz);
+    CloseHandle(h);
+    if (!ok) return false;
+
+    const wchar_t* slash = wcsrchr(path, L'\\');
+    const wchar_t* exe   = slash ? slash + 1 : path;
+    return _wcsicmp(exe, L"javaw.exe") == 0 || _wcsicmp(exe, L"java.exe") == 0;
+}
+
+static BOOL CALLBACK EnumGameWindow(HWND hwnd, LPARAM lp)
+{
+    auto* g = reinterpret_cast<GameWindow*>(lp);
+
+    if (!IsWindowVisible(hwnd)) return TRUE;
+
+    wchar_t cls[64] = {};
+    if (!GetClassNameW(hwnd, cls, 64)) return TRUE;
+
+    const bool isGlfw  = _wcsicmp(cls, L"GLFW30") == 0;
+    const bool isLwjgl = _wcsicmp(cls, L"LWJGL")  == 0;
+    if (!isGlfw && !isLwjgl) return TRUE;
+
     DWORD pid = 0;
-    if (Process32FirstW(snap, &entry))
-    {
-        do
-            if (!_wcsicmp(entry.szExeFile, procName))
-                pid = entry.th32ProcessID;
-        while (!pid && Process32NextW(snap, &entry));
-    }
-    CloseHandle(snap);
-    return pid;
+    GetWindowThreadProcessId(hwnd, &pid);
+    if (pid == 0 || !IsJavaProcess(pid)) return TRUE;
+
+    wchar_t title[256] = {};
+    GetWindowTextW(hwnd, title, 256);
+
+    g->hwnd  = hwnd;
+    g->pid   = pid;
+    g->found = true;
+    wcsncpy_s(g->title, title, _TRUNCATE);
+
+    g->legacy = (wcsstr(title, L"1.8") != nullptr) || isLwjgl;
+    return FALSE;
+}
+
+static GameWindow DetectGame()
+{
+    GameWindow g;
+    EnumWindows(EnumGameWindow, reinterpret_cast<LPARAM>(&g));
+    return g;
 }
 
 void InjectDLL(DWORD pid, const char* dllPath)
@@ -158,13 +205,29 @@ int main()
     PrintStep("Cleaning stale files...");
     CleanupStaleDlls(tempDir);
 
+    PrintStep("Detecting Minecraft version...");
+    GameWindow game = DetectGame();
+    if (!game.found)
+    {
+        PrintError("No Minecraft window found — launch Lunar Client first");
+        WaitForKey();
+        return 1;
+    }
+
+    const char* asset = game.legacy ? DLL_LEGACY : DLL_MODERN;
+    printf("  " ANSI_GREEN "[•]" ANSI_RESET " Detected %s\n",
+           game.legacy ? "1.8.9" : "1.21.x");
+
     char hash[24] = {};
     GenerateRandomHex(hash, sizeof(hash));
     char dllPath[MAX_PATH];
     snprintf(dllPath, sizeof(dllPath), "%sac_%s.dll", tempDir, hash);
 
+    char url[512];
+    snprintf(url, sizeof(url), "%s%s", DLL_URL_BASE, asset);
+
     PrintStep("Downloading...");
-    HRESULT hr = URLDownloadToFileA(nullptr, DLL_URL, dllPath, 0, nullptr);
+    HRESULT hr = URLDownloadToFileA(nullptr, url, dllPath, 0, nullptr);
     if (FAILED(hr))
     {
         PrintError("Download failed — check your internet connection");
@@ -172,17 +235,8 @@ int main()
         return 1;
     }
 
-    PrintStep("Locating javaw.exe...");
-    DWORD pid = GetProcessId(L"javaw.exe");
-    if (!pid)
-    {
-        PrintError("javaw.exe not running — launch Lunar Client first");
-        WaitForKey();
-        return 1;
-    }
-
     PrintStep("Injecting...");
-    InjectDLL(pid, dllPath);
+    InjectDLL(game.pid, dllPath);
 
     MoveFileExA(dllPath, nullptr, MOVEFILE_DELAY_UNTIL_REBOOT);
 

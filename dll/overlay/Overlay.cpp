@@ -22,6 +22,7 @@
 #include "../SDK/Minecraft.h"
 #include "../SDK/Screen.h"
 #include "../SDK/Vec3.h"
+#include "Platform.h"
 #include "Revision.h"
 #include "LogoData.h"
 #include <MinHook.h>
@@ -630,7 +631,7 @@ static BOOL WINAPI hk_wglSwapBuffers(HDC hdc)
     {
         static HWND s_gameWnd = nullptr;
         if (s_gameWnd == nullptr || !IsWindow(s_gameWnd)) {
-            HWND g = FindWindowW(L"GLFW30", nullptr);
+            HWND g = FindGameWindow();
             s_gameWnd = g ? g : swapWnd;
             AC_LOG("overlay: pinned render window=%p (first swap caller window=%p)",
                    (void*)s_gameWnd, (void*)swapWnd);

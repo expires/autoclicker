@@ -29,6 +29,17 @@ endif()
 set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${MAPPING_FILE}")
 file(READ "${MAPPING_FILE}" MAPPING_JSON)
 
+string(JSON AC_GENERATION ERROR_VARIABLE _genErr GET "${MAPPING_JSON}" "generation")
+if(_genErr OR NOT AC_GENERATION)
+    set(AC_GENERATION "modern")
+endif()
+if(AC_GENERATION STREQUAL "legacy")
+    set(AC_LEGACY 1)
+else()
+    set(AC_LEGACY 0)
+endif()
+message(STATUS "Mapping ${MAPPING_VERSION}: generation=${AC_GENERATION} (AC_LEGACY=${AC_LEGACY})")
+
 foreach(KEY
     class_Minecraft class_LocalPlayer class_Screen class_HitResult class_HitResultType
     class_MultiPlayerGameMode class_Gui class_ChatComponent class_LivingEntity class_Entity
@@ -92,8 +103,24 @@ foreach(KEY
     mtd_Level_getBlockState     desc_Level_getBlockState
     mtd_BlockState_isAir
     mtd_BlockState_blocksMotion
+
+    fld_Entity_posX fld_Entity_posY fld_Entity_posZ
+    mtd_Entity_getPositionVector desc_Entity_getPositionVector
+    fld_HitResult_typeOfHit desc_HitResult_typeOfHit
+    fld_HitResult_entityHit desc_HitResult_entityHit
+    fld_World_playerEntities desc_World_playerEntities
+    mtd_BlockState_getBlock desc_BlockState_getBlock
+    mtd_Block_getMaterial   desc_Block_getMaterial
+    mtd_Material_blocksMovement
+    fld_Player_inventory desc_Player_inventory
+    class_GameSettings
+    fld_Minecraft_gameSettings desc_Minecraft_gameSettings
+    fld_GameSettings_fovSetting
 )
-    string(JSON ${KEY} GET "${MAPPING_JSON}" "${KEY}")
+    string(JSON ${KEY} ERROR_VARIABLE _keyErr GET "${MAPPING_JSON}" "${KEY}")
+    if(_keyErr)
+        set(${KEY} "")
+    endif()
 endforeach()
 
 configure_file(SDK/Mappings.h.in ${CMAKE_CURRENT_BINARY_DIR}/Mappings.h @ONLY)
@@ -159,6 +186,7 @@ endif()
 
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/SDK)
 
 # ── ImGui ────────────────────────────────────────────────────────────────────
 include(FetchContent)
@@ -222,6 +250,12 @@ endif()
 # ── Sources ──────────────────────────────────────────────────────────────────
 file(GLOB SDK_HEADERS          "SDK/*.h")
 file(GLOB SDK_SOURCES          "SDK/*.cpp")
+if(AC_LEGACY)
+    file(GLOB SDK_VERSION_SOURCES "SDK/legacy/*.cpp")
+else()
+    file(GLOB SDK_VERSION_SOURCES "SDK/modern/*.cpp")
+endif()
+list(APPEND SDK_SOURCES ${SDK_VERSION_SOURCES})
 file(GLOB AUTOCLICKER_HEADERS  "modules/autoclicker/*.h")
 file(GLOB AUTOCLICKER_SOURCES  "modules/autoclicker/*.cpp")
 file(GLOB ESP_HEADERS          "modules/esp/*.h")
@@ -273,6 +307,7 @@ add_library(${PROJECT_NAME} SHARED
 
 target_link_libraries(${PROJECT_NAME} PRIVATE ${JVM_LIB} imgui minhook winhttp)
 target_include_directories(${PROJECT_NAME} PRIVATE ${stb_SOURCE_DIR})
+target_compile_definitions(${PROJECT_NAME} PRIVATE AC_LEGACY=${AC_LEGACY})
 add_dependencies(${PROJECT_NAME} generate_revision_h)
 
 source_group("Header Files\\SDK"         FILES ${SDK_HEADERS})

@@ -6,6 +6,7 @@
 #include "../../config/Settings.h"
 #include "../../SDK/Minecraft.h"
 #include "Mappings.h"
+#include "Platform.h"
 #include "../../overlay/Overlay.h"
 #include <chrono>
 #include <cmath>
@@ -34,18 +35,16 @@ namespace ScaffoldModule
 
     static bool isAir(jobject levelInstance, int bx, int by, int bz)
     {
-        static jclass    bpCls = nullptr, lvCls = nullptr, bsCls = nullptr;
-        static jmethodID bpCtor = nullptr, getBS = nullptr, blocksMotion = nullptr;
+        static jclass    bpCls = nullptr, lvCls = nullptr;
+        static jmethodID bpCtor = nullptr, getBS = nullptr;
 
         if (getBS == nullptr) {
             bpCls = lc->GetClass(MC_BlockPos);
             lvCls = lc->GetClass(MC_ClientLevel);
-            bsCls = lc->GetClass(MC_BlockState);
-            if (!bpCls || !lvCls || !bsCls) return false;
+            if (!bpCls || !lvCls) return false;
             bpCtor       = lc->env->GetMethodID(bpCls, "<init>", "(III)V");
             getBS        = lc->env->GetMethodID(lvCls, MTD_Level_getBlockState, DESC_Level_getBlockState);
-            blocksMotion = lc->env->GetMethodID(bsCls, MTD_BlockState_blocksMotion, "()Z");
-            if (!bpCtor || !getBS || !blocksMotion) { lc->env->ExceptionClear(); getBS = nullptr; return false; }
+            if (!bpCtor || !getBS) { lc->env->ExceptionClear(); getBS = nullptr; return false; }
         }
 
         jobject bp = lc->env->NewObject(bpCls, bpCtor, (jint)bx, (jint)by, (jint)bz);
@@ -53,10 +52,10 @@ namespace ScaffoldModule
         jobject bs = lc->env->CallObjectMethod(levelInstance, getBS, bp);
         lc->env->DeleteLocalRef(bp);
         if (bs == nullptr || lc->env->ExceptionCheck()) { lc->env->ExceptionClear(); return false; }
-        const jboolean solid = lc->env->CallBooleanMethod(bs, blocksMotion);
+        const bool solid = BlockState(bs).blocksMotion();
         lc->env->DeleteLocalRef(bs);
         if (lc->env->ExceptionCheck()) { lc->env->ExceptionClear(); return false; }
-        return solid != JNI_TRUE;
+        return !solid;
     }
 
     static bool holdingBlock(Player& local)
@@ -114,7 +113,7 @@ namespace ScaffoldModule
         last = now;
 
         static HWND mcWindow = nullptr;
-        if (mcWindow == nullptr) mcWindow = FindWindowW(L"GLFW30", nullptr);
+        if (mcWindow == nullptr) mcWindow = FindGameWindow();
 
         static std::mt19937 rng(std::random_device{}());
         static std::uniform_real_distribution<double> leanDist(0.20, 0.28);

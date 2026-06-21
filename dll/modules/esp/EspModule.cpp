@@ -1,6 +1,7 @@
 #include "EspModule.h"
 #include "../../config/Settings.h"
 #include "../../SDK/Minecraft.h"
+#include "../../SDK/View.h"
 #include "Mappings.h"
 #include "../autoclicker/AutoclickerModule.h"
 #include "../../logger/Logger.h"
@@ -78,28 +79,18 @@ namespace EspModule
             if (level.GetInstance() == nullptr) { lc->env->PopLocalFrame(nullptr); publishDiag(); std::this_thread::yield(); continue; }
             back->gotLevel = true;
 
-            GameRenderer gr = mc.GetGameRenderer();
-            if (gr.GetInstance() == nullptr) { lc->env->PopLocalFrame(nullptr); publishDiag(); std::this_thread::yield(); continue; }
-            back->gotGameRenderer = true;
+            ViewState view = AcquireView(mc, localPlayer);
+            back->gotGameRenderer = view.gotRenderer;
+            back->gotCamera       = view.gotCamera;
+            if (!view.ok) { lc->env->PopLocalFrame(nullptr); publishDiag(); std::this_thread::yield(); continue; }
 
-            Camera cam = gr.getMainCamera();
-            if (cam.GetInstance() == nullptr) { lc->env->PopLocalFrame(nullptr); publishDiag(); std::this_thread::yield(); continue; }
-            back->gotCamera = true;
-
-            DeltaTracker dt = mc.GetDeltaTracker();
-            if (dt.GetInstance() != nullptr)
-                back->partialTick = dt.getPartialTick(true);
-            else
-                back->partialTick = 1.0f;
-
-            Vec3 camPos = cam.getPosition();
-            back->cam.x    = camPos.getX();
-            back->cam.y    = camPos.getY();
-            back->cam.z    = camPos.getZ();
-            back->cam.yRot = cam.getYRot();
-            back->cam.xRot = cam.getXRot();
-            back->cam.fov  = gr.getFov(cam, back->partialTick, true);
-            if (lc->env->ExceptionCheck()) { lc->env->ExceptionClear(); back->cam.fov = 70.0f; }
+            back->partialTick = view.partialTick;
+            back->cam.x    = view.x;
+            back->cam.y    = view.y;
+            back->cam.z    = view.z;
+            back->cam.yRot = view.yRot;
+            back->cam.xRot = view.xRot;
+            back->cam.fov  = view.fov;
 
             auto players = level.players();
             back->rawPlayerCount = (int)players.size();
