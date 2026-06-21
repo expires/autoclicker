@@ -141,9 +141,9 @@ static bool ProjectWorld(double wx, double wy, double wz,
         const double ry = wy - cam.y;
         const double rz = wz - cam.z;
 
-        const double ex = mv[0] * rx + mv[4] * ry + mv[8]  * rz;
-        const double ey = mv[1] * rx + mv[5] * ry + mv[9]  * rz;
-        const double ez = mv[2] * rx + mv[6] * ry + mv[10] * rz;
+        const double ex = mv[0] * rx + mv[4] * ry + mv[8]  * rz + mv[12];
+        const double ey = mv[1] * rx + mv[5] * ry + mv[9]  * rz + mv[13];
+        const double ez = mv[2] * rx + mv[6] * ry + mv[10] * rz + mv[14];
 
         const double cx = pr[0] * ex + pr[4] * ey + pr[8]  * ez + pr[12];
         const double cy = pr[1] * ex + pr[5] * ey + pr[9]  * ez + pr[13];
