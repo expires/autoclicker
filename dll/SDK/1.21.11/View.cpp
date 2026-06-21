@@ -22,8 +22,14 @@ ViewState AcquireView(Minecraft& mc, Player& localPlayer)
     v.z    = camPos.getZ();
     v.yRot = cam.getYRot();
     v.xRot = cam.getXRot();
-    v.fov  = gr.getFov(cam, v.partialTick, true);
-    if (lc->env->ExceptionCheck()) { lc->env->ExceptionClear(); v.fov = 70.0f; }
+
+    float camFov = cam.getFov();
+    if (camFov > 0.0f) {
+        v.fov = camFov;
+    } else {
+        v.fov = gr.getFov(cam, v.partialTick, true);
+        if (lc->env->ExceptionCheck()) { lc->env->ExceptionClear(); v.fov = 70.0f; }
+    }
 
     v.ok = true;
     return v;

@@ -87,6 +87,7 @@ foreach(KEY
     fld_AABB_minX fld_AABB_minY fld_AABB_minZ fld_AABB_maxX fld_AABB_maxY fld_AABB_maxZ
     fld_Vec3_x fld_Vec3_y fld_Vec3_z
     fld_Camera_position desc_Camera_position fld_Camera_xRot fld_Camera_yRot
+    mtd_Camera_getFov desc_Camera_getFov
     fld_GameRenderer_mainCamera desc_GameRenderer_mainCamera
     mtd_GameRenderer_getFov     desc_GameRenderer_getFov
     mtd_ClientLevel_players     desc_ClientLevel_players

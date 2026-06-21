@@ -124,6 +124,8 @@
   "desc_Camera_position":          "Lnet/minecraft/world/phys/Vec3;",
   "fld_Camera_xRot":               "xRot",
   "fld_Camera_yRot":               "yRot",
+  "mtd_Camera_getFov":             "getFov",
+  "desc_Camera_getFov":            "()F",
 
   "fld_GameRenderer_mainCamera":   "mainCamera",
   "desc_GameRenderer_mainCamera":  "Lnet/minecraft/client/Camera;",

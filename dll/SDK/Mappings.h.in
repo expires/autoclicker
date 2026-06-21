@@ -125,6 +125,8 @@
 #define DESC_Camera_position   "@desc_Camera_position@"
 #define FLD_Camera_xRot        "@fld_Camera_xRot@"
 #define FLD_Camera_yRot        "@fld_Camera_yRot@"
+#define MTD_Camera_getFov      "@mtd_Camera_getFov@"
+#define DESC_Camera_getFov     "@desc_Camera_getFov@"
 
 #define FLD_GameRenderer_mainCamera   "@fld_GameRenderer_mainCamera@"
 #define DESC_GameRenderer_mainCamera  "@desc_GameRenderer_mainCamera@"
