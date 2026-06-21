@@ -23,6 +23,9 @@ jobs:
           - mapping: lunar_1.8.9
             asset: ac_1.8.9.dll
             alias: ""
+          - mapping: 1.26.x+
+            asset: ac_1.26.x+.dll
+            alias: ""
 
     steps:
       - name: Checkout
@@ -100,6 +103,7 @@ jobs:
           cp dl/autoclicker-fabric_1.21.11/ac.dll          release/ac.dll
           cp dl/autoclicker-fabric_1.21.11/ac_1.21.11.dll  release/ac_1.21.11.dll
           cp dl/autoclicker-lunar_1.8.9/ac_1.8.9.dll       release/ac_1.8.9.dll
+          cp dl/autoclicker-1.26.x+/ac_1.26.x+.dll         release/ac_1.26.x+.dll
           cp dl/autoclicker-fabric_1.21.11/injector.exe    release/injector.exe
           cp versions.txt                                  release/versions.txt
 
@@ -131,6 +135,7 @@ jobs:
           cp dl/autoclicker-fabric_1.21.11/ac.dll          rolling/ac.dll
           cp dl/autoclicker-fabric_1.21.11/ac_1.21.11.dll  rolling/ac_1.21.11.dll
           cp dl/autoclicker-lunar_1.8.9/ac_1.8.9.dll       rolling/ac_1.8.9.dll
+          cp dl/autoclicker-1.26.x+/ac_1.26.x+.dll         rolling/ac_1.26.x+.dll
           cp dl/autoclicker-fabric_1.21.11/injector.exe    rolling/injector.exe
           cp versions.txt                                  rolling/versions.txt
 
@@ -149,6 +154,7 @@ jobs:
             echo './rolling/ac.dll'
             echo './rolling/ac_1.21.11.dll'
             echo './rolling/ac_1.8.9.dll'
+            echo './rolling/ac_1.26.x+.dll'
             echo './rolling/versions.txt'
             if [ "$new" != "$old" ]; then echo './rolling/injector.exe'; fi
             echo 'EOF'
@@ -191,6 +197,7 @@ jobs:
           cp dl/autoclicker-fabric_1.21.11/ac.dll          rolling/ac.dll
           cp dl/autoclicker-fabric_1.21.11/ac_1.21.11.dll  rolling/ac_1.21.11.dll
           cp dl/autoclicker-lunar_1.8.9/ac_1.8.9.dll       rolling/ac_1.8.9.dll
+          cp dl/autoclicker-1.26.x+/ac_1.26.x+.dll         rolling/ac_1.26.x+.dll
           cp dl/autoclicker-fabric_1.21.11/injector.exe    rolling/injector.exe
           cp versions.txt                                  rolling/versions.txt
 
@@ -209,6 +216,7 @@ jobs:
             echo './rolling/ac.dll'
             echo './rolling/ac_1.21.11.dll'
             echo './rolling/ac_1.8.9.dll'
+            echo './rolling/ac_1.26.x+.dll'
             echo './rolling/versions.txt'
             if [ "$new" != "$old" ]; then echo './rolling/injector.exe'; fi
             echo 'EOF'

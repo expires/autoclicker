@@ -124,6 +124,8 @@
   "desc_Camera_position":          "Lnet/minecraft/class_243;",
   "fld_Camera_xRot":               "field_18717",
   "fld_Camera_yRot":               "field_18718",
+  "mtd_Camera_getFov":             "",
+  "desc_Camera_getFov":            "",
 
   "fld_GameRenderer_mainCamera":   "field_18765",
   "desc_GameRenderer_mainCamera":  "Lnet/minecraft/class_4184;",
