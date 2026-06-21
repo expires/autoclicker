@@ -1,6 +1,7 @@
 {
   "generation":               "modern",
-  "sdk":                      "1.21.11",
+  "sdk":                      "1.26",
+  "sdkBase":                  "1.21.11",
 
   "class_Minecraft":          "net.minecraft.client.Minecraft",
   "class_LocalPlayer":        "net.minecraft.client.player.LocalPlayer",
