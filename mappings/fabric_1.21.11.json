@@ -143,6 +143,8 @@
   "class_Inventory":               "net.minecraft.class_1661",
   "mtd_Player_getInventory":       "method_31548",
   "desc_Player_getInventory":      "()Lnet/minecraft/class_1661;",
+  "mtd_Player_dropSelectedItem":   "method_7290",
+  "desc_Player_dropSelectedItem":  "(Z)Z",
   "fld_Inventory_selected":        "field_7545",
   "mtd_Inventory_getItem":         "method_5438",
   "desc_Inventory_getItem":        "(I)Lnet/minecraft/class_1799;",

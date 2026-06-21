@@ -7,4 +7,5 @@ namespace Overlay
     void Shutdown();
 
     bool IsMenuVisible();
+    bool IsScreenOpen();
 }

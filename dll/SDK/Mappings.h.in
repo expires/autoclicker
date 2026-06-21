@@ -144,6 +144,8 @@
 #define MC_Inventory                  "@class_Inventory@"
 #define MTD_Player_getInventory       "@mtd_Player_getInventory@"
 #define DESC_Player_getInventory      "@desc_Player_getInventory@"
+#define MTD_Player_dropSelectedItem   "@mtd_Player_dropSelectedItem@"
+#define DESC_Player_dropSelectedItem  "@desc_Player_dropSelectedItem@"
 #define FLD_Inventory_selected        "@fld_Inventory_selected@"
 #define MTD_Inventory_getItem         "@mtd_Inventory_getItem@"
 #define DESC_Inventory_getItem        "@desc_Inventory_getItem@"

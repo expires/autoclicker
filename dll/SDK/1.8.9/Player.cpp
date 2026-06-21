@@ -10,3 +10,7 @@ Inventory Player::getInventory()
 	if (lc->env->ExceptionCheck()) { lc->env->ExceptionClear(); return Inventory(nullptr); }
 	return Inventory(rtn);
 }
+
+void Player::dropSelectedItem(bool)
+{
+}

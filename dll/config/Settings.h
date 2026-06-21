@@ -38,6 +38,7 @@ struct Settings
     int acKey           = 0;
     int espKey          = 0;
     int selfDestructKey = 0x23;
+    int dropKey         = 0x51;
 
     static constexpr int MAX_MACROS = 10;
     int   macroCount = 0;

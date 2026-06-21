@@ -129,6 +129,8 @@
   "class_Inventory": "net.minecraft.entity.player.InventoryPlayer",
   "mtd_Player_getInventory": "",
   "desc_Player_getInventory": "",
+  "mtd_Player_dropSelectedItem": "",
+  "desc_Player_dropSelectedItem": "",
   "fld_Inventory_selected": "currentItem",
   "mtd_Inventory_getItem": "getStackInSlot",
   "desc_Inventory_getItem": "(I)Lnet/minecraft/item/ItemStack;",

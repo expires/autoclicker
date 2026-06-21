@@ -10,3 +10,12 @@ Inventory Player::getInventory()
 	if (lc->env->ExceptionCheck()) { lc->env->ExceptionClear(); return Inventory(nullptr); }
 	return Inventory(rtn);
 }
+
+void Player::dropSelectedItem(bool entireStack)
+{
+	static jmethodID m = nullptr;
+	JMethod(m, this->GetClass(), MTD_Player_dropSelectedItem, DESC_Player_dropSelectedItem);
+	if (!m) { lc->env->ExceptionClear(); return; }
+	lc->env->CallBooleanMethod(this->GetInstance(), m, (jboolean)entireStack);
+	if (lc->env->ExceptionCheck()) lc->env->ExceptionClear();
+}

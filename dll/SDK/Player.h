@@ -11,4 +11,5 @@ public:
 	jclass GetClass() override;
 
 	Inventory getInventory();
+	void dropSelectedItem(bool entireStack);
 };

@@ -95,6 +95,7 @@ foreach(KEY
     mtd_Minecraft_pauseGame     desc_Minecraft_pauseGame
     class_Inventory
     mtd_Player_getInventory     desc_Player_getInventory
+    mtd_Player_dropSelectedItem desc_Player_dropSelectedItem
     fld_Inventory_selected
     mtd_Inventory_getItem       desc_Inventory_getItem
     mtd_ItemStack_getHoverName  desc_ItemStack_getHoverName

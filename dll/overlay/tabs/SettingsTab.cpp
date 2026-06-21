@@ -2,6 +2,7 @@
 #include "../OverlayWidgets.h"
 #include "../../config/Settings.h"
 #include "../../modules/esp/EspModule.h"
+#include "Capabilities.h"
 #include "imgui.h"
 #include <memory>
 
@@ -16,6 +17,8 @@ namespace OverlayTabs
         ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0, Theme::M::KeybindGap));
         dirty |= RowKeybind("Menu",                    &g_settings.menuKey);
         dirty |= RowKeybind("Self-Destruct",   &g_settings.selfDestructKey);
+        if (kNativeDropOverride)
+            dirty |= RowKeybind("Drop Key", &g_settings.dropKey);
         ImGui::PopStyleVar();
         ImGui::PopID();
 

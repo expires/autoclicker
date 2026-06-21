@@ -1,6 +1,7 @@
 #include "MacrosModule.h"
 #include "../../config/Settings.h"
 #include "../../SDK/Minecraft.h"
+#include "../../SDK/Capabilities.h"
 #include "../autoclicker/AutoclickerModule.h"
 #include "../../overlay/Overlay.h"
 #include "../../logger/Logger.h"
@@ -98,6 +99,16 @@ namespace MacrosModule
         return target;
     }
 
+    static void FireDrop(Minecraft& mc, bool entireStack)
+    {
+        if (lc->env->PushLocalFrame(16) != 0) { lc->env->ExceptionClear(); return; }
+        Player player = mc.GetLocalPlayer();
+        if (player.GetInstance() != nullptr)
+            player.dropSelectedItem(entireStack);
+        if (lc->env->ExceptionCheck()) lc->env->ExceptionClear();
+        lc->env->PopLocalFrame(nullptr);
+    }
+
     DWORD WINAPI init(LPVOID )
     {
         AC_LOG("macros: thread start");
@@ -144,6 +155,22 @@ namespace MacrosModule
                 heldPrev[i] = held;
 
                 if (edge) cachedSlot[i] = FireMacro(mc, mcWindow, m, cachedSlot[i]);
+            }
+
+            if (kNativeDropOverride) {
+                static bool dropHeldPrev = false;
+                const int  dropKey = g_settings.dropKey;
+                if (dropKey > 0 && dropKey <= 0xFE && !Overlay::IsScreenOpen()) {
+                    const bool held = (GetAsyncKeyState(dropKey) & 0x8000) != 0;
+                    if (held && !dropHeldPrev) {
+                        const bool entireStack = (GetAsyncKeyState(VK_CONTROL) & 0x8000) != 0;
+                        FireDrop(mc, entireStack);
+                    }
+                    dropHeldPrev = held;
+                }
+                else {
+                    dropHeldPrev = false;
+                }
             }
         }
 

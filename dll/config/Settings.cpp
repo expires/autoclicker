@@ -43,6 +43,7 @@ void Settings::Save()
     fprintf(f, "acKey=%d\n",           acKey);
     fprintf(f, "espKey=%d\n",          espKey);
     fprintf(f, "selfDestructKey=%d\n", selfDestructKey);
+    fprintf(f, "dropKey=%d\n",         dropKey);
     fprintf(f, "version=%d\n",         version);
 
     fprintf(f, "macroCount=%d\n", macroCount);
@@ -123,6 +124,7 @@ void Settings::Load()
         else if (k == "acKey")           acKey           = val;
         else if (k == "espKey")          espKey          = val;
         else if (k == "selfDestructKey") selfDestructKey = val;
+        else if (k == "dropKey")         dropKey         = val;
         else if (k == "version")      version      = val;
         else if (k == "macroCount")   macroCount   = val;
         else if (k == "aimEnabled")    aimEnabled    = (val != 0);
@@ -183,6 +185,7 @@ void Settings::Load()
     acKey           = clampVK(acKey);
     espKey          = clampVK(espKey);
     selfDestructKey = clampVK(selfDestructKey);
+    dropKey         = clampVK(dropKey);
 
     if (cps < 1)  cps = 1;
     if (cps > 20) cps = 20;

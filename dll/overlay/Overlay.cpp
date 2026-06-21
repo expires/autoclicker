@@ -1,6 +1,7 @@
 #include "Overlay.h"
 #include <Windows.h>
 #include <gl/GL.h>
+#include <atomic>
 #include <climits>
 #include <cmath>
 #include <memory>
@@ -19,6 +20,7 @@
 #include "../modules/esp/EspModule.h"
 #include "../modules/scaffold/ScaffoldModule.h"
 #include "../SDK/Lunar.h"
+#include "../SDK/Capabilities.h"
 #include "../SDK/View.h"
 #include "../SDK/Minecraft.h"
 #include "../SDK/Screen.h"
@@ -125,6 +127,8 @@ static int     s_currentTab         = 0;
 static HWND    s_hwnd               = nullptr;
 static WNDPROC s_origProc           = nullptr;
 static bool    s_eatEscUntilRelease = false;
+
+static std::atomic<bool> s_gameScreenOpen{false};
 
 static volatile bool s_shutdownRequested = false;
 static volatile bool s_renderDrained     = false;
@@ -592,6 +596,21 @@ static LRESULT CALLBACK HookedWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM
         }
     }
 
+    if (kNativeDropOverride && !s_visible)
+    {
+        const int dropVk = g_settings.dropKey;
+        if (dropVk > 0 && dropVk <= 0xFE && (int)wParam == dropVk
+            && !s_gameScreenOpen.load(std::memory_order_relaxed))
+        {
+            switch (msg)
+            {
+            case WM_KEYDOWN:    case WM_KEYUP:
+            case WM_SYSKEYDOWN: case WM_SYSKEYUP:
+                return 0;
+            }
+        }
+    }
+
     if (s_visible)
     {
         switch (msg)
@@ -754,6 +773,7 @@ static BOOL WINAPI hk_wglSwapBuffers(HDC hdc)
 
         const bool gameForeground  = (s_hwnd != nullptr && GetForegroundWindow() == s_hwnd);
         const bool gameScreenOpen  = IsGameScreenOpen();
+        s_gameScreenOpen.store(gameScreenOpen, std::memory_order_relaxed);
         const bool keybindsBlocked = !gameForeground || gameScreenOpen;
 
         const bool menuValid = (g_settings.menuKey > 0 && g_settings.menuKey <= 0xFE);
@@ -999,6 +1019,7 @@ static BOOL WINAPI hk_wglSwapBuffers(HDC hdc)
 namespace Overlay
 {
     bool IsMenuVisible() { return s_visible; }
+    bool IsScreenOpen() { return s_gameScreenOpen.load(std::memory_order_relaxed); }
 
     void Init()
     {
