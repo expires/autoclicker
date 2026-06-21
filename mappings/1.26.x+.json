@@ -90,7 +90,7 @@
   "class_DeltaTracker":            "net.minecraft.client.DeltaTracker",
   "mtd_Minecraft_getDeltaTracker": "getDeltaTracker",
   "desc_Minecraft_getDeltaTracker":"()Lnet/minecraft/client/DeltaTracker;",
-  "mtd_DeltaTracker_getPartialTick":"getPartialTick",
+  "mtd_DeltaTracker_getPartialTick":"getGameTimeDeltaPartialTick",
   "desc_DeltaTracker_getPartialTick":"(Z)F",
 
   "class_PlayerTeam":               "net.minecraft.world.scores.PlayerTeam",
