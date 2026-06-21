@@ -10,13 +10,17 @@
 #pragma comment(lib, "advapi32.lib")
 #pragma comment(lib, "uuid.lib")
 
+#ifndef AC_RELEASE_TAG
+#define AC_RELEASE_TAG "latest"
+#endif
+
 static const char* DLL_URL_BASE =
-    "https://github.com/expires/autoclicker/releases/download/dev/";
+    "https://github.com/expires/autoclicker/releases/download/" AC_RELEASE_TAG "/";
 
 static const char* MANIFEST   = "versions.txt";
 
 static const char* INJECTOR_RELEASE_URL =
-    "https://github.com/expires/autoclicker/releases/tag/latest";
+    "https://github.com/expires/autoclicker/releases/tag/" AC_RELEASE_TAG;
 
 #define ANSI_RESET   "\x1b[0m"
 #define ANSI_BOLD    "\x1b[1m"

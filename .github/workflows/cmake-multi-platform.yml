@@ -11,6 +11,8 @@ on:
 jobs:
   build:
     runs-on: windows-latest
+    env:
+      AC_RELEASE_TAG: ${{ github.ref == 'refs/heads/development' && 'dev' || 'latest' }}
     strategy:
       fail-fast: false
       matrix:
@@ -33,7 +35,7 @@ jobs:
           java-version: '21'
 
       - name: Configure CMake
-        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DJAVA_HOME="$env:JAVA_HOME" -DMAPPING_VERSION="${{ matrix.mapping }}"
+        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DJAVA_HOME="$env:JAVA_HOME" -DMAPPING_VERSION="${{ matrix.mapping }}" -DAC_RELEASE_TAG="${{ env.AC_RELEASE_TAG }}"
 
       - name: Inject Config.h
         shell: bash
@@ -51,7 +53,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: build/INJECTOR/Release/INJECTOR.exe
-          key: injector-${{ runner.os }}-${{ hashFiles('injector/**', 'CMakeLists.txt') }}
+          key: injector-${{ runner.os }}-${{ env.AC_RELEASE_TAG }}-${{ hashFiles('injector/**', 'CMakeLists.txt') }}
 
       - name: Build DLL
         run: cmake --build build --config Release --target DLL
