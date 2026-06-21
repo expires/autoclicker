@@ -232,6 +232,30 @@ static void DrawEsp(float dispW, float dispH)
     ImDrawList* dl = ImGui::GetBackgroundDrawList();
     const float maxDistSq = (float)g_settings.maxDistance * (float)g_settings.maxDistance;
 
+    static const bool ESP_DEBUG = true;
+    if (ESP_DEBUG) {
+        float rawYaw = 0.0f, rawPitch = 0.0f;
+        double rawX = 0.0, rawY = 0.0, rawZ = 0.0;
+        if (lc->env && lc->env->PushLocalFrame(8) == 0) {
+            Minecraft dmc;
+            Player dp = dmc.GetLocalPlayer();
+            if (dp.GetInstance() != nullptr) {
+                rawYaw = dp.getYRot(); rawPitch = dp.getXRot();
+                rawX = dp.getX(); rawY = dp.getY(); rawZ = dp.getZ();
+            }
+            if (lc->env->ExceptionCheck()) lc->env->ExceptionClear();
+            lc->env->PopLocalFrame(nullptr);
+        }
+        char b1[160], b2[160];
+        snprintf(b1, sizeof(b1), "pt=%.3f  camYaw=%.2f rawYaw=%.2f  camPitch=%.2f rawPitch=%.2f  fov=%.1f",
+                 partial, cam.yRot, rawYaw, cam.xRot, rawPitch, cam.fov);
+        snprintf(b2, sizeof(b2), "cam=%.2f,%.2f,%.2f  raw(eye)=%.2f,%.2f,%.2f",
+                 cam.x, cam.y, cam.z, rawX, rawY + 1.62, rawZ);
+        ImDrawList* fdl = ImGui::GetForegroundDrawList();
+        fdl->AddText(ImVec2(10.0f, 10.0f), IM_COL32(255, 255, 0, 255), b1);
+        fdl->AddText(ImVec2(10.0f, 26.0f), IM_COL32(255, 255, 0, 255), b2);
+    }
+
     const double pt = (double)partial;
 
     for (const auto& t : snap.targets)
