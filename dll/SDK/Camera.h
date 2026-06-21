@@ -13,6 +13,7 @@ public:
     Vec3  getPosition();
     float getXRot();
     float getYRot();
+    float getFov();
 
 private:
     jobject instance;

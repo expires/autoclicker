@@ -24,3 +24,12 @@ float Camera::getYRot()
     if (!JField(f, this->GetClass(), FLD_Camera_yRot, "F")) return 0.0f;
     return lc->env->GetFloatField(this->instance, f);
 }
+
+float Camera::getFov()
+{
+    static jmethodID m = nullptr;
+    if (!JMethod(m, this->GetClass(), MTD_Camera_getFov, DESC_Camera_getFov)) { lc->env->ExceptionClear(); return -1.0f; }
+    float v = lc->env->CallFloatMethod(this->instance, m);
+    if (lc->env->ExceptionCheck()) { lc->env->ExceptionClear(); return -1.0f; }
+    return v;
+}

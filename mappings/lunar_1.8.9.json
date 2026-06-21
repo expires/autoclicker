@@ -114,6 +114,8 @@
   "desc_Camera_position": "",
   "fld_Camera_xRot": "",
   "fld_Camera_yRot": "",
+  "mtd_Camera_getFov": "",
+  "desc_Camera_getFov": "",
   "fld_GameRenderer_mainCamera": "",
   "desc_GameRenderer_mainCamera": "",
   "mtd_GameRenderer_getFov": "",

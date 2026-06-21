@@ -87,6 +87,7 @@ foreach(KEY
     fld_AABB_minX fld_AABB_minY fld_AABB_minZ fld_AABB_maxX fld_AABB_maxY fld_AABB_maxZ
     fld_Vec3_x fld_Vec3_y fld_Vec3_z
     fld_Camera_position desc_Camera_position fld_Camera_xRot fld_Camera_yRot
+    mtd_Camera_getFov desc_Camera_getFov
     fld_GameRenderer_mainCamera desc_GameRenderer_mainCamera
     mtd_GameRenderer_getFov     desc_GameRenderer_getFov
     mtd_ClientLevel_players     desc_ClientLevel_players
@@ -273,8 +274,35 @@ endif()
 if(NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/SDK/${AC_SDK}")
     message(FATAL_ERROR "SDK implementation dir not found: SDK/${AC_SDK}")
 endif()
-message(STATUS "Mapping ${MAPPING_VERSION}: SDK impl dir = SDK/${AC_SDK}")
+
+string(JSON AC_SDK_BASE ERROR_VARIABLE _baseErr GET "${MAPPING_JSON}" "sdkBase")
+if(_baseErr OR NOT AC_SDK_BASE)
+    set(AC_SDK_BASE "")
+endif()
+
 file(GLOB SDK_VERSION_SOURCES "SDK/${AC_SDK}/*.cpp")
+
+if(AC_SDK_BASE)
+    if(NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/SDK/${AC_SDK_BASE}")
+        message(FATAL_ERROR "SDK base dir not found: SDK/${AC_SDK_BASE}")
+    endif()
+    set(_override_names "")
+    foreach(_f ${SDK_VERSION_SOURCES})
+        get_filename_component(_n "${_f}" NAME)
+        list(APPEND _override_names "${_n}")
+    endforeach()
+    file(GLOB SDK_BASE_SOURCES "SDK/${AC_SDK_BASE}/*.cpp")
+    foreach(_f ${SDK_BASE_SOURCES})
+        get_filename_component(_n "${_f}" NAME)
+        if(NOT _n IN_LIST _override_names)
+            list(APPEND SDK_VERSION_SOURCES "${_f}")
+        endif()
+    endforeach()
+    message(STATUS "Mapping ${MAPPING_VERSION}: SDK impl dir = SDK/${AC_SDK} (base SDK/${AC_SDK_BASE})")
+else()
+    message(STATUS "Mapping ${MAPPING_VERSION}: SDK impl dir = SDK/${AC_SDK}")
+endif()
+
 list(APPEND SDK_SOURCES ${SDK_VERSION_SOURCES})
 file(GLOB AUTOCLICKER_HEADERS  "modules/autoclicker/*.h")
 file(GLOB AUTOCLICKER_SOURCES  "modules/autoclicker/*.cpp")
