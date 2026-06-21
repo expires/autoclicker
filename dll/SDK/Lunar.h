@@ -17,6 +17,7 @@ public:
 
 public:
 	void GetLoadedClasses();
+	void DumpLoadedClasses(const std::string &path);
 	jclass GetClass(const std::string &classname);
 
 private:

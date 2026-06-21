@@ -1,6 +1,8 @@
 
 #pragma once
 
+#define AC_GENERATION           "@AC_GENERATION@"
+
 #define MC_Minecraft            "@class_Minecraft@"
 #define MC_LocalPlayer          "@class_LocalPlayer@"
 #define MC_Screen               "@class_Screen@"
@@ -155,3 +157,51 @@
 #define DESC_Level_getBlockState      "@desc_Level_getBlockState@"
 #define MTD_BlockState_isAir          "@mtd_BlockState_isAir@"
 #define MTD_BlockState_blocksMotion   "@mtd_BlockState_blocksMotion@"
+
+#define FLD_Entity_posX                 "@fld_Entity_posX@"
+#define FLD_Entity_posY                 "@fld_Entity_posY@"
+#define FLD_Entity_posZ                 "@fld_Entity_posZ@"
+#define MTD_Entity_getPositionVector    "@mtd_Entity_getPositionVector@"
+#define DESC_Entity_getPositionVector   "@desc_Entity_getPositionVector@"
+
+#define FLD_HitResult_typeOfHit         "@fld_HitResult_typeOfHit@"
+#define DESC_HitResult_typeOfHit        "@desc_HitResult_typeOfHit@"
+#define FLD_HitResult_entityHit         "@fld_HitResult_entityHit@"
+#define DESC_HitResult_entityHit        "@desc_HitResult_entityHit@"
+
+#define FLD_World_playerEntities        "@fld_World_playerEntities@"
+#define DESC_World_playerEntities       "@desc_World_playerEntities@"
+
+#define MTD_BlockState_getBlock         "@mtd_BlockState_getBlock@"
+#define DESC_BlockState_getBlock        "@desc_BlockState_getBlock@"
+#define MTD_Block_getMaterial           "@mtd_Block_getMaterial@"
+#define DESC_Block_getMaterial          "@desc_Block_getMaterial@"
+#define MTD_Material_blocksMovement     "@mtd_Material_blocksMovement@"
+
+#define FLD_Player_inventory            "@fld_Player_inventory@"
+#define DESC_Player_inventory           "@desc_Player_inventory@"
+
+#define MC_GameSettings                 "@class_GameSettings@"
+#define FLD_Minecraft_gameSettings      "@fld_Minecraft_gameSettings@"
+#define DESC_Minecraft_gameSettings     "@desc_Minecraft_gameSettings@"
+#define FLD_GameSettings_fovSetting     "@fld_GameSettings_fovSetting@"
+
+#define MC_Timer                        "@class_Timer@"
+#define FLD_Minecraft_timer             "@fld_Minecraft_timer@"
+#define DESC_Minecraft_timer            "@desc_Minecraft_timer@"
+#define FLD_Timer_renderPartialTicks    "@fld_Timer_renderPartialTicks@"
+#define FLD_Entity_prevYRot             "@fld_Entity_prevYRot@"
+#define FLD_Entity_prevXRot             "@fld_Entity_prevXRot@"
+
+#define MC_ActiveRenderInfo             "@class_ActiveRenderInfo@"
+#define FLD_ActiveRenderInfo_modelview  "@fld_ActiveRenderInfo_modelview@"
+#define DESC_ActiveRenderInfo_modelview "@desc_ActiveRenderInfo_modelview@"
+#define FLD_ActiveRenderInfo_projection "@fld_ActiveRenderInfo_projection@"
+#define DESC_ActiveRenderInfo_projection "@desc_ActiveRenderInfo_projection@"
+#define FLD_ActiveRenderInfo_viewport   "@fld_ActiveRenderInfo_viewport@"
+#define DESC_ActiveRenderInfo_viewport  "@desc_ActiveRenderInfo_viewport@"
+
+#define MTD_Entity_getDisplayName       "@mtd_Entity_getDisplayName@"
+#define DESC_Entity_getDisplayName      "@desc_Entity_getDisplayName@"
+
+#define MTD_GameType_getId              "@mtd_GameType_getId@"

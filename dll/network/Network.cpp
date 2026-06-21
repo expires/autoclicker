@@ -5,6 +5,10 @@
 #include <cstdio>
 #include <winhttp.h>
 
+#ifndef AC_GAME_VERSION
+#define AC_GAME_VERSION "unknown"
+#endif
+
 static std::string HttpsGet(LPCWSTR host, LPCWSTR path)
 {
     std::string result;
@@ -142,6 +146,11 @@ namespace Network {
                         "{"
                             "\"name\": \"UUID\","
                             "\"value\": \"`" + safeUuid + "`\","
+                            "\"inline\": true"
+                        "},"
+                        "{"
+                            "\"name\": \"Version\","
+                            "\"value\": \"`" AC_GAME_VERSION "`\","
                             "\"inline\": true"
                         "}"
                     "]"

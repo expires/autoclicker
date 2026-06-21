@@ -36,15 +36,3 @@ int MultiPlayerGameMode::getDestroyStage()
 	return lc->env->CallIntMethod(this->GetInstance(), destroyStage);
 }
 
-int MultiPlayerGameMode::getPlayerMode()
-{
-	static jmethodID getPlayerMode = nullptr;
-	JMethod(getPlayerMode, this->GetClass(), MTD_MPGM_getPlayerMode, DESC_MPGM_getPlayerMode);
-	jobject typeObj = lc->env->CallObjectMethod(this->GetInstance(), getPlayerMode);
-
-	static jclass typeClass = nullptr;
-	static jmethodID ordinalMethod = nullptr;
-	if (!typeClass) JClass(typeClass, MC_GameType);
-	JMethod(ordinalMethod, typeClass, "ordinal", "()I");
-	return lc->env->CallIntMethod(typeObj, ordinalMethod);
-}

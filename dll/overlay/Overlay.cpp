@@ -19,9 +19,11 @@
 #include "../modules/esp/EspModule.h"
 #include "../modules/scaffold/ScaffoldModule.h"
 #include "../SDK/Lunar.h"
+#include "../SDK/View.h"
 #include "../SDK/Minecraft.h"
 #include "../SDK/Screen.h"
 #include "../SDK/Vec3.h"
+#include "Platform.h"
 #include "Revision.h"
 #include "LogoData.h"
 #include <MinHook.h>
@@ -131,6 +133,33 @@ static bool ProjectWorld(double wx, double wy, double wz,
                          const EspModule::CameraState& cam,
                          float dispW, float dispH, ImVec2& out)
 {
+    if (cam.hasMatrix)
+    {
+        const float* mv = cam.modelview;
+        const float* pr = cam.projection;
+        const double rx = wx - cam.x;
+        const double ry = wy - cam.y;
+        const double rz = wz - cam.z;
+
+        const double ex = mv[0] * rx + mv[4] * ry + mv[8]  * rz + mv[12];
+        const double ey = mv[1] * rx + mv[5] * ry + mv[9]  * rz + mv[13];
+        const double ez = mv[2] * rx + mv[6] * ry + mv[10] * rz + mv[14];
+
+        const double cx = pr[0] * ex + pr[4] * ey + pr[8]  * ez + pr[12];
+        const double cy = pr[1] * ex + pr[5] * ey + pr[9]  * ez + pr[13];
+        const double cw = pr[3] * ex + pr[7] * ey + pr[11] * ez + pr[15];
+
+        if (cw <= 1e-4) return false;
+
+        const double ndcX = cx / cw;
+        const double ndcY = cy / cw;
+        const double vpW = (cam.viewport[2] > 0) ? (double)cam.viewport[2] : (double)dispW;
+        const double vpH = (cam.viewport[3] > 0) ? (double)cam.viewport[3] : (double)dispH;
+        out.x = (float)((ndcX * 0.5 + 0.5) * vpW);
+        out.y = (float)((1.0 - (ndcY * 0.5 + 0.5)) * vpH);
+        return true;
+    }
+
     double dx = wx - cam.x;
     double dy = wy - cam.y;
     double dz = wz - cam.z;
@@ -197,31 +226,23 @@ static void RefreshCameraFromRenderThread(EspModule::CameraState& cam, float& pa
     if (lc->env->PushLocalFrame(32) != 0) { lc->env->ExceptionClear(); return; }
 
     Minecraft mc;
-    if (jobject mcInst = mc.GetInstance()) {
-        float pt = 1.0f;
-        DeltaTracker dt = mc.GetDeltaTracker();
-        if (dt.GetInstance() != nullptr) {
-            float ptRead = dt.getPartialTick(true);
-            if (!lc->env->ExceptionCheck()) {
-                pt = ptRead;
-                partial = ptRead;
-            }
-        }
-
-        GameRenderer gr = mc.GetGameRenderer();
-        if (gr.GetInstance() != nullptr) {
-            Camera cam2 = gr.getMainCamera();
-            if (cam2.GetInstance() != nullptr) {
-                Vec3 cp = cam2.getPosition();
-                if (cp.GetInstance() != nullptr) {
-                    cam.x = cp.getX();
-                    cam.y = cp.getY();
-                    cam.z = cp.getZ();
+    if (mc.GetInstance() != nullptr) {
+        Player localPlayer = mc.GetLocalPlayer();
+        if (localPlayer.GetInstance() != nullptr) {
+            ViewState v = AcquireView(mc, localPlayer);
+            if (v.ok) {
+                cam.x = v.x;
+                cam.y = v.y;
+                cam.z = v.z;
+                cam.yRot = v.yRot;
+                cam.xRot = v.xRot;
+                if (v.fov > 0.0f) cam.fov = v.fov;
+                partial = v.partialTick;
+                cam.hasMatrix = v.hasMatrix;
+                if (v.hasMatrix) {
+                    for (int i = 0; i < 16; ++i) { cam.modelview[i] = v.modelview[i]; cam.projection[i] = v.projection[i]; }
+                    for (int i = 0; i < 4; ++i) cam.viewport[i] = v.viewport[i];
                 }
-                cam.yRot = cam2.getYRot();
-                cam.xRot = cam2.getXRot();
-                float fov = gr.getFov(cam2, pt, true);
-                if (!lc->env->ExceptionCheck() && fov > 0.0f) cam.fov = fov;
             }
         }
     }
@@ -243,7 +264,7 @@ static void DrawEsp(float dispW, float dispH)
     ImDrawList* dl = ImGui::GetBackgroundDrawList();
     const float maxDistSq = (float)g_settings.maxDistance * (float)g_settings.maxDistance;
 
-    const double pt = (double)snap.partialTick;
+    const double pt = (double)partial;
 
     for (const auto& t : snap.targets)
     {
@@ -579,6 +600,7 @@ static LRESULT CALLBACK HookedWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM
         case WM_RBUTTONDOWN: case WM_RBUTTONUP: case WM_RBUTTONDBLCLK:
         case WM_MBUTTONDOWN: case WM_MBUTTONUP: case WM_MBUTTONDBLCLK:
         case WM_XBUTTONDOWN: case WM_XBUTTONUP: case WM_XBUTTONDBLCLK:
+        case WM_MOUSEMOVE:
             break;
         default:
             ImGui_ImplWin32_WndProcHandler(hwnd, msg, wParam, lParam);
@@ -630,7 +652,7 @@ static BOOL WINAPI hk_wglSwapBuffers(HDC hdc)
     {
         static HWND s_gameWnd = nullptr;
         if (s_gameWnd == nullptr || !IsWindow(s_gameWnd)) {
-            HWND g = FindWindowW(L"GLFW30", nullptr);
+            HWND g = FindGameWindow();
             s_gameWnd = g ? g : swapWnd;
             AC_LOG("overlay: pinned render window=%p (first swap caller window=%p)",
                    (void*)s_gameWnd, (void*)swapWnd);
@@ -815,6 +837,12 @@ static BOOL WINAPI hk_wglSwapBuffers(HDC hdc)
         if (s_visible) {
             ImGuiIO& io = ImGui::GetIO();
             io.MouseDrawCursor = true;
+
+            POINT cp;
+            if (GetCursorPos(&cp)) {
+                if (s_hwnd) ScreenToClient(s_hwnd, &cp);
+                io.AddMousePosEvent((float)cp.x, (float)cp.y);
+            }
 
             static bool s_imPrevBtn[5] = {};
             const int  vks[5]   = { VK_LBUTTON, VK_RBUTTON, VK_MBUTTON,

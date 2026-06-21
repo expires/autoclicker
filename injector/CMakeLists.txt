@@ -11,9 +11,16 @@ set(CMAKE_CONFIGURATION_TYPES "Release" CACHE STRING "Limited configuration type
 set(CMAKE_BUILD_TYPE "Release" CACHE STRING "Choose the build type" FORCE)
 
 # Add the executable target (exe)
-add_executable(${PROJECT_NAME} 
-    main.cpp 
+add_executable(${PROJECT_NAME}
+    main.cpp
 )
+
+if(DEFINED ENV{AC_RELEASE_TAG})
+    set(AC_RELEASE_TAG "$ENV{AC_RELEASE_TAG}" CACHE STRING "" FORCE)
+else()
+    set(AC_RELEASE_TAG "latest" CACHE STRING "GitHub release tag the injector pulls DLLs from")
+endif()
+target_compile_definitions(${PROJECT_NAME} PRIVATE AC_RELEASE_TAG="${AC_RELEASE_TAG}")
 
 # Link necessary libraries (e.g., JVM_LIB, if required)
 target_link_libraries(${PROJECT_NAME} PRIVATE ${JVM_LIB})

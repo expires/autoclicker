@@ -6,7 +6,9 @@
 #include "../../logger/Logger.h"
 #include "config/Config.h"
 #include "Mappings.h"
+#include "Platform.h"
 #include <chrono>
+#include <cstdlib>
 #include <string>
 
 namespace AutoclickerModule
@@ -90,8 +92,11 @@ namespace AutoclickerModule
             lc->GetLoadedClasses();
             AC_LOG("autoclicker: GetLoadedClasses done; entering loop");
 
+            if (const char* appdata = std::getenv("APPDATA"))
+                lc->DumpLoadedClasses(std::string(appdata) + "\\manuclicker\\classdump.txt");
+
             const auto mc = std::make_unique<Minecraft>();
-            const HWND mcWindow = FindWindowW(L"GLFW30", nullptr);
+            const HWND mcWindow = FindGameWindow();
 
             std::string lastSeenUsername;
             auto lastUserPoll = std::chrono::steady_clock::now()

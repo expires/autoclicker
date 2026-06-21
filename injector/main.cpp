@@ -8,9 +8,19 @@
 
 #pragma comment(lib, "urlmon.lib")
 #pragma comment(lib, "advapi32.lib")
+#pragma comment(lib, "uuid.lib")
 
-static const char* DLL_URL =
-    "https://github.com/expires/autoclicker/releases/download/latest/ac.dll";
+#ifndef AC_RELEASE_TAG
+#define AC_RELEASE_TAG "latest"
+#endif
+
+static const char* DLL_URL_BASE =
+    "https://github.com/expires/autoclicker/releases/download/" AC_RELEASE_TAG "/";
+
+static const char* MANIFEST   = "versions.txt";
+
+static const char* INJECTOR_RELEASE_URL =
+    "https://github.com/expires/autoclicker/releases/tag/" AC_RELEASE_TAG;
 
 #define ANSI_RESET   "\x1b[0m"
 #define ANSI_BOLD    "\x1b[1m"
@@ -21,75 +31,238 @@ static const char* DLL_URL =
 #define ANSI_RED     "\x1b[31m"
 #define ANSI_MAGENTA "\x1b[35m"
 
+static const char* BANNER[] = {
+    "                                   _ _      _             ",
+    "                                  | (_)    | |            ",
+    "  _ __ ___   __ _ _ __  _   _  ___| |_  ___| | _____ _ __ ",
+    " | '_ ` _ \\ / _` | '_ \\| | | |/ __| | |/ __| |/ / _ \\ '__|",
+    " | | | | | | (_| | | | | |_| | (__| | | (__|   <  __/ |   ",
+    " |_| |_| |_|\\__,_|_| |_|\\__,_|\\___|_|_|\\___|_|\\_\\___|_|   ",
+};
+static const int BANNER_LINES = (int)(sizeof(BANNER) / sizeof(BANNER[0]));
+
+static HANDLE g_out      = nullptr;
+static int    g_width    = 80;
+static SHORT  g_stageRow = 0;
+static SHORT  g_barRow   = 0;
+static SHORT  g_footRow  = 0;
+
+static int ConsoleWidth()
+{
+    CONSOLE_SCREEN_BUFFER_INFO csbi;
+    if (GetConsoleScreenBufferInfo(g_out, &csbi))
+        return csbi.srWindow.Right - csbi.srWindow.Left + 1;
+    return 80;
+}
+
+static int ConsoleHeight()
+{
+    CONSOLE_SCREEN_BUFFER_INFO csbi;
+    if (GetConsoleScreenBufferInfo(g_out, &csbi))
+        return csbi.srWindow.Bottom - csbi.srWindow.Top + 1;
+    return 25;
+}
+
+static void MoveTo(SHORT row)
+{
+    COORD c; c.X = 0; c.Y = row;
+    SetConsoleCursorPosition(g_out, c);
+}
+
+static void ShowCursor(bool show)
+{
+    CONSOLE_CURSOR_INFO ci;
+    if (GetConsoleCursorInfo(g_out, &ci))
+    {
+        ci.bVisible = show ? TRUE : FALSE;
+        SetConsoleCursorInfo(g_out, &ci);
+    }
+}
+
+static void CenterLine(SHORT row, const char* color, const char* text, int visibleLen)
+{
+    int pad = (g_width - visibleLen) / 2;
+    if (pad < 0) pad = 0;
+    MoveTo(row);
+    printf("\x1b[2K%*s%s%s%s", pad, "", color ? color : "", text, ANSI_RESET);
+    fflush(stdout);
+}
+
 static void SetupConsole()
 {
-
     SetConsoleOutputCP(CP_UTF8);
+    g_out = GetStdHandle(STD_OUTPUT_HANDLE);
 
-    HANDLE h = GetStdHandle(STD_OUTPUT_HANDLE);
-    DWORD  mode = 0;
-    if (GetConsoleMode(h, &mode))
-        SetConsoleMode(h, mode | ENABLE_VIRTUAL_TERMINAL_PROCESSING);
+    DWORD mode = 0;
+    if (GetConsoleMode(g_out, &mode))
+        SetConsoleMode(g_out, mode | ENABLE_VIRTUAL_TERMINAL_PROCESSING);
 }
 
-static void PrintBanner()
+static void UiInit()
 {
-    printf("\n" ANSI_CYAN ANSI_BOLD);
-    printf(
-        "                                   _ _      _             \n"
-        "                                  | (_)    | |            \n"
-        "  _ __ ___   __ _ _ __  _   _  ___| |_  ___| | _____ _ __ \n"
-        " | '_ ` _ \\ / _` | '_ \\| | | |/ __| | |/ __| |/ / _ \\ '__|\n"
-        " | | | | | | (_| | | | | |_| | (__| | | (__|   <  __/ |   \n"
-        " |_| |_| |_|\\__,_|_| |_|\\__,_|\\___|_|_|\\___|_|\\_\\___|_|   \n"
-        "                                                          \n"
-    );
-    printf(ANSI_RESET "\n");
+    g_width = ConsoleWidth();
+    int height = ConsoleHeight();
+
+    int blockW = 0;
+    for (int i = 0; i < BANNER_LINES; ++i)
+    {
+        int len = (int)strlen(BANNER[i]);
+        if (len > blockW) blockW = len;
+    }
+
+    const int total = BANNER_LINES + 5;
+    SHORT top = (SHORT)((height - total) / 2);
+    if (top < 0) top = 0;
+
+    int bannerPad = (g_width - blockW) / 2;
+    if (bannerPad < 0) bannerPad = 0;
+
+    ShowCursor(false);
+    printf("\x1b[2J\x1b[3J");
+    fflush(stdout);
+
+    for (int i = 0; i < BANNER_LINES; ++i)
+    {
+        MoveTo((SHORT)(top + i));
+        printf("%*s%s%s%s", bannerPad, "", ANSI_CYAN ANSI_BOLD, BANNER[i], ANSI_RESET);
+    }
+    fflush(stdout);
+
+    g_stageRow = (SHORT)(top + BANNER_LINES + 1);
+    g_barRow   = (SHORT)(g_stageRow + 2);
+    g_footRow  = (SHORT)(g_barRow + 2);
 }
 
-static void PrintStep(const char* msg)
+static void UiStage(const char* color, const char* text)
 {
-    printf("  " ANSI_YELLOW "[•]" ANSI_RESET " %s\n", msg);
+    CenterLine(g_stageRow, color, text, (int)strlen(text));
 }
 
-static void PrintError(const char* msg)
+static void UiBar(double frac, const char* color)
 {
-    printf("  " ANSI_RED "[✗] %s" ANSI_RESET "\n", msg);
+    if (frac < 0.0) frac = 0.0;
+    if (frac > 1.0) frac = 1.0;
+
+    const int cells = 32;
+    int filled = (int)(frac * cells + 0.5);
+    if (filled > cells) filled = cells;
+
+    int pct = (int)(frac * 100.0 + 0.5);
+    int visible = cells + 2 + 5;
+    int pad = (g_width - visible) / 2;
+    if (pad < 0) pad = 0;
+
+    MoveTo(g_barRow);
+    printf("\x1b[2K%*s%s[", pad, "", color ? color : ANSI_CYAN);
+    for (int i = 0; i < filled; ++i)        fputs("\xe2\x96\x88", stdout);
+    for (int i = filled; i < cells; ++i)    fputs(ANSI_DIM "\xe2\x96\x91" ANSI_RESET, stdout);
+    printf("%s] %3d%%%s", color ? color : ANSI_CYAN, pct, ANSI_RESET);
+    fflush(stdout);
 }
 
-static void PrintSuccess()
+static void UiFooter(const char* color, const char* text)
 {
-    printf("\n");
-    printf("  " ANSI_GREEN "╭────────────────────────────────────────╮" ANSI_RESET "\n");
-    printf("  " ANSI_GREEN "│" ANSI_RESET "  " ANSI_BOLD ANSI_GREEN
-           "✓  Successfully injected" ANSI_RESET
-           "              " ANSI_GREEN "│" ANSI_RESET "\n");
-    printf("  " ANSI_GREEN "╰────────────────────────────────────────╯" ANSI_RESET "\n");
-    printf("\n");
+    CenterLine(g_footRow, color, text, (int)strlen(text));
 }
 
 static void WaitForKey()
 {
-    printf("  " ANSI_DIM "press any key to close..." ANSI_RESET);
-    fflush(stdout);
+    UiFooter(ANSI_DIM, "press any key to close...");
     _getch();
+    MoveTo((SHORT)(g_footRow + 2));
+    ShowCursor(true);
     printf("\n");
 }
 
-DWORD GetProcessId(const wchar_t* procName)
+class DownloadProgress : public IBindStatusCallback
 {
-    HANDLE snap = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
-    PROCESSENTRY32W entry = { sizeof(entry) };
-    DWORD pid = 0;
-    if (Process32FirstW(snap, &entry))
+public:
+    STDMETHOD(QueryInterface)(REFIID riid, void** ppv) override
     {
-        do
-            if (!_wcsicmp(entry.szExeFile, procName))
-                pid = entry.th32ProcessID;
-        while (!pid && Process32NextW(snap, &entry));
+        if (riid == IID_IUnknown || riid == IID_IBindStatusCallback)
+        {
+            *ppv = static_cast<IBindStatusCallback*>(this);
+            return S_OK;
+        }
+        *ppv = nullptr;
+        return E_NOINTERFACE;
     }
-    CloseHandle(snap);
-    return pid;
+    STDMETHOD_(ULONG, AddRef)() override  { return 1; }
+    STDMETHOD_(ULONG, Release)() override { return 1; }
+
+    STDMETHOD(OnStartBinding)(DWORD, IBinding*) override { return S_OK; }
+    STDMETHOD(GetPriority)(LONG*) override { return E_NOTIMPL; }
+    STDMETHOD(OnLowResource)(DWORD) override { return S_OK; }
+    STDMETHOD(OnStopBinding)(HRESULT, LPCWSTR) override { return S_OK; }
+    STDMETHOD(GetBindInfo)(DWORD*, BINDINFO*) override { return S_OK; }
+    STDMETHOD(OnDataAvailable)(DWORD, DWORD, FORMATETC*, STGMEDIUM*) override { return S_OK; }
+    STDMETHOD(OnObjectAvailable)(REFIID, IUnknown*) override { return S_OK; }
+
+    STDMETHOD(OnProgress)(ULONG ulProgress, ULONG ulProgressMax, ULONG, LPCWSTR) override
+    {
+        double f = ulProgressMax ? (double)ulProgress / (double)ulProgressMax : 0.0;
+        UiStage(ANSI_CYAN, "Downloading");
+        UiBar(0.45 + f * 0.45, ANSI_CYAN);
+        return S_OK;
+    }
+};
+
+struct GameWindow
+{
+    HWND    hwnd   = nullptr;
+    DWORD   pid    = 0;
+    bool    found  = false;
+    wchar_t title[256] = {};
+};
+
+static bool IsJavaProcess(DWORD pid)
+{
+    HANDLE h = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, FALSE, pid);
+    if (!h) return false;
+    wchar_t path[MAX_PATH] = {};
+    DWORD   sz = MAX_PATH;
+    const bool ok = QueryFullProcessImageNameW(h, 0, path, &sz);
+    CloseHandle(h);
+    if (!ok) return false;
+
+    const wchar_t* slash = wcsrchr(path, L'\\');
+    const wchar_t* exe   = slash ? slash + 1 : path;
+    return _wcsicmp(exe, L"javaw.exe") == 0 || _wcsicmp(exe, L"java.exe") == 0;
+}
+
+static BOOL CALLBACK EnumGameWindow(HWND hwnd, LPARAM lp)
+{
+    auto* g = reinterpret_cast<GameWindow*>(lp);
+
+    if (!IsWindowVisible(hwnd)) return TRUE;
+
+    wchar_t cls[64] = {};
+    if (!GetClassNameW(hwnd, cls, 64)) return TRUE;
+
+    const bool isGlfw  = _wcsicmp(cls, L"GLFW30") == 0;
+    const bool isLwjgl = _wcsicmp(cls, L"LWJGL")  == 0;
+    if (!isGlfw && !isLwjgl) return TRUE;
+
+    DWORD pid = 0;
+    GetWindowThreadProcessId(hwnd, &pid);
+    if (pid == 0 || !IsJavaProcess(pid)) return TRUE;
+
+    wchar_t title[256] = {};
+    GetWindowTextW(hwnd, title, 256);
+
+    g->hwnd  = hwnd;
+    g->pid   = pid;
+    g->found = true;
+    wcsncpy_s(g->title, title, _TRUNCATE);
+
+    return FALSE;
+}
+
+static GameWindow DetectGame()
+{
+    GameWindow g;
+    EnumWindows(EnumGameWindow, reinterpret_cast<LPARAM>(&g));
+    return g;
 }
 
 void InjectDLL(DWORD pid, const char* dllPath)
@@ -142,51 +315,150 @@ static void GenerateRandomHex(char* out, size_t outSize)
         snprintf(out + i * 2, outSize - i * 2, "%02x", bytes[i]);
 }
 
+static void FriendlyVersion(const char* asset, char* out, size_t outSize)
+{
+    const char* s = asset;
+    if (_strnicmp(s, "ac_", 3) == 0) s += 3;
+    strncpy_s(out, outSize, s, _TRUNCATE);
+    char* dot = strstr(out, ".dll");
+    if (dot) *dot = 0;
+}
+
+static bool ResolveDll(const char* tempDir, const wchar_t* title,
+                       char* outDll, size_t outSize)
+{
+    char manifestPath[MAX_PATH];
+    snprintf(manifestPath, sizeof(manifestPath), "%sac_versions.txt", tempDir);
+
+    char url[512];
+    snprintf(url, sizeof(url), "%s%s", DLL_URL_BASE, MANIFEST);
+    if (FAILED(URLDownloadToFileA(nullptr, url, manifestPath, 0, nullptr)))
+        return false;
+
+    FILE* f = nullptr;
+    if (fopen_s(&f, manifestPath, "rb") != 0 || !f)
+        return false;
+
+    char narrowTitle[512] = {};
+    WideCharToMultiByte(CP_UTF8, 0, title, -1, narrowTitle, sizeof(narrowTitle), nullptr, nullptr);
+
+    char fallback[128] = {};
+    char line[256];
+    bool matched = false;
+
+    while (fgets(line, sizeof(line), f))
+    {
+        char* p = line;
+        while (*p == ' ' || *p == '\t') ++p;
+        if (*p == '#' || *p == ';' || *p == '\r' || *p == '\n' || *p == 0) continue;
+
+        char* eq = strchr(p, '=');
+        if (!eq) continue;
+        *eq = 0;
+
+        char* key = p;
+        char* val = eq + 1;
+
+        size_t kl = strlen(key);
+        while (kl && (key[kl - 1] == ' ' || key[kl - 1] == '\t')) key[--kl] = 0;
+        size_t vl = strlen(val);
+        while (vl && (val[vl - 1] == '\r' || val[vl - 1] == '\n' ||
+                      val[vl - 1] == ' '  || val[vl - 1] == '\t')) val[--vl] = 0;
+        if (kl == 0 || vl == 0) continue;
+
+        if (strcmp(key, "*") == 0)
+        {
+            strncpy_s(fallback, val, _TRUNCATE);
+            continue;
+        }
+        if (strstr(narrowTitle, key) != nullptr)
+        {
+            strncpy_s(outDll, outSize, val, _TRUNCATE);
+            matched = true;
+            break;
+        }
+    }
+    fclose(f);
+    DeleteFileA(manifestPath);
+
+    if (!matched && fallback[0])
+    {
+        strncpy_s(outDll, outSize, fallback, _TRUNCATE);
+        matched = true;
+    }
+    return matched;
+}
+
+static int Fail(const char* msg)
+{
+    UiStage(ANSI_RED, msg);
+    UiBar(1.0, ANSI_RED);
+    WaitForKey();
+    return 1;
+}
+
 int main()
 {
     SetupConsole();
-    PrintBanner();
+    UiInit();
+
+    UiStage(ANSI_CYAN, "Preparing");
+    UiBar(0.05, ANSI_CYAN);
 
     char tempDir[MAX_PATH];
     if (GetTempPathA(MAX_PATH, tempDir) == 0)
+        return Fail("Failed to resolve temp directory");
+
+    UiStage(ANSI_CYAN, "Cleaning stale files");
+    UiBar(0.15, ANSI_CYAN);
+    CleanupStaleDlls(tempDir);
+
+    UiStage(ANSI_CYAN, "Detecting Minecraft");
+    UiBar(0.30, ANSI_CYAN);
+    GameWindow game = DetectGame();
+    if (!game.found)
+        return Fail("No Minecraft window found - launch Lunar Client first");
+
+    char asset[128] = {};
+    if (!ResolveDll(tempDir, game.title, asset, sizeof(asset)))
     {
-        PrintError("Failed to resolve temp directory");
+        UiStage(ANSI_RED, "Could not resolve version - update the injector:");
+        UiBar(1.0, ANSI_RED);
+        CenterLine(g_barRow + 1, ANSI_CYAN, INJECTOR_RELEASE_URL, (int)strlen(INJECTOR_RELEASE_URL));
         WaitForKey();
         return 1;
     }
 
-    PrintStep("Cleaning stale files...");
-    CleanupStaleDlls(tempDir);
+    char version[64] = {};
+    FriendlyVersion(asset, version, sizeof(version));
+    char detected[96];
+    snprintf(detected, sizeof(detected), "Detected %s", version);
+    UiStage(ANSI_GREEN, detected);
+    UiBar(0.40, ANSI_CYAN);
 
     char hash[24] = {};
     GenerateRandomHex(hash, sizeof(hash));
     char dllPath[MAX_PATH];
     snprintf(dllPath, sizeof(dllPath), "%sac_%s.dll", tempDir, hash);
 
-    PrintStep("Downloading...");
-    HRESULT hr = URLDownloadToFileA(nullptr, DLL_URL, dllPath, 0, nullptr);
+    char url[512];
+    snprintf(url, sizeof(url), "%s%s", DLL_URL_BASE, asset);
+
+    UiStage(ANSI_CYAN, "Downloading");
+    UiBar(0.45, ANSI_CYAN);
+    DownloadProgress cb;
+    HRESULT hr = URLDownloadToFileA(nullptr, url, dllPath, 0, &cb);
     if (FAILED(hr))
-    {
-        PrintError("Download failed — check your internet connection");
-        WaitForKey();
-        return 1;
-    }
+        return Fail("Download failed - check your internet connection");
 
-    PrintStep("Locating javaw.exe...");
-    DWORD pid = GetProcessId(L"javaw.exe");
-    if (!pid)
-    {
-        PrintError("javaw.exe not running — launch Lunar Client first");
-        WaitForKey();
-        return 1;
-    }
-
-    PrintStep("Injecting...");
-    InjectDLL(pid, dllPath);
+    UiStage(ANSI_CYAN, "Injecting");
+    UiBar(0.92, ANSI_CYAN);
+    InjectDLL(game.pid, dllPath);
 
     MoveFileExA(dllPath, nullptr, MOVEFILE_DELAY_UNTIL_REBOOT);
 
-    PrintSuccess();
+    UiStage(ANSI_GREEN ANSI_BOLD, "Injected successfully");
+    UiBar(1.0, ANSI_GREEN);
     WaitForKey();
     return 0;
 }

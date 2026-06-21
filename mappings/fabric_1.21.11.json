@@ -1,4 +1,7 @@
 {
+  "generation":               "modern",
+  "sdk":                      "1.21.11",
+
   "class_Minecraft":          "net.minecraft.class_310",
   "class_LocalPlayer":        "net.minecraft.class_746",
   "class_Screen":             "net.minecraft.class_437",

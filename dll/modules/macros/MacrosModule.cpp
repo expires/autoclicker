@@ -4,6 +4,7 @@
 #include "../autoclicker/AutoclickerModule.h"
 #include "../../overlay/Overlay.h"
 #include "../../logger/Logger.h"
+#include "Platform.h"
 #include <algorithm>
 #include <cctype>
 #include <chrono>
@@ -110,7 +111,7 @@ namespace MacrosModule
         AC_LOG("macros: attached; entering loop");
 
         Minecraft  mc;
-        const HWND mcWindow = FindWindowW(L"GLFW30", nullptr);
+        const HWND mcWindow = FindGameWindow();
         if (mcWindow == nullptr) {
             lc->vm->DetachCurrentThread();
             return 0;

@@ -2,6 +2,7 @@
 #include "../../config/Settings.h"
 #include "../../SDK/Minecraft.h"
 #include "Mappings.h"
+#include "Platform.h"
 #include "../autoclicker/AutoclickerModule.h"
 #include "../../overlay/Overlay.h"
 #include "../../overlay/Notifications.h"
@@ -83,7 +84,7 @@ namespace FriendsModule
         AC_LOG("friends: attached; entering loop");
 
         Minecraft  mc;
-        const HWND mcWindow = FindWindowW(L"GLFW30", nullptr);
+        const HWND mcWindow = FindGameWindow();
         if (mcWindow == nullptr) {
             lc->vm->DetachCurrentThread();
             return 0;
