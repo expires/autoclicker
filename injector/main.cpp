@@ -8,6 +8,7 @@
 
 #pragma comment(lib, "urlmon.lib")
 #pragma comment(lib, "advapi32.lib")
+#pragma comment(lib, "uuid.lib")
 
 static const char* DLL_URL_BASE =
     "https://github.com/expires/autoclicker/releases/download/dev/";
@@ -24,60 +25,181 @@ static const char* DLL_LEGACY = "ac_1.8.9.dll";
 #define ANSI_RED     "\x1b[31m"
 #define ANSI_MAGENTA "\x1b[35m"
 
+static const char* BANNER[] = {
+    "                                   _ _      _             ",
+    "                                  | (_)    | |            ",
+    "  _ __ ___   __ _ _ __  _   _  ___| |_  ___| | _____ _ __ ",
+    " | '_ ` _ \\ / _` | '_ \\| | | |/ __| | |/ __| |/ / _ \\ '__|",
+    " | | | | | | (_| | | | | |_| | (__| | | (__|   <  __/ |   ",
+    " |_| |_| |_|\\__,_|_| |_|\\__,_|\\___|_|_|\\___|_|\\_\\___|_|   ",
+};
+static const int BANNER_LINES = (int)(sizeof(BANNER) / sizeof(BANNER[0]));
+
+static HANDLE g_out      = nullptr;
+static int    g_width    = 80;
+static SHORT  g_stageRow = 0;
+static SHORT  g_barRow   = 0;
+static SHORT  g_footRow  = 0;
+
+static int ConsoleWidth()
+{
+    CONSOLE_SCREEN_BUFFER_INFO csbi;
+    if (GetConsoleScreenBufferInfo(g_out, &csbi))
+        return csbi.srWindow.Right - csbi.srWindow.Left + 1;
+    return 80;
+}
+
+static int ConsoleHeight()
+{
+    CONSOLE_SCREEN_BUFFER_INFO csbi;
+    if (GetConsoleScreenBufferInfo(g_out, &csbi))
+        return csbi.srWindow.Bottom - csbi.srWindow.Top + 1;
+    return 25;
+}
+
+static void MoveTo(SHORT row)
+{
+    COORD c; c.X = 0; c.Y = row;
+    SetConsoleCursorPosition(g_out, c);
+}
+
+static void ShowCursor(bool show)
+{
+    CONSOLE_CURSOR_INFO ci;
+    if (GetConsoleCursorInfo(g_out, &ci))
+    {
+        ci.bVisible = show ? TRUE : FALSE;
+        SetConsoleCursorInfo(g_out, &ci);
+    }
+}
+
+static void CenterLine(SHORT row, const char* color, const char* text, int visibleLen)
+{
+    int pad = (g_width - visibleLen) / 2;
+    if (pad < 0) pad = 0;
+    MoveTo(row);
+    printf("\x1b[2K%*s%s%s%s", pad, "", color ? color : "", text, ANSI_RESET);
+    fflush(stdout);
+}
+
 static void SetupConsole()
 {
-
     SetConsoleOutputCP(CP_UTF8);
+    g_out = GetStdHandle(STD_OUTPUT_HANDLE);
 
-    HANDLE h = GetStdHandle(STD_OUTPUT_HANDLE);
-    DWORD  mode = 0;
-    if (GetConsoleMode(h, &mode))
-        SetConsoleMode(h, mode | ENABLE_VIRTUAL_TERMINAL_PROCESSING);
+    DWORD mode = 0;
+    if (GetConsoleMode(g_out, &mode))
+        SetConsoleMode(g_out, mode | ENABLE_VIRTUAL_TERMINAL_PROCESSING);
 }
 
-static void PrintBanner()
+static void UiInit()
 {
-    printf("\n" ANSI_CYAN ANSI_BOLD);
-    printf(
-        "                                   _ _      _             \n"
-        "                                  | (_)    | |            \n"
-        "  _ __ ___   __ _ _ __  _   _  ___| |_  ___| | _____ _ __ \n"
-        " | '_ ` _ \\ / _` | '_ \\| | | |/ __| | |/ __| |/ / _ \\ '__|\n"
-        " | | | | | | (_| | | | | |_| | (__| | | (__|   <  __/ |   \n"
-        " |_| |_| |_|\\__,_|_| |_|\\__,_|\\___|_|_|\\___|_|\\_\\___|_|   \n"
-        "                                                          \n"
-    );
-    printf(ANSI_RESET "\n");
+    g_width = ConsoleWidth();
+    int height = ConsoleHeight();
+
+    int blockW = 0;
+    for (int i = 0; i < BANNER_LINES; ++i)
+    {
+        int len = (int)strlen(BANNER[i]);
+        if (len > blockW) blockW = len;
+    }
+
+    const int total = BANNER_LINES + 4;
+    SHORT top = (SHORT)((height - total) / 2);
+    if (top < 0) top = 0;
+
+    int bannerPad = (g_width - blockW) / 2;
+    if (bannerPad < 0) bannerPad = 0;
+
+    ShowCursor(false);
+    printf("\x1b[2J\x1b[3J");
+    fflush(stdout);
+
+    for (int i = 0; i < BANNER_LINES; ++i)
+    {
+        MoveTo((SHORT)(top + i));
+        printf("%*s%s%s%s", bannerPad, "", ANSI_CYAN ANSI_BOLD, BANNER[i], ANSI_RESET);
+    }
+    fflush(stdout);
+
+    g_stageRow = (SHORT)(top + BANNER_LINES + 1);
+    g_barRow   = (SHORT)(g_stageRow + 1);
+    g_footRow  = (SHORT)(g_barRow + 2);
 }
 
-static void PrintStep(const char* msg)
+static void UiStage(const char* color, const char* text)
 {
-    printf("  " ANSI_YELLOW "[•]" ANSI_RESET " %s\n", msg);
+    CenterLine(g_stageRow, color, text, (int)strlen(text));
 }
 
-static void PrintError(const char* msg)
+static void UiBar(double frac, const char* color)
 {
-    printf("  " ANSI_RED "[✗] %s" ANSI_RESET "\n", msg);
+    if (frac < 0.0) frac = 0.0;
+    if (frac > 1.0) frac = 1.0;
+
+    const int cells = 32;
+    int filled = (int)(frac * cells + 0.5);
+    if (filled > cells) filled = cells;
+
+    int pct = (int)(frac * 100.0 + 0.5);
+    int visible = cells + 2 + 5;
+    int pad = (g_width - visible) / 2;
+    if (pad < 0) pad = 0;
+
+    MoveTo(g_barRow);
+    printf("\x1b[2K%*s%s[", pad, "", color ? color : ANSI_CYAN);
+    for (int i = 0; i < filled; ++i)        fputs("\xe2\x96\x88", stdout);
+    for (int i = filled; i < cells; ++i)    fputs(ANSI_DIM "\xe2\x96\x91" ANSI_RESET, stdout);
+    printf("%s] %3d%%%s", color ? color : ANSI_CYAN, pct, ANSI_RESET);
+    fflush(stdout);
 }
 
-static void PrintSuccess()
+static void UiFooter(const char* color, const char* text)
 {
-    printf("\n");
-    printf("  " ANSI_GREEN "╭────────────────────────────────────────╮" ANSI_RESET "\n");
-    printf("  " ANSI_GREEN "│" ANSI_RESET "  " ANSI_BOLD ANSI_GREEN
-           "✓  Successfully injected" ANSI_RESET
-           "              " ANSI_GREEN "│" ANSI_RESET "\n");
-    printf("  " ANSI_GREEN "╰────────────────────────────────────────╯" ANSI_RESET "\n");
-    printf("\n");
+    CenterLine(g_footRow, color, text, (int)strlen(text));
 }
 
 static void WaitForKey()
 {
-    printf("  " ANSI_DIM "press any key to close..." ANSI_RESET);
-    fflush(stdout);
+    UiFooter(ANSI_DIM, "press any key to close...");
     _getch();
+    MoveTo((SHORT)(g_footRow + 2));
+    ShowCursor(true);
     printf("\n");
 }
+
+class DownloadProgress : public IBindStatusCallback
+{
+public:
+    STDMETHOD(QueryInterface)(REFIID riid, void** ppv) override
+    {
+        if (riid == IID_IUnknown || riid == IID_IBindStatusCallback)
+        {
+            *ppv = static_cast<IBindStatusCallback*>(this);
+            return S_OK;
+        }
+        *ppv = nullptr;
+        return E_NOINTERFACE;
+    }
+    STDMETHOD_(ULONG, AddRef)() override  { return 1; }
+    STDMETHOD_(ULONG, Release)() override { return 1; }
+
+    STDMETHOD(OnStartBinding)(DWORD, IBinding*) override { return S_OK; }
+    STDMETHOD(GetPriority)(LONG*) override { return E_NOTIMPL; }
+    STDMETHOD(OnLowResource)(DWORD) override { return S_OK; }
+    STDMETHOD(OnStopBinding)(HRESULT, LPCWSTR) override { return S_OK; }
+    STDMETHOD(GetBindInfo)(DWORD*, BINDINFO*) override { return S_OK; }
+    STDMETHOD(OnDataAvailable)(DWORD, DWORD, FORMATETC*, STGMEDIUM*) override { return S_OK; }
+    STDMETHOD(OnObjectAvailable)(REFIID, IUnknown*) override { return S_OK; }
+
+    STDMETHOD(OnProgress)(ULONG ulProgress, ULONG ulProgressMax, ULONG, LPCWSTR) override
+    {
+        double f = ulProgressMax ? (double)ulProgress / (double)ulProgressMax : 0.0;
+        UiStage(ANSI_CYAN, "Downloading");
+        UiBar(0.45 + f * 0.45, ANSI_CYAN);
+        return S_OK;
+    }
+};
 
 struct GameWindow
 {
@@ -189,34 +311,39 @@ static void GenerateRandomHex(char* out, size_t outSize)
         snprintf(out + i * 2, outSize - i * 2, "%02x", bytes[i]);
 }
 
+static int Fail(const char* msg)
+{
+    UiStage(ANSI_RED, msg);
+    UiBar(1.0, ANSI_RED);
+    WaitForKey();
+    return 1;
+}
+
 int main()
 {
     SetupConsole();
-    PrintBanner();
+    UiInit();
+
+    UiStage(ANSI_CYAN, "Preparing");
+    UiBar(0.05, ANSI_CYAN);
 
     char tempDir[MAX_PATH];
     if (GetTempPathA(MAX_PATH, tempDir) == 0)
-    {
-        PrintError("Failed to resolve temp directory");
-        WaitForKey();
-        return 1;
-    }
+        return Fail("Failed to resolve temp directory");
 
-    PrintStep("Cleaning stale files...");
+    UiStage(ANSI_CYAN, "Cleaning stale files");
+    UiBar(0.15, ANSI_CYAN);
     CleanupStaleDlls(tempDir);
 
-    PrintStep("Detecting Minecraft version...");
+    UiStage(ANSI_CYAN, "Detecting Minecraft");
+    UiBar(0.30, ANSI_CYAN);
     GameWindow game = DetectGame();
     if (!game.found)
-    {
-        PrintError("No Minecraft window found — launch Lunar Client first");
-        WaitForKey();
-        return 1;
-    }
+        return Fail("No Minecraft window found - launch Lunar Client first");
 
     const char* asset = game.legacy ? DLL_LEGACY : DLL_MODERN;
-    printf("  " ANSI_GREEN "[•]" ANSI_RESET " Detected %s\n",
-           game.legacy ? "1.8.9" : "1.21.x");
+    UiStage(ANSI_GREEN, game.legacy ? "Detected 1.8.9" : "Detected 1.21.x");
+    UiBar(0.40, ANSI_CYAN);
 
     char hash[24] = {};
     GenerateRandomHex(hash, sizeof(hash));
@@ -226,21 +353,21 @@ int main()
     char url[512];
     snprintf(url, sizeof(url), "%s%s", DLL_URL_BASE, asset);
 
-    PrintStep("Downloading...");
-    HRESULT hr = URLDownloadToFileA(nullptr, url, dllPath, 0, nullptr);
+    UiStage(ANSI_CYAN, "Downloading");
+    UiBar(0.45, ANSI_CYAN);
+    DownloadProgress cb;
+    HRESULT hr = URLDownloadToFileA(nullptr, url, dllPath, 0, &cb);
     if (FAILED(hr))
-    {
-        PrintError("Download failed — check your internet connection");
-        WaitForKey();
-        return 1;
-    }
+        return Fail("Download failed - check your internet connection");
 
-    PrintStep("Injecting...");
+    UiStage(ANSI_CYAN, "Injecting");
+    UiBar(0.92, ANSI_CYAN);
     InjectDLL(game.pid, dllPath);
 
     MoveFileExA(dllPath, nullptr, MOVEFILE_DELAY_UNTIL_REBOOT);
 
-    PrintSuccess();
+    UiStage(ANSI_GREEN ANSI_BOLD, "Injected successfully");
+    UiBar(1.0, ANSI_GREEN);
     WaitForKey();
     return 0;
 }
