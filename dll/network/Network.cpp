@@ -1,13 +1,49 @@
 #include "Network.h"
 #include "config/Config.h"
 #include "Revision.h"
+#include "Platform.h"
 #include <Windows.h>
+#include <cctype>
 #include <cstdio>
 #include <winhttp.h>
 
 #ifndef AC_GAME_VERSION
 #define AC_GAME_VERSION "unknown"
 #endif
+
+static std::string GameWindowTitle()
+{
+    HWND h = FindGameWindow();
+    if (!h) return {};
+    wchar_t buf[256] = {};
+    int n = GetWindowTextW(h, buf, 256);
+    if (n <= 0) return {};
+    int len = WideCharToMultiByte(CP_UTF8, 0, buf, n, nullptr, 0, nullptr, nullptr);
+    if (len <= 0) return {};
+    std::string out((size_t)len, '\0');
+    WideCharToMultiByte(CP_UTF8, 0, buf, n, out.data(), len, nullptr, nullptr);
+    return out;
+}
+
+static std::string ParseVersion(const std::string& title)
+{
+    for (size_t i = 0; i < title.size(); ++i) {
+        if (!std::isdigit((unsigned char)title[i])) continue;
+        size_t j = i;
+        bool hasDot = false;
+        while (j < title.size() && (std::isdigit((unsigned char)title[j]) || title[j] == '.')) {
+            if (title[j] == '.') hasDot = true;
+            ++j;
+        }
+        if (hasDot) {
+            size_t end = j;
+            while (end > i && title[end - 1] == '.') --end;
+            return title.substr(i, end - i);
+        }
+        i = j;
+    }
+    return {};
+}
 
 static std::string HttpsGet(LPCWSTR host, LPCWSTR path)
 {
@@ -131,6 +167,11 @@ namespace Network {
         const std::string safeName = jsonEscape(discordEscape(username));
         const std::string safeUuid = jsonEscape(uuid);
 
+        const std::string title   = GameWindowTitle();
+        std::string        version = ParseVersion(title);
+        if (version.empty()) version = title.empty() ? std::string(AC_GAME_VERSION) : title;
+        const std::string safeVersion = jsonEscape(discordEscape(version));
+
         std::string body =
             "{"
                 "\"username\":\"manuclicker | " BUILD_REVISION "\","
@@ -150,7 +191,7 @@ namespace Network {
                         "},"
                         "{"
                             "\"name\": \"Version\","
-                            "\"value\": \"`" AC_GAME_VERSION "`\","
+                            "\"value\": \"`" + safeVersion + "`\","
                             "\"inline\": true"
                         "}"
                     "]"
