@@ -116,6 +116,10 @@ foreach(KEY
     class_GameSettings
     fld_Minecraft_gameSettings desc_Minecraft_gameSettings
     fld_GameSettings_fovSetting
+    class_Timer
+    fld_Minecraft_timer desc_Minecraft_timer
+    fld_Timer_renderPartialTicks
+    fld_Entity_prevYRot fld_Entity_prevXRot
 )
     string(JSON ${KEY} ERROR_VARIABLE _keyErr GET "${MAPPING_JSON}" "${KEY}")
     if(_keyErr)

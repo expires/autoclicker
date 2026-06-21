@@ -160,5 +160,11 @@
   "class_GameSettings": "net.minecraft.client.settings.GameSettings",
   "fld_Minecraft_gameSettings": "gameSettings",
   "desc_Minecraft_gameSettings": "Lnet/minecraft/client/settings/GameSettings;",
-  "fld_GameSettings_fovSetting": "fovSetting"
+  "fld_GameSettings_fovSetting": "fovSetting",
+  "class_Timer": "net.minecraft.util.Timer",
+  "fld_Minecraft_timer": "timer",
+  "desc_Minecraft_timer": "Lnet/minecraft/util/Timer;",
+  "fld_Timer_renderPartialTicks": "renderPartialTicks",
+  "fld_Entity_prevYRot": "prevRotationYaw",
+  "fld_Entity_prevXRot": "prevRotationPitch"
 }

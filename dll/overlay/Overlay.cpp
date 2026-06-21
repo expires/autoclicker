@@ -19,6 +19,7 @@
 #include "../modules/esp/EspModule.h"
 #include "../modules/scaffold/ScaffoldModule.h"
 #include "../SDK/Lunar.h"
+#include "../SDK/View.h"
 #include "../SDK/Minecraft.h"
 #include "../SDK/Screen.h"
 #include "../SDK/Vec3.h"
@@ -198,31 +199,18 @@ static void RefreshCameraFromRenderThread(EspModule::CameraState& cam, float& pa
     if (lc->env->PushLocalFrame(32) != 0) { lc->env->ExceptionClear(); return; }
 
     Minecraft mc;
-    if (jobject mcInst = mc.GetInstance()) {
-        float pt = 1.0f;
-        DeltaTracker dt = mc.GetDeltaTracker();
-        if (dt.GetInstance() != nullptr) {
-            float ptRead = dt.getPartialTick(true);
-            if (!lc->env->ExceptionCheck()) {
-                pt = ptRead;
-                partial = ptRead;
-            }
-        }
-
-        GameRenderer gr = mc.GetGameRenderer();
-        if (gr.GetInstance() != nullptr) {
-            Camera cam2 = gr.getMainCamera();
-            if (cam2.GetInstance() != nullptr) {
-                Vec3 cp = cam2.getPosition();
-                if (cp.GetInstance() != nullptr) {
-                    cam.x = cp.getX();
-                    cam.y = cp.getY();
-                    cam.z = cp.getZ();
-                }
-                cam.yRot = cam2.getYRot();
-                cam.xRot = cam2.getXRot();
-                float fov = gr.getFov(cam2, pt, true);
-                if (!lc->env->ExceptionCheck() && fov > 0.0f) cam.fov = fov;
+    if (mc.GetInstance() != nullptr) {
+        Player localPlayer = mc.GetLocalPlayer();
+        if (localPlayer.GetInstance() != nullptr) {
+            ViewState v = AcquireView(mc, localPlayer);
+            if (v.ok) {
+                cam.x = v.x;
+                cam.y = v.y;
+                cam.z = v.z;
+                cam.yRot = v.yRot;
+                cam.xRot = v.xRot;
+                if (v.fov > 0.0f) cam.fov = v.fov;
+                partial = v.partialTick;
             }
         }
     }
@@ -244,7 +232,7 @@ static void DrawEsp(float dispW, float dispH)
     ImDrawList* dl = ImGui::GetBackgroundDrawList();
     const float maxDistSq = (float)g_settings.maxDistance * (float)g_settings.maxDistance;
 
-    const double pt = (double)snap.partialTick;
+    const double pt = (double)partial;
 
     for (const auto& t : snap.targets)
     {

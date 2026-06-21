@@ -185,3 +185,10 @@
 #define FLD_Minecraft_gameSettings      "@fld_Minecraft_gameSettings@"
 #define DESC_Minecraft_gameSettings     "@desc_Minecraft_gameSettings@"
 #define FLD_GameSettings_fovSetting     "@fld_GameSettings_fovSetting@"
+
+#define MC_Timer                        "@class_Timer@"
+#define FLD_Minecraft_timer             "@fld_Minecraft_timer@"
+#define DESC_Minecraft_timer            "@desc_Minecraft_timer@"
+#define FLD_Timer_renderPartialTicks    "@fld_Timer_renderPartialTicks@"
+#define FLD_Entity_prevYRot             "@fld_Entity_prevYRot@"
+#define FLD_Entity_prevXRot             "@fld_Entity_prevXRot@"
