@@ -254,6 +254,9 @@ static void DrawEsp(float dispW, float dispH)
         ImDrawList* fdl = ImGui::GetForegroundDrawList();
         fdl->AddText(ImVec2(10.0f, 10.0f), IM_COL32(255, 255, 0, 255), b1);
         fdl->AddText(ImVec2(10.0f, 26.0f), IM_COL32(255, 255, 0, 255), b2);
+
+        static int dbgFrame = 0;
+        if ((dbgFrame++ % 20) == 0) { AC_LOG("espdbg: %s | %s", b1, b2); }
     }
 
     const double pt = (double)partial;
