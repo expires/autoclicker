@@ -124,6 +124,7 @@ foreach(KEY
     fld_ActiveRenderInfo_modelview  desc_ActiveRenderInfo_modelview
     fld_ActiveRenderInfo_projection desc_ActiveRenderInfo_projection
     fld_ActiveRenderInfo_viewport   desc_ActiveRenderInfo_viewport
+    mtd_Entity_getDisplayName       desc_Entity_getDisplayName
 )
     string(JSON ${KEY} ERROR_VARIABLE _keyErr GET "${MAPPING_JSON}" "${KEY}")
     if(_keyErr)

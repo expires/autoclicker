@@ -200,3 +200,6 @@
 #define DESC_ActiveRenderInfo_projection "@desc_ActiveRenderInfo_projection@"
 #define FLD_ActiveRenderInfo_viewport   "@fld_ActiveRenderInfo_viewport@"
 #define DESC_ActiveRenderInfo_viewport  "@desc_ActiveRenderInfo_viewport@"
+
+#define MTD_Entity_getDisplayName       "@mtd_Entity_getDisplayName@"
+#define DESC_Entity_getDisplayName      "@desc_Entity_getDisplayName@"

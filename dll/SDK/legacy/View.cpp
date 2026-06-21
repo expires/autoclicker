@@ -83,7 +83,7 @@ ViewState AcquireView(Minecraft& mc, Player& localPlayer)
     const double py = localPlayer.getYo();
     const double pz = localPlayer.getZo();
     v.x = px + (x - px) * pt;
-    v.y = py + (y - py) * pt + 1.62;
+    v.y = py + (y - py) * pt;
     v.z = pz + (z - pz) * pt;
 
     v.yRot = localPlayer.getYRot();

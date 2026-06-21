@@ -173,5 +173,7 @@
   "fld_ActiveRenderInfo_projection": "PROJECTION",
   "desc_ActiveRenderInfo_projection": "Ljava/nio/FloatBuffer;",
   "fld_ActiveRenderInfo_viewport": "VIEWPORT",
-  "desc_ActiveRenderInfo_viewport": "Ljava/nio/IntBuffer;"
+  "desc_ActiveRenderInfo_viewport": "Ljava/nio/IntBuffer;",
+  "mtd_Entity_getDisplayName": "getDisplayName",
+  "desc_Entity_getDisplayName": "()Lnet/minecraft/util/IChatComponent;"
 }
