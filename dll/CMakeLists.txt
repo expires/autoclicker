@@ -125,6 +125,7 @@ foreach(KEY
     fld_ActiveRenderInfo_projection desc_ActiveRenderInfo_projection
     fld_ActiveRenderInfo_viewport   desc_ActiveRenderInfo_viewport
     mtd_Entity_getDisplayName       desc_Entity_getDisplayName
+    mtd_GameType_getId
 )
     string(JSON ${KEY} ERROR_VARIABLE _keyErr GET "${MAPPING_JSON}" "${KEY}")
     if(_keyErr)
@@ -259,11 +260,20 @@ endif()
 # ── Sources ──────────────────────────────────────────────────────────────────
 file(GLOB SDK_HEADERS          "SDK/*.h")
 file(GLOB SDK_SOURCES          "SDK/*.cpp")
-if(AC_LEGACY)
-    file(GLOB SDK_VERSION_SOURCES "SDK/legacy/*.cpp")
-else()
-    file(GLOB SDK_VERSION_SOURCES "SDK/modern/*.cpp")
+
+string(JSON AC_SDK ERROR_VARIABLE _sdkErr GET "${MAPPING_JSON}" "sdk")
+if(_sdkErr OR NOT AC_SDK)
+    if(AC_LEGACY)
+        set(AC_SDK "1.8.9")
+    else()
+        set(AC_SDK "1.21.11")
+    endif()
 endif()
+if(NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/SDK/${AC_SDK}")
+    message(FATAL_ERROR "SDK implementation dir not found: SDK/${AC_SDK}")
+endif()
+message(STATUS "Mapping ${MAPPING_VERSION}: SDK impl dir = SDK/${AC_SDK}")
+file(GLOB SDK_VERSION_SOURCES "SDK/${AC_SDK}/*.cpp")
 list(APPEND SDK_SOURCES ${SDK_VERSION_SOURCES})
 file(GLOB AUTOCLICKER_HEADERS  "modules/autoclicker/*.h")
 file(GLOB AUTOCLICKER_SOURCES  "modules/autoclicker/*.cpp")

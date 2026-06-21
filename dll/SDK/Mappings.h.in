@@ -203,3 +203,5 @@
 
 #define MTD_Entity_getDisplayName       "@mtd_Entity_getDisplayName@"
 #define DESC_Entity_getDisplayName      "@desc_Entity_getDisplayName@"
+
+#define MTD_GameType_getId              "@mtd_GameType_getId@"

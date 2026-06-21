@@ -103,10 +103,6 @@ jobs:
           files: release/*
           token: ${{ secrets.GITHUB_TOKEN }}
 
-  # Rolling release for the injector to fetch. Each push to main replaces the
-  # assets on the 'latest' tag. The injector resolves the DLL by detected
-  # version (ac_1.21.11.dll / ac_1.8.9.dll); ac.dll is kept as a back-compat
-  # alias (the 1.21 build) so older injectors keep working.
   release-rolling:
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     needs: build
@@ -162,9 +158,6 @@ jobs:
           files: ${{ steps.assets.outputs.files }}
           token: ${{ secrets.GITHUB_TOKEN }}
 
-  # Rolling dev channel. Each push to development replaces the assets on the
-  # 'dev' tag. The development-branch injector fetches from this tag, so 1.8.9
-  # can be tested without disturbing the stable 'latest' release built from main.
   release-rolling-dev:
     if: github.ref == 'refs/heads/development' && github.event_name == 'push'
     needs: build

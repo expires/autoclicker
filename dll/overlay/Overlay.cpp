@@ -600,6 +600,7 @@ static LRESULT CALLBACK HookedWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM
         case WM_RBUTTONDOWN: case WM_RBUTTONUP: case WM_RBUTTONDBLCLK:
         case WM_MBUTTONDOWN: case WM_MBUTTONUP: case WM_MBUTTONDBLCLK:
         case WM_XBUTTONDOWN: case WM_XBUTTONUP: case WM_XBUTTONDBLCLK:
+        case WM_MOUSEMOVE:
             break;
         default:
             ImGui_ImplWin32_WndProcHandler(hwnd, msg, wParam, lParam);
@@ -836,6 +837,12 @@ static BOOL WINAPI hk_wglSwapBuffers(HDC hdc)
         if (s_visible) {
             ImGuiIO& io = ImGui::GetIO();
             io.MouseDrawCursor = true;
+
+            POINT cp;
+            if (GetCursorPos(&cp)) {
+                if (s_hwnd) ScreenToClient(s_hwnd, &cp);
+                io.AddMousePosEvent((float)cp.x, (float)cp.y);
+            }
 
             static bool s_imPrevBtn[5] = {};
             const int  vks[5]   = { VK_LBUTTON, VK_RBUTTON, VK_MBUTTON,
