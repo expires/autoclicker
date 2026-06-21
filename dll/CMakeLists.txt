@@ -326,7 +326,7 @@ add_library(${PROJECT_NAME} SHARED
 
 target_link_libraries(${PROJECT_NAME} PRIVATE ${JVM_LIB} imgui minhook winhttp)
 target_include_directories(${PROJECT_NAME} PRIVATE ${stb_SOURCE_DIR})
-target_compile_definitions(${PROJECT_NAME} PRIVATE AC_LEGACY=${AC_LEGACY})
+target_compile_definitions(${PROJECT_NAME} PRIVATE AC_LEGACY=${AC_LEGACY} AC_GAME_VERSION="${AC_SDK}")
 add_dependencies(${PROJECT_NAME} generate_revision_h)
 
 source_group("Header Files\\SDK"         FILES ${SDK_HEADERS})

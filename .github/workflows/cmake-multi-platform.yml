@@ -84,6 +84,9 @@ jobs:
       contents: write
 
     steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
       - name: Download all artifacts
         uses: actions/download-artifact@v4
         with:
@@ -96,6 +99,7 @@ jobs:
           cp dl/autoclicker-fabric_1.21.11/ac_1.21.11.dll  release/ac_1.21.11.dll
           cp dl/autoclicker-lunar_1.8.9/ac_1.8.9.dll       release/ac_1.8.9.dll
           cp dl/autoclicker-fabric_1.21.11/injector.exe    release/injector.exe
+          cp versions.txt                                  release/versions.txt
 
       - name: Create release
         uses: softprops/action-gh-release@v2
@@ -111,6 +115,9 @@ jobs:
       contents: write
 
     steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
       - name: Download all artifacts
         uses: actions/download-artifact@v4
         with:
@@ -123,6 +130,7 @@ jobs:
           cp dl/autoclicker-fabric_1.21.11/ac_1.21.11.dll  rolling/ac_1.21.11.dll
           cp dl/autoclicker-lunar_1.8.9/ac_1.8.9.dll       rolling/ac_1.8.9.dll
           cp dl/autoclicker-fabric_1.21.11/injector.exe    rolling/injector.exe
+          cp versions.txt                                  rolling/versions.txt
 
       - name: Resolve assets to publish
         id: assets
@@ -139,6 +147,7 @@ jobs:
             echo './rolling/ac.dll'
             echo './rolling/ac_1.21.11.dll'
             echo './rolling/ac_1.8.9.dll'
+            echo './rolling/versions.txt'
             if [ "$new" != "$old" ]; then echo './rolling/injector.exe'; fi
             echo 'EOF'
           } >> "$GITHUB_OUTPUT"
@@ -166,6 +175,9 @@ jobs:
       contents: write
 
     steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
       - name: Download all artifacts
         uses: actions/download-artifact@v4
         with:
@@ -178,6 +190,7 @@ jobs:
           cp dl/autoclicker-fabric_1.21.11/ac_1.21.11.dll  rolling/ac_1.21.11.dll
           cp dl/autoclicker-lunar_1.8.9/ac_1.8.9.dll       rolling/ac_1.8.9.dll
           cp dl/autoclicker-fabric_1.21.11/injector.exe    rolling/injector.exe
+          cp versions.txt                                  rolling/versions.txt
 
       - name: Resolve assets to publish
         id: assets
@@ -194,6 +207,7 @@ jobs:
             echo './rolling/ac.dll'
             echo './rolling/ac_1.21.11.dll'
             echo './rolling/ac_1.8.9.dll'
+            echo './rolling/versions.txt'
             if [ "$new" != "$old" ]; then echo './rolling/injector.exe'; fi
             echo 'EOF'
           } >> "$GITHUB_OUTPUT"

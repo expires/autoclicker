@@ -13,8 +13,10 @@
 static const char* DLL_URL_BASE =
     "https://github.com/expires/autoclicker/releases/download/dev/";
 
-static const char* DLL_MODERN = "ac_1.21.11.dll";
-static const char* DLL_LEGACY = "ac_1.8.9.dll";
+static const char* MANIFEST   = "versions.txt";
+
+static const char* INJECTOR_RELEASE_URL =
+    "https://github.com/expires/autoclicker/releases/tag/latest";
 
 #define ANSI_RESET   "\x1b[0m"
 #define ANSI_BOLD    "\x1b[1m"
@@ -104,7 +106,7 @@ static void UiInit()
         if (len > blockW) blockW = len;
     }
 
-    const int total = BANNER_LINES + 4;
+    const int total = BANNER_LINES + 5;
     SHORT top = (SHORT)((height - total) / 2);
     if (top < 0) top = 0;
 
@@ -123,7 +125,7 @@ static void UiInit()
     fflush(stdout);
 
     g_stageRow = (SHORT)(top + BANNER_LINES + 1);
-    g_barRow   = (SHORT)(g_stageRow + 1);
+    g_barRow   = (SHORT)(g_stageRow + 2);
     g_footRow  = (SHORT)(g_barRow + 2);
 }
 
@@ -206,7 +208,6 @@ struct GameWindow
     HWND    hwnd   = nullptr;
     DWORD   pid    = 0;
     bool    found  = false;
-    bool    legacy = false;
     wchar_t title[256] = {};
 };
 
@@ -250,7 +251,6 @@ static BOOL CALLBACK EnumGameWindow(HWND hwnd, LPARAM lp)
     g->found = true;
     wcsncpy_s(g->title, title, _TRUNCATE);
 
-    g->legacy = (wcsstr(title, L"1.8") != nullptr) || isLwjgl;
     return FALSE;
 }
 
@@ -311,6 +311,80 @@ static void GenerateRandomHex(char* out, size_t outSize)
         snprintf(out + i * 2, outSize - i * 2, "%02x", bytes[i]);
 }
 
+static void FriendlyVersion(const char* asset, char* out, size_t outSize)
+{
+    const char* s = asset;
+    if (_strnicmp(s, "ac_", 3) == 0) s += 3;
+    strncpy_s(out, outSize, s, _TRUNCATE);
+    char* dot = strstr(out, ".dll");
+    if (dot) *dot = 0;
+}
+
+static bool ResolveDll(const char* tempDir, const wchar_t* title,
+                       char* outDll, size_t outSize)
+{
+    char manifestPath[MAX_PATH];
+    snprintf(manifestPath, sizeof(manifestPath), "%sac_versions.txt", tempDir);
+
+    char url[512];
+    snprintf(url, sizeof(url), "%s%s", DLL_URL_BASE, MANIFEST);
+    if (FAILED(URLDownloadToFileA(nullptr, url, manifestPath, 0, nullptr)))
+        return false;
+
+    FILE* f = nullptr;
+    if (fopen_s(&f, manifestPath, "rb") != 0 || !f)
+        return false;
+
+    char narrowTitle[512] = {};
+    WideCharToMultiByte(CP_UTF8, 0, title, -1, narrowTitle, sizeof(narrowTitle), nullptr, nullptr);
+
+    char fallback[128] = {};
+    char line[256];
+    bool matched = false;
+
+    while (fgets(line, sizeof(line), f))
+    {
+        char* p = line;
+        while (*p == ' ' || *p == '\t') ++p;
+        if (*p == '#' || *p == ';' || *p == '\r' || *p == '\n' || *p == 0) continue;
+
+        char* eq = strchr(p, '=');
+        if (!eq) continue;
+        *eq = 0;
+
+        char* key = p;
+        char* val = eq + 1;
+
+        size_t kl = strlen(key);
+        while (kl && (key[kl - 1] == ' ' || key[kl - 1] == '\t')) key[--kl] = 0;
+        size_t vl = strlen(val);
+        while (vl && (val[vl - 1] == '\r' || val[vl - 1] == '\n' ||
+                      val[vl - 1] == ' '  || val[vl - 1] == '\t')) val[--vl] = 0;
+        if (kl == 0 || vl == 0) continue;
+
+        if (strcmp(key, "*") == 0)
+        {
+            strncpy_s(fallback, val, _TRUNCATE);
+            continue;
+        }
+        if (strstr(narrowTitle, key) != nullptr)
+        {
+            strncpy_s(outDll, outSize, val, _TRUNCATE);
+            matched = true;
+            break;
+        }
+    }
+    fclose(f);
+    DeleteFileA(manifestPath);
+
+    if (!matched && fallback[0])
+    {
+        strncpy_s(outDll, outSize, fallback, _TRUNCATE);
+        matched = true;
+    }
+    return matched;
+}
+
 static int Fail(const char* msg)
 {
     UiStage(ANSI_RED, msg);
@@ -341,8 +415,21 @@ int main()
     if (!game.found)
         return Fail("No Minecraft window found - launch Lunar Client first");
 
-    const char* asset = game.legacy ? DLL_LEGACY : DLL_MODERN;
-    UiStage(ANSI_GREEN, game.legacy ? "Detected 1.8.9" : "Detected 1.21.x");
+    char asset[128] = {};
+    if (!ResolveDll(tempDir, game.title, asset, sizeof(asset)))
+    {
+        UiStage(ANSI_RED, "Could not resolve version - update the injector:");
+        UiBar(1.0, ANSI_RED);
+        CenterLine(g_barRow + 1, ANSI_CYAN, INJECTOR_RELEASE_URL, (int)strlen(INJECTOR_RELEASE_URL));
+        WaitForKey();
+        return 1;
+    }
+
+    char version[64] = {};
+    FriendlyVersion(asset, version, sizeof(version));
+    char detected[96];
+    snprintf(detected, sizeof(detected), "Detected %s", version);
+    UiStage(ANSI_GREEN, detected);
     UiBar(0.40, ANSI_CYAN);
 
     char hash[24] = {};
