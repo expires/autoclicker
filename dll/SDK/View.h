@@ -11,6 +11,11 @@ struct ViewState
     bool   gotRenderer = false;
     bool   gotCamera   = false;
     bool   ok = false;
+
+    bool   hasMatrix = false;
+    float  modelview[16] = {};
+    float  projection[16] = {};
+    int    viewport[4] = {};
 };
 
 ViewState AcquireView(Minecraft& mc, Player& localPlayer);

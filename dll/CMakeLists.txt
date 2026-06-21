@@ -120,6 +120,10 @@ foreach(KEY
     fld_Minecraft_timer desc_Minecraft_timer
     fld_Timer_renderPartialTicks
     fld_Entity_prevYRot fld_Entity_prevXRot
+    class_ActiveRenderInfo
+    fld_ActiveRenderInfo_modelview  desc_ActiveRenderInfo_modelview
+    fld_ActiveRenderInfo_projection desc_ActiveRenderInfo_projection
+    fld_ActiveRenderInfo_viewport   desc_ActiveRenderInfo_viewport
 )
     string(JSON ${KEY} ERROR_VARIABLE _keyErr GET "${MAPPING_JSON}" "${KEY}")
     if(_keyErr)

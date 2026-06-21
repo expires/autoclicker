@@ -133,6 +133,33 @@ static bool ProjectWorld(double wx, double wy, double wz,
                          const EspModule::CameraState& cam,
                          float dispW, float dispH, ImVec2& out)
 {
+    if (cam.hasMatrix)
+    {
+        const float* mv = cam.modelview;
+        const float* pr = cam.projection;
+        const double rx = wx - cam.x;
+        const double ry = wy - cam.y;
+        const double rz = wz - cam.z;
+
+        const double ex = mv[0] * rx + mv[4] * ry + mv[8]  * rz;
+        const double ey = mv[1] * rx + mv[5] * ry + mv[9]  * rz;
+        const double ez = mv[2] * rx + mv[6] * ry + mv[10] * rz;
+
+        const double cx = pr[0] * ex + pr[4] * ey + pr[8]  * ez + pr[12];
+        const double cy = pr[1] * ex + pr[5] * ey + pr[9]  * ez + pr[13];
+        const double cw = pr[3] * ex + pr[7] * ey + pr[11] * ez + pr[15];
+
+        if (cw <= 1e-4) return false;
+
+        const double ndcX = cx / cw;
+        const double ndcY = cy / cw;
+        const double vpW = (cam.viewport[2] > 0) ? (double)cam.viewport[2] : (double)dispW;
+        const double vpH = (cam.viewport[3] > 0) ? (double)cam.viewport[3] : (double)dispH;
+        out.x = (float)((ndcX * 0.5 + 0.5) * vpW);
+        out.y = (float)((1.0 - (ndcY * 0.5 + 0.5)) * vpH);
+        return true;
+    }
+
     double dx = wx - cam.x;
     double dy = wy - cam.y;
     double dz = wz - cam.z;
@@ -211,6 +238,11 @@ static void RefreshCameraFromRenderThread(EspModule::CameraState& cam, float& pa
                 cam.xRot = v.xRot;
                 if (v.fov > 0.0f) cam.fov = v.fov;
                 partial = v.partialTick;
+                cam.hasMatrix = v.hasMatrix;
+                if (v.hasMatrix) {
+                    for (int i = 0; i < 16; ++i) { cam.modelview[i] = v.modelview[i]; cam.projection[i] = v.projection[i]; }
+                    for (int i = 0; i < 4; ++i) cam.viewport[i] = v.viewport[i];
+                }
             }
         }
     }
@@ -231,39 +263,6 @@ static void DrawEsp(float dispW, float dispH)
 
     ImDrawList* dl = ImGui::GetBackgroundDrawList();
     const float maxDistSq = (float)g_settings.maxDistance * (float)g_settings.maxDistance;
-
-    static const bool ESP_DEBUG = true;
-    if (ESP_DEBUG) {
-        float rawYaw = 0.0f, rawPitch = 0.0f, prevYaw = 0.0f, prevPitch = 0.0f;
-        double rawX = 0.0, rawY = 0.0, rawZ = 0.0;
-        if (lc->env && lc->env->PushLocalFrame(8) == 0) {
-            Minecraft dmc;
-            Player dp = dmc.GetLocalPlayer();
-            if (dp.GetInstance() != nullptr) {
-                rawYaw = dp.getYRot(); rawPitch = dp.getXRot();
-                rawX = dp.getX(); rawY = dp.getY(); rawZ = dp.getZ();
-                jclass pc = lc->env->GetObjectClass(dp.GetInstance());
-                jfieldID pyf = lc->env->GetFieldID(pc, "prevRotationYaw", "F");
-                jfieldID ppf = lc->env->GetFieldID(pc, "prevRotationPitch", "F");
-                if (pyf) prevYaw = lc->env->GetFloatField(dp.GetInstance(), pyf);
-                if (ppf) prevPitch = lc->env->GetFloatField(dp.GetInstance(), ppf);
-                if (lc->env->ExceptionCheck()) lc->env->ExceptionClear();
-            }
-            if (lc->env->ExceptionCheck()) lc->env->ExceptionClear();
-            lc->env->PopLocalFrame(nullptr);
-        }
-        char b1[200], b2[160];
-        snprintf(b1, sizeof(b1), "pt=%.3f camYaw=%.2f rawYaw=%.2f prevYaw=%.2f | camPitch=%.2f rawPitch=%.2f prevPitch=%.2f fov=%.1f",
-                 partial, cam.yRot, rawYaw, prevYaw, cam.xRot, rawPitch, prevPitch, cam.fov);
-        snprintf(b2, sizeof(b2), "cam=%.2f,%.2f,%.2f  raw(eye)=%.2f,%.2f,%.2f",
-                 cam.x, cam.y, cam.z, rawX, rawY + 1.62, rawZ);
-        ImDrawList* fdl = ImGui::GetForegroundDrawList();
-        fdl->AddText(ImVec2(10.0f, 10.0f), IM_COL32(255, 255, 0, 255), b1);
-        fdl->AddText(ImVec2(10.0f, 26.0f), IM_COL32(255, 255, 0, 255), b2);
-
-        static int dbgFrame = 0;
-        if ((dbgFrame++ % 20) == 0) { AC_LOG("espdbg: %s | %s", b1, b2); }
-    }
 
     const double pt = (double)partial;
 

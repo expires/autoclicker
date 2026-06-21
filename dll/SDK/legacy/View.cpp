@@ -1,5 +1,46 @@
 #include "View.h"
 #include "Mappings.h"
+#include <cmath>
+
+static bool readFloatBuffer(jobject buf, float* out, int n)
+{
+    if (buf == nullptr) return false;
+    static jclass    fbCls = nullptr;
+    static jmethodID getM  = nullptr;
+    if (getM == nullptr)
+    {
+        jclass c = lc->env->GetObjectClass(buf);
+        getM = lc->env->GetMethodID(c, "get", "(I)F");
+        if (c) lc->env->DeleteLocalRef(c);
+        if (getM == nullptr) { lc->env->ExceptionClear(); return false; }
+    }
+    for (int i = 0; i < n; ++i)
+    {
+        out[i] = lc->env->CallFloatMethod(buf, getM, (jint)i);
+        if (lc->env->ExceptionCheck()) { lc->env->ExceptionClear(); return false; }
+    }
+    return true;
+}
+
+static bool readIntBuffer(jobject buf, int* out, int n)
+{
+    if (buf == nullptr) return false;
+    static jclass    ibCls = nullptr;
+    static jmethodID getM  = nullptr;
+    if (getM == nullptr)
+    {
+        jclass c = lc->env->GetObjectClass(buf);
+        getM = lc->env->GetMethodID(c, "get", "(I)I");
+        if (c) lc->env->DeleteLocalRef(c);
+        if (getM == nullptr) { lc->env->ExceptionClear(); return false; }
+    }
+    for (int i = 0; i < n; ++i)
+    {
+        out[i] = (int)lc->env->CallIntMethod(buf, getM, (jint)i);
+        if (lc->env->ExceptionCheck()) { lc->env->ExceptionClear(); return false; }
+    }
+    return true;
+}
 
 ViewState AcquireView(Minecraft& mc, Player& localPlayer)
 {
@@ -45,50 +86,37 @@ ViewState AcquireView(Minecraft& mc, Player& localPlayer)
     v.y = py + (y - py) * pt + 1.62;
     v.z = pz + (z - pz) * pt;
 
-    const float yaw   = localPlayer.getYRot();
-    const float pitch = localPlayer.getXRot();
-    float pYaw = yaw, pPitch = pitch;
+    v.yRot = localPlayer.getYRot();
+    v.xRot = localPlayer.getXRot();
+    v.fov  = 70.0f;
+
+    static jclass ariCls = nullptr;
+    if (!ariCls) JClass(ariCls, MC_ActiveRenderInfo);
+    if (ariCls)
     {
-        static jfieldID pyF = nullptr;
-        static jfieldID ppF = nullptr;
-        if (JField(pyF, localPlayer.GetClass(), FLD_Entity_prevYRot, "F"))
+        static jfieldID mvF = nullptr, prF = nullptr, vpF = nullptr;
+        JStaticField(mvF, ariCls, FLD_ActiveRenderInfo_modelview,  DESC_ActiveRenderInfo_modelview);
+        JStaticField(prF, ariCls, FLD_ActiveRenderInfo_projection, DESC_ActiveRenderInfo_projection);
+        JStaticField(vpF, ariCls, FLD_ActiveRenderInfo_viewport,   DESC_ActiveRenderInfo_viewport);
+        if (mvF && prF && vpF)
         {
-            jfloat r = lc->env->GetFloatField(localPlayer.GetInstance(), pyF);
-            if (!lc->env->ExceptionCheck()) pYaw = r;
-        }
-        if (JField(ppF, localPlayer.GetClass(), FLD_Entity_prevXRot, "F"))
-        {
-            jfloat r = lc->env->GetFloatField(localPlayer.GetInstance(), ppF);
-            if (!lc->env->ExceptionCheck()) pPitch = r;
+            jobject mvBuf = lc->env->GetStaticObjectField(ariCls, mvF);
+            jobject prBuf = lc->env->GetStaticObjectField(ariCls, prF);
+            jobject vpBuf = lc->env->GetStaticObjectField(ariCls, vpF);
+            if (!lc->env->ExceptionCheck()
+                && readFloatBuffer(mvBuf, v.modelview, 16)
+                && readFloatBuffer(prBuf, v.projection, 16)
+                && readIntBuffer(vpBuf, v.viewport, 4))
+            {
+                v.hasMatrix = true;
+                if (v.projection[5] > 0.0001f)
+                    v.fov = (float)(2.0 * std::atan(1.0 / (double)v.projection[5]) * 180.0 / 3.14159265358979323846);
+            }
+            if (mvBuf) lc->env->DeleteLocalRef(mvBuf);
+            if (prBuf) lc->env->DeleteLocalRef(prBuf);
+            if (vpBuf) lc->env->DeleteLocalRef(vpBuf);
         }
         if (lc->env->ExceptionCheck()) lc->env->ExceptionClear();
-    }
-    v.yRot = pYaw + (yaw - pYaw) * pt;
-    v.xRot = pPitch + (pitch - pPitch) * pt;
-
-    v.fov = 70.0f;
-    if (mcInst != nullptr)
-    {
-        static jfieldID gsF = nullptr;
-        JField(gsF, mc.GetClass(), FLD_Minecraft_gameSettings, DESC_Minecraft_gameSettings);
-        if (gsF)
-        {
-            jobject gs = lc->env->GetObjectField(mcInst, gsF);
-            if (gs != nullptr && !lc->env->ExceptionCheck())
-            {
-                static jclass    gsCls = nullptr;
-                static jfieldID  fovF  = nullptr;
-                if (!gsCls) JClass(gsCls, MC_GameSettings);
-                JField(fovF, gsCls, FLD_GameSettings_fovSetting, "F");
-                if (fovF)
-                {
-                    jfloat fvVal = lc->env->GetFloatField(gs, fovF);
-                    if (!lc->env->ExceptionCheck() && fvVal > 1.0f) v.fov = fvVal;
-                }
-                lc->env->DeleteLocalRef(gs);
-            }
-            if (lc->env->ExceptionCheck()) lc->env->ExceptionClear();
-        }
     }
 
     v.ok = true;

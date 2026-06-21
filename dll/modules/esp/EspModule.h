@@ -26,6 +26,11 @@ namespace EspModule
         double x, y, z;
         float  yRot, xRot;
         float  fov;
+
+        bool   hasMatrix = false;
+        float  modelview[16] = {};
+        float  projection[16] = {};
+        int    viewport[4] = {};
     };
 
     struct Snapshot

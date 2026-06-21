@@ -166,5 +166,12 @@
   "desc_Minecraft_timer": "Lnet/minecraft/util/Timer;",
   "fld_Timer_renderPartialTicks": "renderPartialTicks",
   "fld_Entity_prevYRot": "prevRotationYaw",
-  "fld_Entity_prevXRot": "prevRotationPitch"
+  "fld_Entity_prevXRot": "prevRotationPitch",
+  "class_ActiveRenderInfo": "net.minecraft.client.renderer.ActiveRenderInfo",
+  "fld_ActiveRenderInfo_modelview": "MODELVIEW",
+  "desc_ActiveRenderInfo_modelview": "Ljava/nio/FloatBuffer;",
+  "fld_ActiveRenderInfo_projection": "PROJECTION",
+  "desc_ActiveRenderInfo_projection": "Ljava/nio/FloatBuffer;",
+  "fld_ActiveRenderInfo_viewport": "VIEWPORT",
+  "desc_ActiveRenderInfo_viewport": "Ljava/nio/IntBuffer;"
 }

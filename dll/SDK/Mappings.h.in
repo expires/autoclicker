@@ -192,3 +192,11 @@
 #define FLD_Timer_renderPartialTicks    "@fld_Timer_renderPartialTicks@"
 #define FLD_Entity_prevYRot             "@fld_Entity_prevYRot@"
 #define FLD_Entity_prevXRot             "@fld_Entity_prevXRot@"
+
+#define MC_ActiveRenderInfo             "@class_ActiveRenderInfo@"
+#define FLD_ActiveRenderInfo_modelview  "@fld_ActiveRenderInfo_modelview@"
+#define DESC_ActiveRenderInfo_modelview "@desc_ActiveRenderInfo_modelview@"
+#define FLD_ActiveRenderInfo_projection "@fld_ActiveRenderInfo_projection@"
+#define DESC_ActiveRenderInfo_projection "@desc_ActiveRenderInfo_projection@"
+#define FLD_ActiveRenderInfo_viewport   "@fld_ActiveRenderInfo_viewport@"
+#define DESC_ActiveRenderInfo_viewport  "@desc_ActiveRenderInfo_viewport@"
