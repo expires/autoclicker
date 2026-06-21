@@ -1,6 +1,6 @@
 # JNI Minecraft Client
 
-A native DLL + ImGui overlay for Lunar Client, built as a **hands-on exploration of how JNI and JVMTI interact with a running JVM** — and as a controlled testbed for anti-cheat research. Targets Lunar Client 1.21.11 (Fabric intermediary mappings).
+A native DLL + ImGui overlay for Lunar Client, built as a **hands-on exploration of how JNI and JVMTI interact with a running JVM** — and as a controlled testbed for anti-cheat research. Supports multiple Minecraft versions from one codebase: Lunar Client 1.21.11 (Fabric intermediary mappings) and 1.8.9 (MCP names). The injector auto-detects the running version and pulls the matching DLL.
 
 The point of this project is the seam between native code and the JVM. The modules here exist to exercise specific aspects of that boundary: enumerating loaded classes via JVMTI, resolving obfuscated names through Fabric intermediary mappings, calling into `Minecraft`/`Player`/`Inventory`/`ItemStack` from a non-MC thread, walking entity snapshots, projecting world → screen without touching MC's renderer, and surviving the cursor/window-message contortions GLFW expects.
 
@@ -8,7 +8,7 @@ The point of this project is the seam between native code and the JVM. The modul
 
 ## Architecture
 
-Two binaries: an injector and the payload DLL. The injector locates `javaw.exe`, allocates remote memory, writes the DLL path, and calls `LoadLibraryA` via a remote thread. Once loaded inside the JVM, `DllMain` spawns a bootstrap thread that loads settings, installs the overlay hooks, and starts one worker thread per module alongside MC's render loop.
+Two binaries: an injector and the payload DLL. The injector finds the game window, reads its title to detect the Minecraft version, downloads the matching DLL from the release (see [Version manifest](#version-manifest)), then locates `javaw.exe`, allocates remote memory, writes the DLL path, and calls `LoadLibraryA` via a remote thread. Once loaded inside the JVM, `DllMain` spawns a bootstrap thread that loads settings, installs the overlay hooks, and starts one worker thread per module alongside MC's render loop.
 
 ```mermaid
 flowchart LR
@@ -31,6 +31,7 @@ flowchart LR
                 m4["ESP"]
                 m5["Macros"]
                 m6["Friends / Teams"]
+                m7["Scaffold"]
             end
 
             subgraph SDK["SDK · JNI wrappers"]
@@ -60,6 +61,8 @@ flowchart LR
 | Macros       | `Bootstrap`  | Polls bound keys, fires hotbar switch + right-click         |
 | Friends      | `Bootstrap`  | Resolves player teams/colors for highlighting               |
 
+Scaffold doesn't get its own thread — it ticks on the render thread (inside MC's loop) so its world reads never race a block placement.
+
 Each JVM-touching thread calls `AttachCurrentThread` independently. `lc->env` is `thread_local` so the per-thread JNIEnv routes correctly without cross-thread sharing.
 
 ### Shared state
@@ -77,31 +80,52 @@ dll/
   config/     Settings (runtime) + Config.h.in (build-time secrets template)
   logger/     File logger
   teardown/   Worker registry + clean self-unload
-  modules/    autoclicker, aim, autoblock, esp, macros, friends
+  modules/    autoclicker, aim, autoblock, esp, macros, friends, scaffold
   network/    Ban-list check + Discord report (WinHTTP)
   overlay/    ImGui overlay, widgets, theme, per-tab UI
   SDK/        JNI/JVMTI wrappers + generated Mappings.h
+    1.8.9/      Version-specific method bodies (MCP)
+    1.21.11/    Version-specific method bodies (Fabric)
 injector/     Remote-thread injector
-mappings/     Fabric intermediary mappings per game version
+mappings/     Per-version name maps (fabric_1.21.11.json, lunar_1.8.9.json)
+versions.txt  Window-title → DLL manifest (injector reads at runtime)
 data/         Embedded assets (logo.png)
 ```
+
+The shared `SDK/*.cpp` hold the boilerplate and version-agnostic methods; only the bodies that differ between game versions live in `SDK/<version>/`. The build compiles exactly one version subfolder, selected by the mapping's `"sdk"` field — so no `#ifdef` soup in the SDK logic.
 
 ---
 
 ## Mapping system
 
-Lunar uses Fabric intermediary names. Mappings live in JSON per game version; CMake reads them at configure time and configures `Mappings.h` from a template.
+Each game version has a JSON name map (Fabric intermediary names for 1.21.11, MCP names for the MCP-deobfuscated 1.8.9 jar Lunar ships). CMake reads the chosen map at configure time and configures `Mappings.h` from a template. Two extra JSON fields drive the build:
+
+- `"generation"` (`modern`/`legacy`) → compile def `AC_LEGACY=0/1`.
+- `"sdk"` (e.g. `1.21.11`/`1.8.9`) → which `SDK/<sdk>/` subfolder is compiled.
 
 ```mermaid
 flowchart LR
-    JSON["mappings/fabric_1.21.11.json"]
+    JSON["mappings/<version>.json"]
     TPL["dll/SDK/Mappings.h.in"]
     OUT["build/dll/Mappings.h"]
     JSON -->|"-DMAPPING_VERSION"| TPL
     TPL -->|"configure_file()"| OUT
+    JSON -.->|"\"sdk\""| SDKDIR["compile SDK/<sdk>/*.cpp"]
 ```
 
-To add a new MC version, copy `mappings/fabric_1.21.11.json`, update the intermediary names, and build with `-DMAPPING_VERSION=<name>`.
+To add a new MC version: copy a mapping JSON, fill in the names, set `"generation"`/`"sdk"`, and build with `-DMAPPING_VERSION=<name>`. If the version's reflection layout matches an existing SDK folder, point `"sdk"` at it; otherwise fork a new `SDK/<sdk>/`.
+
+### Version manifest
+
+The injector is **version-agnostic** — it doesn't hardcode DLL names. At runtime it downloads `versions.txt` from the release and matches the game's window title against it:
+
+```
+1.8=ac_1.8.9.dll
+1.21=ac_1.21.11.dll
+*=ac_1.21.11.dll
+```
+
+First matching prefix wins; `*` is the fallback. Adding a new version therefore needs **no injector rebuild** — just publish the new DLL and add a line to `versions.txt`. If the manifest can't be resolved, the injector tells the user to update rather than guessing.
 
 ---
 
@@ -113,7 +137,8 @@ To add a new MC version, copy `mappings/fabric_1.21.11.json`, update the interme
 - **ESP** — team-colored boxes + nametag chunks + distance + health, projected from a JNI entity snapshot with partial-tick interpolation. Demonstrates reading live world state from a native thread and projecting world → screen without the MC renderer.
 - **Friends / Teams** — maintain a friend list and detect scoreboard teams by color; friends and teammates are highlighted and excluded from targeting. Demonstrates walking `PlayerTeam` / `Style` / `TextColor` through JNI.
 - **Macros** — dynamic list of up to 10 hotbar macros. Each matches an item by display-name substring (case-insensitive, includes anvil renames), switches to that slot, right-clicks once, and restores the previously held slot. Demonstrates calling into `Inventory` and `ItemStack` via JNI from outside the game thread.
-- **Safety gate** — the local player's UUID is checked against a remote banned list (GitHub-hosted) over WinHTTP; a match triggers self-destruct, and first-seen accounts are reported to a Discord webhook. Endpoints are baked in at build time from environment variables and are blank by default.
+- **Scaffold** — auto-places blocks beneath the player while bridging, deriving movement from player velocity (so it's layout- and rebind-agnostic) and ticking on the render thread to stay in sync with world state. Demonstrates driving placement input from live physics state read through JNI.
+- **Safety gate** — the local player's UUID is checked against a remote banned list (GitHub-hosted) over WinHTTP; a match triggers self-destruct, and first-seen accounts are reported to a Discord webhook (username, UUID, and game version). Endpoints are baked in at build time from environment variables and are blank by default.
 - **Persistent config** — all settings + keybinds + macros + friends saved to `%APPDATA%` with schema versioning (v3).
 - **Self-destruct** — the in-menu toggle or the self-destruct key (default `END`) triggers a clean DLL unload via `FreeLibraryAndExitThread`. Demonstrates orderly JNI teardown.
 
@@ -128,21 +153,21 @@ cmake -S . -B build -DMAPPING_VERSION=fabric_1.21.11
 cmake --build build --config Release
 ```
 
-Optionally set `AC_WEBHOOK_PATH` and `AC_BANNED_PATH` before configuring to bake in the report webhook and banned-list endpoints; both default to empty (the safety gate is then a no-op).
+Pick the target version with `-DMAPPING_VERSION` (`fabric_1.21.11` or `lunar_1.8.9`); each produces a DLL for that version. Optionally set `AC_WEBHOOK_PATH` and `AC_BANNED_PATH` before configuring to bake in the report webhook and banned-list endpoints; both default to empty (the safety gate is then a no-op).
 
 Outputs:
 - `build/dll/Release/DLL.dll`
 - `build/injector/Release/INJECTOR.exe`
 
-CI builds every push to `main` and uploads an artifact. Tag `v*` to publish a release.
+CI builds both versions on every push and publishes rolling prereleases — `latest` from `main`, `dev` from `development` — each containing both DLLs, the injector, and `versions.txt`. Tag `v*` to cut a versioned release.
 
 ---
 
 ## Usage
 
-1. Download `DLL.dll` + `INJECTOR.exe` from the latest Actions run or release.
-2. Launch Lunar Client, join a world or server.
-3. Run `INJECTOR.exe`.
+1. Download `INJECTOR.exe` from the [latest release](https://github.com/expires/autoclicker/releases/tag/latest). You don't need the DLL — the injector fetches the right one for your version.
+2. Launch Lunar Client (1.21.11 or 1.8.9), join a world or server.
+3. Run `INJECTOR.exe`. It detects the version, downloads the matching DLL, and injects.
 4. **Right Shift** opens the overlay (rebindable in Settings); the self-destruct key (default **END**) unloads.
 
 ---
