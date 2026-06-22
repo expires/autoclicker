@@ -138,6 +138,7 @@
 
   "class_PauseScreen":             "net.minecraft.client.gui.screens.PauseScreen",
   "class_AbstractContainerScreen": "net.minecraft.client.gui.screens.inventory.AbstractContainerScreen",
+  "class_ChatScreen":              "net.minecraft.client.gui.screens.ChatScreen",
   "mtd_Minecraft_setScreen":       "setScreen",
   "desc_Minecraft_setScreen":      "(Lnet/minecraft/client/gui/screens/Screen;)V",
   "mtd_Minecraft_pauseGame":       "pauseGame",

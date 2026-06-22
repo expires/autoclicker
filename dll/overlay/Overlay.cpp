@@ -20,6 +20,7 @@
 #include "../modules/esp/EspModule.h"
 #include "../modules/scaffold/ScaffoldModule.h"
 #include "../SDK/Lunar.h"
+#include "Mappings.h"
 #include "../SDK/Capabilities.h"
 #include "../SDK/View.h"
 #include "../SDK/Minecraft.h"
@@ -129,6 +130,7 @@ static WNDPROC s_origProc           = nullptr;
 static bool    s_eatEscUntilRelease = false;
 
 static std::atomic<bool> s_gameScreenOpen{false};
+static std::atomic<bool> s_nonChatScreenOpen{false};
 
 static volatile bool s_shutdownRequested = false;
 static volatile bool s_renderDrained     = false;
@@ -205,8 +207,9 @@ static void EnsureRenderThreadEnv()
         lc->env = env;
 }
 
-static bool IsGameScreenOpen()
+static bool IsGameScreenOpen(bool& chatOpen)
 {
+    chatOpen = false;
     EnsureRenderThreadEnv();
     if (lc->env == nullptr) return false;
     if (lc->env->PushLocalFrame(8) != 0) { lc->env->ExceptionClear(); return false; }
@@ -215,7 +218,13 @@ static bool IsGameScreenOpen()
     Minecraft mc;
     if (mc.GetInstance() != nullptr) {
         Screen screen = mc.GetScreen();
-        open = (screen.GetInstance() != nullptr);
+        if (screen.GetInstance() != nullptr) {
+            open = true;
+            static jclass chatCls = nullptr;
+            JClass(chatCls, MC_ChatScreen);
+            if (chatCls && lc->env->IsInstanceOf(screen.GetInstance(), chatCls) == JNI_TRUE)
+                chatOpen = true;
+        }
     }
 
     if (lc->env->ExceptionCheck()) lc->env->ExceptionClear();
@@ -772,8 +781,10 @@ static BOOL WINAPI hk_wglSwapBuffers(HDC hdc)
         OverlayWidgets::ResetKeybindListening();
 
         const bool gameForeground  = (s_hwnd != nullptr && GetForegroundWindow() == s_hwnd);
-        const bool gameScreenOpen  = IsGameScreenOpen();
+        bool       chatScreenOpen  = false;
+        const bool gameScreenOpen  = IsGameScreenOpen(chatScreenOpen);
         s_gameScreenOpen.store(gameScreenOpen, std::memory_order_relaxed);
+        s_nonChatScreenOpen.store(gameScreenOpen && !chatScreenOpen, std::memory_order_relaxed);
         const bool keybindsBlocked = !gameForeground || gameScreenOpen;
 
         const bool menuValid = (g_settings.menuKey > 0 && g_settings.menuKey <= 0xFE);
@@ -883,7 +894,7 @@ static BOOL WINAPI hk_wglSwapBuffers(HDC hdc)
         const ImVec2 display = ImGui::GetIO().DisplaySize;
 
         const bool screenOrMenuOpen =
-            s_visible || s_gameScreenOpen.load(std::memory_order_relaxed);
+            s_visible || s_nonChatScreenOpen.load(std::memory_order_relaxed);
 
         if (g_settings.espEnabled && !screenOrMenuOpen)
             DrawEsp(display.x, display.y);

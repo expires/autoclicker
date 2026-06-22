@@ -138,6 +138,7 @@
 
 #define MC_PauseScreen                "@class_PauseScreen@"
 #define MC_AbstractContainerScreen    "@class_AbstractContainerScreen@"
+#define MC_ChatScreen                 "@class_ChatScreen@"
 #define MTD_Minecraft_setScreen       "@mtd_Minecraft_setScreen@"
 #define DESC_Minecraft_setScreen      "@desc_Minecraft_setScreen@"
 #define MTD_Minecraft_pauseGame       "@mtd_Minecraft_pauseGame@"

@@ -124,6 +124,7 @@
   "desc_ClientLevel_players": "",
   "class_PauseScreen": "net.minecraft.client.gui.GuiIngameMenu",
   "class_AbstractContainerScreen": "net.minecraft.client.gui.inventory.GuiContainer",
+  "class_ChatScreen": "net.minecraft.client.gui.GuiChat",
   "mtd_Minecraft_setScreen": "displayGuiScreen",
   "desc_Minecraft_setScreen": "(Lnet/minecraft/client/gui/GuiScreen;)V",
   "mtd_Minecraft_pauseGame": "",
