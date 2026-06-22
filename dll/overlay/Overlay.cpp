@@ -882,7 +882,10 @@ static BOOL WINAPI hk_wglSwapBuffers(HDC hdc)
 
         const ImVec2 display = ImGui::GetIO().DisplaySize;
 
-        if (g_settings.espEnabled)
+        const bool screenOrMenuOpen =
+            s_visible || s_gameScreenOpen.load(std::memory_order_relaxed);
+
+        if (g_settings.espEnabled && !screenOrMenuOpen)
             DrawEsp(display.x, display.y);
 
         if (s_visible)
