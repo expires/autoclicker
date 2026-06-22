@@ -95,7 +95,7 @@ namespace AimAssistModule
 
     DWORD WINAPI init(LPVOID )
     {
-        AC_LOG("aim: thread start");
+        LOG("aim: thread start");
         while (!AutoclickerModule::destruct && !jvmReady())
             std::this_thread::sleep_for(std::chrono::milliseconds(100));
         if (AutoclickerModule::destruct) return 0;
@@ -103,7 +103,7 @@ namespace AimAssistModule
         if (lc->vm->AttachCurrentThread(reinterpret_cast<void**>(&lc->env), nullptr) != JNI_OK)
             return 0;
         if (lc->env == nullptr) return 0;
-        AC_LOG("aim: attached; entering loop");
+        LOG("aim: attached; entering loop");
 
         Minecraft  mc;
         const HWND mcWindow = FindGameWindow();
@@ -289,7 +289,7 @@ namespace AimAssistModule
             injectMouseMove(pxX, pxY);
         }
 
-        AC_LOG("aim: loop exit; detaching");
+        LOG("aim: loop exit; detaching");
         lc->vm->DetachCurrentThread();
         return 0;
     }

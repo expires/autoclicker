@@ -68,29 +68,29 @@ namespace AutoclickerModule
     DWORD WINAPI init(const LPVOID lpParam)
     {
         const auto instance = static_cast<HMODULE>(lpParam);
-        AC_LOG("autoclicker: thread start");
+        LOG("autoclicker: thread start");
 
         jint result = JNI_GetCreatedJavaVMs(&lc->vm, 1, nullptr);
         if (result != JNI_OK || lc->vm == nullptr) {
-            AC_LOG("autoclicker: JNI_GetCreatedJavaVMs failed (%d)", (int)result);
+            LOG("autoclicker: JNI_GetCreatedJavaVMs failed (%d)", (int)result);
             return 0;
         }
 
         result = lc->vm->AttachCurrentThread(reinterpret_cast<void **>(&lc->env), nullptr);
         if (result != JNI_OK || lc->env == nullptr) {
-            AC_LOG("autoclicker: AttachCurrentThread failed (%d)", (int)result);
+            LOG("autoclicker: AttachCurrentThread failed (%d)", (int)result);
             return 0;
         }
-        AC_LOG("autoclicker: attached to JVM");
+        LOG("autoclicker: attached to JVM");
 
         if (lc->env != nullptr)
         {
 
             clicker.setCPS(g_settings.cps);
 
-            AC_LOG("autoclicker: GetLoadedClasses begin");
+            LOG("autoclicker: GetLoadedClasses begin");
             lc->GetLoadedClasses();
-            AC_LOG("autoclicker: GetLoadedClasses done; entering loop");
+            LOG("autoclicker: GetLoadedClasses done; entering loop");
 
             if (const char* appdata = std::getenv("APPDATA"))
                 lc->DumpLoadedClasses(std::string(appdata) + "\\manuclicker\\classdump.txt");
@@ -106,7 +106,7 @@ namespace AutoclickerModule
             {
                 if (g_settings.selfDestruct)
                 {
-                    AC_LOG("autoclicker: selfDestruct triggered");
+                    LOG("autoclicker: selfDestruct triggered");
                     destruct = true;
                     break;
                 }
@@ -162,7 +162,7 @@ namespace AutoclickerModule
 
                     if (g_settings.selfDestruct)
                     {
-                        AC_LOG("autoclicker: selfDestruct triggered");
+                        LOG("autoclicker: selfDestruct triggered");
                         destruct = true;
                         break;
                     }
@@ -242,7 +242,7 @@ namespace AutoclickerModule
                     }
                 }
             }
-            AC_LOG("autoclicker: loop exited; detaching");
+            LOG("autoclicker: loop exited; detaching");
             lc->vm->DetachCurrentThread();
 
             Teardown::FinalizeAndUnload(instance);

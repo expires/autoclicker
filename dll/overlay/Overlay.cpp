@@ -96,7 +96,7 @@ static void LoadLogoTexture()
     unsigned char* pixels = stbi_load_from_memory(
         g_logoPng, (int)g_logoPngSize, &s_logoW, &s_logoH, &ch, 4);
     if (!pixels) {
-        AC_LOG("overlay: logo decode failed: %s", stbi_failure_reason());
+        LOG("overlay: logo decode failed: %s", stbi_failure_reason());
         return;
     }
 
@@ -650,7 +650,7 @@ static BOOL WINAPI hk_wglSwapBuffers(HDC hdc)
     {
         if (!s_renderDrained)
         {
-            AC_LOG("overlay: render thread draining");
+            LOG("overlay: render thread draining");
             ScaffoldModule::Release();
             if (s_initialized)
             {
@@ -662,7 +662,7 @@ static BOOL WINAPI hk_wglSwapBuffers(HDC hdc)
                 ImGui::DestroyContext();
             }
             s_renderDrained = true;
-            AC_LOG("overlay: render thread drained");
+            LOG("overlay: render thread drained");
         }
         return o_wglSwapBuffers(hdc);
     }
@@ -673,7 +673,7 @@ static BOOL WINAPI hk_wglSwapBuffers(HDC hdc)
         if (s_gameWnd == nullptr || !IsWindow(s_gameWnd)) {
             HWND g = FindGameWindow();
             s_gameWnd = g ? g : swapWnd;
-            AC_LOG("overlay: pinned render window=%p (first swap caller window=%p)",
+            LOG("overlay: pinned render window=%p (first swap caller window=%p)",
                    (void*)s_gameWnd, (void*)swapWnd);
         }
         if (s_gameWnd && swapWnd != s_gameWnd)
@@ -684,7 +684,7 @@ static BOOL WINAPI hk_wglSwapBuffers(HDC hdc)
     {
         static bool s_warnedNoCtx = false;
         if (!s_warnedNoCtx) {
-            AC_LOG("overlay: no current GL context on swap tid=%lu hwnd=%p",
+            LOG("overlay: no current GL context on swap tid=%lu hwnd=%p",
                    GetCurrentThreadId(), (void*)swapWnd);
             s_warnedNoCtx = true;
         }
@@ -1068,9 +1068,9 @@ namespace Overlay
                 SetWindowLongPtrW(s_hwnd, GWLP_WNDPROC, reinterpret_cast<LONG_PTR>(s_origProc));
         }
 
-        AC_LOG("overlay: disabling hooks");
+        LOG("overlay: disabling hooks");
         MH_DisableHook(MH_ALL_HOOKS);
         MH_Uninitialize();
-        AC_LOG("overlay: hooks disabled");
+        LOG("overlay: hooks disabled");
     }
 }

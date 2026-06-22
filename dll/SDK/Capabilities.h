@@ -1,6 +1,6 @@
 #pragma once
 
-#if AC_LEGACY
+#if MNC_LEGACY
 inline constexpr bool kNativeDropOverride = false;
 #else
 inline constexpr bool kNativeDropOverride = true;

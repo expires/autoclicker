@@ -111,7 +111,7 @@ namespace MacrosModule
 
     DWORD WINAPI init(LPVOID )
     {
-        AC_LOG("macros: thread start");
+        LOG("macros: thread start");
         while (!AutoclickerModule::destruct && !jvmReady())
             std::this_thread::sleep_for(std::chrono::milliseconds(100));
         if (AutoclickerModule::destruct) return 0;
@@ -119,7 +119,7 @@ namespace MacrosModule
         if (lc->vm->AttachCurrentThread(reinterpret_cast<void**>(&lc->env), nullptr) != JNI_OK)
             return 0;
         if (lc->env == nullptr) return 0;
-        AC_LOG("macros: attached; entering loop");
+        LOG("macros: attached; entering loop");
 
         Minecraft  mc;
         const HWND mcWindow = FindGameWindow();
@@ -174,7 +174,7 @@ namespace MacrosModule
             }
         }
 
-        AC_LOG("macros: loop exit; detaching");
+        LOG("macros: loop exit; detaching");
         lc->vm->DetachCurrentThread();
         return 0;
     }

@@ -12,19 +12,19 @@ jobs:
   build:
     runs-on: windows-latest
     env:
-      AC_RELEASE_TAG: ${{ github.ref == 'refs/heads/development' && 'dev' || 'latest' }}
+      MNC_RELEASE_TAG: ${{ github.ref == 'refs/heads/development' && 'dev' || 'release' }}
     strategy:
       fail-fast: false
       matrix:
         include:
           - mapping: fabric_1.21.11
-            asset: ac_1.21.11.dll
-            alias: ac.dll
+            asset: mnc_1.21.11.dll
+            alias: mnc.dll
           - mapping: lunar_1.8.9
-            asset: ac_1.8.9.dll
+            asset: mnc_1.8.9.dll
             alias: ""
           - mapping: 1.26.x+
-            asset: ac_1.26.x+.dll
+            asset: mnc_1.26.x+.dll
             alias: ""
 
     steps:
@@ -38,7 +38,7 @@ jobs:
           java-version: '21'
 
       - name: Configure CMake
-        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DJAVA_HOME="$env:JAVA_HOME" -DMAPPING_VERSION="${{ matrix.mapping }}" -DAC_RELEASE_TAG="${{ env.AC_RELEASE_TAG }}"
+        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DJAVA_HOME="$env:JAVA_HOME" -DMAPPING_VERSION="${{ matrix.mapping }}" -DMNC_RELEASE_TAG="${{ env.MNC_RELEASE_TAG }}"
 
       - name: Inject Config.h
         shell: bash
@@ -55,8 +55,8 @@ jobs:
         id: injcache
         uses: actions/cache@v4
         with:
-          path: build/INJECTOR/Release/INJECTOR.exe
-          key: injector-${{ runner.os }}-${{ env.AC_RELEASE_TAG }}-${{ hashFiles('injector/**', 'CMakeLists.txt') }}
+          path: build/INJECTOR/Release/mnc.exe
+          key: injector-${{ runner.os }}-${{ env.MNC_RELEASE_TAG }}-${{ hashFiles('injector/**', 'CMakeLists.txt') }}
 
       - name: Build DLL
         run: cmake --build build --config Release --target DLL
@@ -73,7 +73,7 @@ jobs:
           if [ -n "${{ matrix.alias }}" ]; then
             cp build/DLL/Release/DLL.dll "release/${{ matrix.alias }}"
           fi
-          cp build/INJECTOR/Release/INJECTOR.exe release/injector.exe
+          cp build/INJECTOR/Release/mnc.exe release/mnc.exe
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
@@ -100,11 +100,11 @@ jobs:
       - name: Assemble release assets
         run: |
           mkdir -p release
-          cp dl/autoclicker-fabric_1.21.11/ac.dll          release/ac.dll
-          cp dl/autoclicker-fabric_1.21.11/ac_1.21.11.dll  release/ac_1.21.11.dll
-          cp dl/autoclicker-lunar_1.8.9/ac_1.8.9.dll       release/ac_1.8.9.dll
-          cp dl/autoclicker-1.26.x+/ac_1.26.x+.dll         release/ac_1.26.x+.dll
-          cp dl/autoclicker-fabric_1.21.11/injector.exe    release/injector.exe
+          cp dl/autoclicker-fabric_1.21.11/mnc.dll          release/mnc.dll
+          cp dl/autoclicker-fabric_1.21.11/mnc_1.21.11.dll  release/mnc_1.21.11.dll
+          cp dl/autoclicker-lunar_1.8.9/mnc_1.8.9.dll       release/mnc_1.8.9.dll
+          cp dl/autoclicker-1.26.x+/mnc_1.26.x+.dll         release/mnc_1.26.x+.dll
+          cp dl/autoclicker-fabric_1.21.11/mnc.exe    release/mnc.exe
           cp versions.txt                                  release/versions.txt
 
       - name: Create release
@@ -132,11 +132,11 @@ jobs:
       - name: Assemble rolling assets
         run: |
           mkdir -p rolling
-          cp dl/autoclicker-fabric_1.21.11/ac.dll          rolling/ac.dll
-          cp dl/autoclicker-fabric_1.21.11/ac_1.21.11.dll  rolling/ac_1.21.11.dll
-          cp dl/autoclicker-lunar_1.8.9/ac_1.8.9.dll       rolling/ac_1.8.9.dll
-          cp dl/autoclicker-1.26.x+/ac_1.26.x+.dll         rolling/ac_1.26.x+.dll
-          cp dl/autoclicker-fabric_1.21.11/injector.exe    rolling/injector.exe
+          cp dl/autoclicker-fabric_1.21.11/mnc.dll          rolling/mnc.dll
+          cp dl/autoclicker-fabric_1.21.11/mnc_1.21.11.dll  rolling/mnc_1.21.11.dll
+          cp dl/autoclicker-lunar_1.8.9/mnc_1.8.9.dll       rolling/mnc_1.8.9.dll
+          cp dl/autoclicker-1.26.x+/mnc_1.26.x+.dll         rolling/mnc_1.26.x+.dll
+          cp dl/autoclicker-fabric_1.21.11/mnc.exe    rolling/mnc.exe
           cp versions.txt                                  rolling/versions.txt
 
       - name: Resolve assets to publish
@@ -144,19 +144,19 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          new=$(sha256sum ./rolling/injector.exe | awk '{print $1}')
+          new=$(sha256sum ./rolling/mnc.exe | awk '{print $1}')
           old=""
-          if gh release download latest -R "${{ github.repository }}" -p injector.exe -D ./current 2>/dev/null; then
-            old=$(sha256sum ./current/injector.exe | awk '{print $1}')
+          if gh release download release -R "${{ github.repository }}" -p mnc.exe -D ./current 2>/dev/null; then
+            old=$(sha256sum ./current/mnc.exe | awk '{print $1}')
           fi
           {
             echo 'files<<EOF'
-            echo './rolling/ac.dll'
-            echo './rolling/ac_1.21.11.dll'
-            echo './rolling/ac_1.8.9.dll'
-            echo './rolling/ac_1.26.x+.dll'
+            echo './rolling/mnc.dll'
+            echo './rolling/mnc_1.21.11.dll'
+            echo './rolling/mnc_1.8.9.dll'
+            echo './rolling/mnc_1.26.x+.dll'
             echo './rolling/versions.txt'
-            if [ "$new" != "$old" ]; then echo './rolling/injector.exe'; fi
+            if [ "$new" != "$old" ]; then echo './rolling/mnc.exe'; fi
             echo 'EOF'
           } >> "$GITHUB_OUTPUT"
           if [ "$new" = "$old" ]; then
@@ -168,8 +168,8 @@ jobs:
       - name: Publish rolling release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: latest
-          name: "Latest (auto)"
+          tag_name: release
+          name: "Release (auto)"
           body: "Auto-built from main @ ${{ github.sha }}"
           prerelease: true
           files: ${{ steps.assets.outputs.files }}
@@ -194,11 +194,11 @@ jobs:
       - name: Assemble rolling assets
         run: |
           mkdir -p rolling
-          cp dl/autoclicker-fabric_1.21.11/ac.dll          rolling/ac.dll
-          cp dl/autoclicker-fabric_1.21.11/ac_1.21.11.dll  rolling/ac_1.21.11.dll
-          cp dl/autoclicker-lunar_1.8.9/ac_1.8.9.dll       rolling/ac_1.8.9.dll
-          cp dl/autoclicker-1.26.x+/ac_1.26.x+.dll         rolling/ac_1.26.x+.dll
-          cp dl/autoclicker-fabric_1.21.11/injector.exe    rolling/injector.exe
+          cp dl/autoclicker-fabric_1.21.11/mnc.dll          rolling/mnc.dll
+          cp dl/autoclicker-fabric_1.21.11/mnc_1.21.11.dll  rolling/mnc_1.21.11.dll
+          cp dl/autoclicker-lunar_1.8.9/mnc_1.8.9.dll       rolling/mnc_1.8.9.dll
+          cp dl/autoclicker-1.26.x+/mnc_1.26.x+.dll         rolling/mnc_1.26.x+.dll
+          cp dl/autoclicker-fabric_1.21.11/mnc.exe    rolling/mnc.exe
           cp versions.txt                                  rolling/versions.txt
 
       - name: Resolve assets to publish
@@ -206,19 +206,19 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          new=$(sha256sum ./rolling/injector.exe | awk '{print $1}')
+          new=$(sha256sum ./rolling/mnc.exe | awk '{print $1}')
           old=""
-          if gh release download dev -R "${{ github.repository }}" -p injector.exe -D ./current 2>/dev/null; then
-            old=$(sha256sum ./current/injector.exe | awk '{print $1}')
+          if gh release download dev -R "${{ github.repository }}" -p mnc.exe -D ./current 2>/dev/null; then
+            old=$(sha256sum ./current/mnc.exe | awk '{print $1}')
           fi
           {
             echo 'files<<EOF'
-            echo './rolling/ac.dll'
-            echo './rolling/ac_1.21.11.dll'
-            echo './rolling/ac_1.8.9.dll'
-            echo './rolling/ac_1.26.x+.dll'
+            echo './rolling/mnc.dll'
+            echo './rolling/mnc_1.21.11.dll'
+            echo './rolling/mnc_1.8.9.dll'
+            echo './rolling/mnc_1.26.x+.dll'
             echo './rolling/versions.txt'
-            if [ "$new" != "$old" ]; then echo './rolling/injector.exe'; fi
+            if [ "$new" != "$old" ]; then echo './rolling/mnc.exe'; fi
             echo 'EOF'
           } >> "$GITHUB_OUTPUT"
           if [ "$new" = "$old" ]; then

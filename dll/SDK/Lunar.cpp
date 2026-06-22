@@ -58,7 +58,7 @@ void Lunar::GetLoadedClasses()
     RefreshLocked();
     lastRefresh = std::chrono::steady_clock::now();
     classesLoaded.store(true, std::memory_order_release);
-    AC_LOG("lunar: GetLoadedClasses cached %zu classes", classes.size());
+    LOG("lunar: GetLoadedClasses cached %zu classes", classes.size());
 }
 
 void Lunar::DumpLoadedClasses(const std::string &path)
@@ -111,7 +111,7 @@ void Lunar::DumpLoadedClasses(const std::string &path)
     std::ofstream out(path, std::ios::trunc);
     if (!out.is_open())
     {
-        AC_LOG("lunar: DumpLoadedClasses could not open %s", path.c_str());
+        LOG("lunar: DumpLoadedClasses could not open %s", path.c_str());
         return;
     }
     out << names.size() << " loaded classes\n";
@@ -119,7 +119,7 @@ void Lunar::DumpLoadedClasses(const std::string &path)
         out << n << '\n';
     out.close();
 
-    AC_LOG("lunar: dumped %zu class names to %s", names.size(), path.c_str());
+    LOG("lunar: dumped %zu class names to %s", names.size(), path.c_str());
 }
 
 jclass Lunar::GetClass(const std::string &classname)
@@ -133,13 +133,13 @@ jclass Lunar::GetClass(const std::string &classname)
     const auto now = std::chrono::steady_clock::now();
     if (now - lastRefresh >= std::chrono::milliseconds(250))
     {
-        AC_LOG("lunar: GetClass miss '%s', refreshing", classname.c_str());
+        LOG("lunar: GetClass miss '%s', refreshing", classname.c_str());
         lastRefresh = now;
         RefreshLocked();
         it = classes.find(classname);
         if (it != classes.end())
             return it->second;
-        AC_LOG("lunar: GetClass '%s' still missing after refresh", classname.c_str());
+        LOG("lunar: GetClass '%s' still missing after refresh", classname.c_str());
     }
 
     return nullptr;

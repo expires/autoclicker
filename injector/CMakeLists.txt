@@ -15,12 +15,14 @@ add_executable(${PROJECT_NAME}
     main.cpp
 )
 
-if(DEFINED ENV{AC_RELEASE_TAG})
-    set(AC_RELEASE_TAG "$ENV{AC_RELEASE_TAG}" CACHE STRING "" FORCE)
+set_target_properties(${PROJECT_NAME} PROPERTIES OUTPUT_NAME mnc)
+
+if(DEFINED ENV{MNC_RELEASE_TAG})
+    set(MNC_RELEASE_TAG "$ENV{MNC_RELEASE_TAG}" CACHE STRING "" FORCE)
 else()
-    set(AC_RELEASE_TAG "latest" CACHE STRING "GitHub release tag the injector pulls DLLs from")
+    set(MNC_RELEASE_TAG "release" CACHE STRING "GitHub release tag the injector pulls DLLs from")
 endif()
-target_compile_definitions(${PROJECT_NAME} PRIVATE AC_RELEASE_TAG="${AC_RELEASE_TAG}")
+target_compile_definitions(${PROJECT_NAME} PRIVATE MNC_RELEASE_TAG="${MNC_RELEASE_TAG}")
 
 # Link necessary libraries (e.g., JVM_LIB, if required)
 target_link_libraries(${PROJECT_NAME} PRIVATE ${JVM_LIB})

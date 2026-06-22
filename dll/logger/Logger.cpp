@@ -1,6 +1,6 @@
 #include "Logger.h"
 
-#ifdef AC_ENABLE_LOGGING
+#ifdef MNC_ENABLE_LOGGING
 
 #include <windows.h>
 #include <shlobj.h>

@@ -10,17 +10,17 @@
 #pragma comment(lib, "advapi32.lib")
 #pragma comment(lib, "uuid.lib")
 
-#ifndef AC_RELEASE_TAG
-#define AC_RELEASE_TAG "latest"
+#ifndef MNC_RELEASE_TAG
+#define MNC_RELEASE_TAG "release"
 #endif
 
 static const char* DLL_URL_BASE =
-    "https://github.com/expires/autoclicker/releases/download/" AC_RELEASE_TAG "/";
+    "https://github.com/expires/autoclicker/releases/download/" MNC_RELEASE_TAG "/";
 
 static const char* MANIFEST   = "versions.txt";
 
 static const char* INJECTOR_RELEASE_URL =
-    "https://github.com/expires/autoclicker/releases/tag/" AC_RELEASE_TAG;
+    "https://github.com/expires/autoclicker/releases/tag/" MNC_RELEASE_TAG;
 
 #define ANSI_RESET   "\x1b[0m"
 #define ANSI_BOLD    "\x1b[1m"
@@ -284,7 +284,7 @@ void InjectDLL(DWORD pid, const char* dllPath)
 static void CleanupStaleDlls(const char* tempDir)
 {
     char pattern[MAX_PATH];
-    snprintf(pattern, sizeof(pattern), "%sac_*.dll", tempDir);
+    snprintf(pattern, sizeof(pattern), "%smnc_*.dll", tempDir);
 
     WIN32_FIND_DATAA fd;
     HANDLE h = FindFirstFileA(pattern, &fd);
@@ -318,7 +318,7 @@ static void GenerateRandomHex(char* out, size_t outSize)
 static void FriendlyVersion(const char* asset, char* out, size_t outSize)
 {
     const char* s = asset;
-    if (_strnicmp(s, "ac_", 3) == 0) s += 3;
+    if (_strnicmp(s, "mnc_", 4) == 0) s += 4;
     strncpy_s(out, outSize, s, _TRUNCATE);
     char* dot = strstr(out, ".dll");
     if (dot) *dot = 0;
@@ -328,7 +328,7 @@ static bool ResolveDll(const char* tempDir, const wchar_t* title,
                        char* outDll, size_t outSize)
 {
     char manifestPath[MAX_PATH];
-    snprintf(manifestPath, sizeof(manifestPath), "%sac_versions.txt", tempDir);
+    snprintf(manifestPath, sizeof(manifestPath), "%smnc_versions.txt", tempDir);
 
     char url[512];
     snprintf(url, sizeof(url), "%s%s", DLL_URL_BASE, MANIFEST);
@@ -439,7 +439,7 @@ int main()
     char hash[24] = {};
     GenerateRandomHex(hash, sizeof(hash));
     char dllPath[MAX_PATH];
-    snprintf(dllPath, sizeof(dllPath), "%sac_%s.dll", tempDir, hash);
+    snprintf(dllPath, sizeof(dllPath), "%smnc_%s.dll", tempDir, hash);
 
     char url[512];
     snprintf(url, sizeof(url), "%s%s", DLL_URL_BASE, asset);

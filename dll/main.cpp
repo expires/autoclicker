@@ -19,13 +19,13 @@ static HINSTANCE g_instance = nullptr;
 static DWORD WINAPI Bootstrap(LPVOID)
 {
     Logger::Init();
-    AC_LOG("bootstrap: start");
+    LOG("bootstrap: start");
 
     g_settings.Load();
-    AC_LOG("bootstrap: settings loaded");
+    LOG("bootstrap: settings loaded");
 
     Overlay::Init();
-    AC_LOG("bootstrap: overlay hooks installed");
+    LOG("bootstrap: overlay hooks installed");
 
     Teardown::RegisterWorker(CreateThread(nullptr, 0, AutoclickerModule::init, g_instance, 0, nullptr));
     Teardown::RegisterWorker(CreateThread(nullptr, 0, EspModule::init,         g_instance, 0, nullptr));
@@ -34,7 +34,7 @@ static DWORD WINAPI Bootstrap(LPVOID)
     Teardown::RegisterWorker(CreateThread(nullptr, 0, AutoblockModule::init,   g_instance, 0, nullptr));
     Teardown::RegisterWorker(CreateThread(nullptr, 0, FriendsModule::init,     g_instance, 0, nullptr));
 
-    AC_LOG("bootstrap: all worker threads spawned");
+    LOG("bootstrap: all worker threads spawned");
     return 0;
 }
 
@@ -48,7 +48,7 @@ BOOL APIENTRY DllMain(const HINSTANCE instance, const DWORD reason, LPVOID reser
     }
     else if (reason == DLL_PROCESS_DETACH)
     {
-        AC_LOG("dllmain: process detach");
+        LOG("dllmain: process detach");
         g_settings.Save();
         Overlay::Shutdown();
         Logger::Shutdown();

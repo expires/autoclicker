@@ -12,7 +12,7 @@ Two binaries: an injector and the payload DLL. The injector finds the game windo
 
 ```mermaid
 flowchart LR
-    INJ["INJECTOR.exe"] -->|"CreateRemoteThread → LoadLibraryA"| JVM
+    INJ["mnc.exe"] -->|"CreateRemoteThread → LoadLibraryA"| JVM
 
     subgraph JVM["javaw.exe · Lunar Client"]
         subgraph DLL["DLL.dll"]
@@ -100,7 +100,7 @@ The shared `SDK/*.cpp` hold the boilerplate and version-agnostic methods; only t
 
 Each game version has a JSON name map (Fabric intermediary names for 1.21.11, MCP names for the MCP-deobfuscated 1.8.9 jar Lunar ships). CMake reads the chosen map at configure time and configures `Mappings.h` from a template. Two extra JSON fields drive the build:
 
-- `"generation"` (`modern`/`legacy`) → compile def `AC_LEGACY=0/1`.
+- `"generation"` (`modern`/`legacy`) → compile def `MNC_LEGACY=0/1`.
 - `"sdk"` (e.g. `1.21.11`/`1.8.9`) → which `SDK/<sdk>/` subfolder is compiled.
 
 ```mermaid
@@ -120,9 +120,10 @@ To add a new MC version: copy a mapping JSON, fill in the names, set `"generatio
 The injector is **version-agnostic** — it doesn't hardcode DLL names. At runtime it downloads `versions.txt` from the release and matches the game's window title against it:
 
 ```
-1.8=ac_1.8.9.dll
-1.21=ac_1.21.11.dll
-*=ac_1.21.11.dll
+1.8=mnc_1.8.9.dll
+1.21=mnc_1.21.11.dll
+1.26=mnc_1.26.x+.dll
+*=mnc_1.26.x+.dll
 ```
 
 First matching prefix wins; `*` is the fallback. Adding a new version therefore needs **no injector rebuild** — just publish the new DLL and add a line to `versions.txt`. If the manifest can't be resolved, the injector tells the user to update rather than guessing.
@@ -153,21 +154,21 @@ cmake -S . -B build -DMAPPING_VERSION=fabric_1.21.11
 cmake --build build --config Release
 ```
 
-Pick the target version with `-DMAPPING_VERSION` (`fabric_1.21.11` or `lunar_1.8.9`); each produces a DLL for that version. Optionally set `AC_WEBHOOK_PATH` and `AC_BANNED_PATH` before configuring to bake in the report webhook and banned-list endpoints; both default to empty (the safety gate is then a no-op).
+Pick the target version with `-DMAPPING_VERSION` (`fabric_1.21.11` or `lunar_1.8.9`); each produces a DLL for that version. Optionally set `MNC_WEBHOOK_PATH` and `MNC_BANNED_PATH` before configuring to bake in the report webhook and banned-list endpoints; both default to empty (the safety gate is then a no-op).
 
 Outputs:
 - `build/dll/Release/DLL.dll`
-- `build/injector/Release/INJECTOR.exe`
+- `build/INJECTOR/Release/mnc.exe`
 
-CI builds both versions on every push and publishes rolling prereleases — `latest` from `main`, `dev` from `development` — each containing both DLLs, the injector, and `versions.txt`. Tag `v*` to cut a versioned release.
+CI builds every version on each push and publishes rolling prereleases — `release` from `main`, `dev` from `development` — each containing the DLLs, `mnc.exe`, and `versions.txt`. The `latest` tag is frozen with the legacy `ac_*`/`injector.exe` artifacts so older injectors keep working. Tag `v*` to cut a versioned release.
 
 ---
 
 ## Usage
 
-1. Download `INJECTOR.exe` from the [latest release](https://github.com/expires/autoclicker/releases/tag/latest). You don't need the DLL — the injector fetches the right one for your version.
+1. Download `mnc.exe` from the [latest release](https://github.com/expires/autoclicker/releases/tag/release). You don't need the DLL — the injector fetches the right one for your version.
 2. Launch Lunar Client (1.21.11 or 1.8.9), join a world or server.
-3. Run `INJECTOR.exe`. It detects the version, downloads the matching DLL, and injects.
+3. Run `mnc.exe`. It detects the version, downloads the matching DLL, and injects.
 4. **Right Shift** opens the overlay (rebindable in Settings); the self-destruct key (default **END**) unloads.
 
 ---

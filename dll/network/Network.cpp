@@ -7,8 +7,8 @@
 #include <cstdio>
 #include <winhttp.h>
 
-#ifndef AC_GAME_VERSION
-#define AC_GAME_VERSION "unknown"
+#ifndef MNC_GAME_VERSION
+#define MNC_GAME_VERSION "unknown"
 #endif
 
 static std::string GameWindowTitle()
@@ -169,7 +169,7 @@ namespace Network {
 
         const std::string title   = GameWindowTitle();
         std::string        version = ParseVersion(title);
-        if (version.empty()) version = title.empty() ? std::string(AC_GAME_VERSION) : title;
+        if (version.empty()) version = title.empty() ? std::string(MNC_GAME_VERSION) : title;
         const std::string safeVersion = jsonEscape(discordEscape(version));
 
         std::string body =

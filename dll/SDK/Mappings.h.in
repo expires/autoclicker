@@ -1,7 +1,7 @@
 
 #pragma once
 
-#define AC_GENERATION           "@AC_GENERATION@"
+#define MNC_GENERATION           "@MNC_GENERATION@"
 
 #define MC_Minecraft            "@class_Minecraft@"
 #define MC_LocalPlayer          "@class_LocalPlayer@"

@@ -133,7 +133,7 @@ namespace AutoblockModule
 
     DWORD WINAPI init(LPVOID )
     {
-        AC_LOG("autoblock: thread start");
+        LOG("autoblock: thread start");
         while (!AutoclickerModule::destruct && !jvmReady())
             std::this_thread::sleep_for(std::chrono::milliseconds(100));
         if (AutoclickerModule::destruct) return 0;
@@ -141,7 +141,7 @@ namespace AutoblockModule
         if (lc->vm->AttachCurrentThread(reinterpret_cast<void**>(&lc->env), nullptr) != JNI_OK)
             return 0;
         if (lc->env == nullptr) return 0;
-        AC_LOG("autoblock: attached; entering loop");
+        LOG("autoblock: attached; entering loop");
 
         Minecraft  mc;
         const HWND mcWindow = FindGameWindow();
@@ -180,7 +180,7 @@ namespace AutoblockModule
             lastFire = std::chrono::steady_clock::now();
         }
 
-        AC_LOG("autoblock: loop exit; detaching");
+        LOG("autoblock: loop exit; detaching");
         lc->vm->DetachCurrentThread();
         return 0;
     }

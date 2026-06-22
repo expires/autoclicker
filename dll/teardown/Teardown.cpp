@@ -25,7 +25,7 @@ namespace Teardown
 
     [[noreturn]] void FinalizeAndUnload(HMODULE instance)
     {
-        AC_LOG("teardown: FinalizeAndUnload begin");
+        LOG("teardown: FinalizeAndUnload begin");
         Overlay::BeginTeardown();
 
         HANDLE toWait[kMaxWorkers];
@@ -51,9 +51,9 @@ namespace Teardown
         if (selfReal) CloseHandle(selfReal);
 
         if (waitCount > 0) {
-            AC_LOG("teardown: waiting for %d worker(s)", waitCount);
+            LOG("teardown: waiting for %d worker(s)", waitCount);
             const DWORD r = WaitForMultipleObjects((DWORD)waitCount, toWait, TRUE, 2000);
-            AC_LOG("teardown: workers joined (wait result=0x%08lX)", r);
+            LOG("teardown: workers joined (wait result=0x%08lX)", r);
         }
 
         {
@@ -65,13 +65,13 @@ namespace Teardown
             g_workerCount = 0;
         }
 
-        AC_LOG("teardown: overlay shutdown");
+        LOG("teardown: overlay shutdown");
         Overlay::Shutdown();
-        AC_LOG("teardown: overlay shutdown complete");
+        LOG("teardown: overlay shutdown complete");
 
         Sleep(150);
 
-        AC_LOG("teardown: FreeLibraryAndExitThread");
+        LOG("teardown: FreeLibraryAndExitThread");
         FreeLibraryAndExitThread(instance, 0);
     }
 }
