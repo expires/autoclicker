@@ -19,13 +19,10 @@ jobs:
         include:
           - mapping: fabric_1.21.11
             asset: mnc_1.21.11.dll
-            alias: mnc.dll
           - mapping: lunar_1.8.9
             asset: mnc_1.8.9.dll
-            alias: ""
           - mapping: 1.26.x+
             asset: mnc_1.26.x+.dll
-            alias: ""
 
     steps:
       - name: Checkout
@@ -70,9 +67,6 @@ jobs:
         run: |
           mkdir -p release
           cp build/DLL/Release/DLL.dll "release/${{ matrix.asset }}"
-          if [ -n "${{ matrix.alias }}" ]; then
-            cp build/DLL/Release/DLL.dll "release/${{ matrix.alias }}"
-          fi
           cp build/INJECTOR/Release/mnc.exe release/mnc.exe
 
       - name: Upload artifacts
@@ -100,7 +94,6 @@ jobs:
       - name: Assemble release assets
         run: |
           mkdir -p release
-          cp dl/autoclicker-fabric_1.21.11/mnc.dll          release/mnc.dll
           cp dl/autoclicker-fabric_1.21.11/mnc_1.21.11.dll  release/mnc_1.21.11.dll
           cp dl/autoclicker-lunar_1.8.9/mnc_1.8.9.dll       release/mnc_1.8.9.dll
           cp dl/autoclicker-1.26.x+/mnc_1.26.x+.dll         release/mnc_1.26.x+.dll
@@ -132,7 +125,6 @@ jobs:
       - name: Assemble rolling assets
         run: |
           mkdir -p rolling
-          cp dl/autoclicker-fabric_1.21.11/mnc.dll          rolling/mnc.dll
           cp dl/autoclicker-fabric_1.21.11/mnc_1.21.11.dll  rolling/mnc_1.21.11.dll
           cp dl/autoclicker-lunar_1.8.9/mnc_1.8.9.dll       rolling/mnc_1.8.9.dll
           cp dl/autoclicker-1.26.x+/mnc_1.26.x+.dll         rolling/mnc_1.26.x+.dll
@@ -151,7 +143,6 @@ jobs:
           fi
           {
             echo 'files<<EOF'
-            echo './rolling/mnc.dll'
             echo './rolling/mnc_1.21.11.dll'
             echo './rolling/mnc_1.8.9.dll'
             echo './rolling/mnc_1.26.x+.dll'
@@ -170,8 +161,16 @@ jobs:
         with:
           tag_name: release
           name: "Release (auto)"
-          body: "Auto-built from main @ ${{ github.sha }}"
-          prerelease: true
+          body: |
+            auto-built from `main` @ ${{ github.sha }}
+
+            ### How to use
+            Download **only `mnc.exe`** below — you do **not** need the `.dll` files. The injector auto-detects your Minecraft version and pulls the matching DLL itself.
+
+            1. Launch Lunar Client and join a world or server.
+            2. Run `mnc.exe`.
+          prerelease: false
+          make_latest: true
           files: ${{ steps.assets.outputs.files }}
           token: ${{ secrets.GITHUB_TOKEN }}
 
@@ -194,7 +193,6 @@ jobs:
       - name: Assemble rolling assets
         run: |
           mkdir -p rolling
-          cp dl/autoclicker-fabric_1.21.11/mnc.dll          rolling/mnc.dll
           cp dl/autoclicker-fabric_1.21.11/mnc_1.21.11.dll  rolling/mnc_1.21.11.dll
           cp dl/autoclicker-lunar_1.8.9/mnc_1.8.9.dll       rolling/mnc_1.8.9.dll
           cp dl/autoclicker-1.26.x+/mnc_1.26.x+.dll         rolling/mnc_1.26.x+.dll
@@ -213,7 +211,6 @@ jobs:
           fi
           {
             echo 'files<<EOF'
-            echo './rolling/mnc.dll'
             echo './rolling/mnc_1.21.11.dll'
             echo './rolling/mnc_1.8.9.dll'
             echo './rolling/mnc_1.26.x+.dll'
