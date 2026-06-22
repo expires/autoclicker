@@ -968,7 +968,6 @@ static BOOL WINAPI hk_wglSwapBuffers(HDC hdc)
 
             ImGui::SameLine(0, 0);
 
-            // ── Content Area ────────────────────────────────────────────────
             ImGui::SetCursorPos(ImVec2(SIDEBAR_W, BODY_Y));
             ImGui::BeginChild("##content", ImVec2(winSize.x - SIDEBAR_W, winSize.y - BODY_Y),
                 false, ImGuiWindowFlags_NoBackground);

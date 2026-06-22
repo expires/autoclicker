@@ -202,7 +202,6 @@ namespace OverlayWidgets
 
         ImDrawList* dl = window->DrawList;
 
-        // Render Toggle
         float anim = window->StateStorage.GetFloat(id, *v ? 1.0f : 0.0f);
         anim = ImLerp(anim, *v ? 1.0f : 0.0f, 0.20f);
         window->StateStorage.SetFloat(id, anim);
@@ -218,7 +217,6 @@ namespace OverlayWidgets
         const float knobR = rad - Theme::M::KnobInset;
         dl->AddCircleFilled(ImVec2(knobX, knobY), knobR, IM_COL32(255, 255, 255, 236));
 
-        // Render Keybind
         const ImU32 bindBg = listening ? ColorConvertFloat4ToU32(FromHex(Theme::KeybindListening)) : (bindHovered ? GetColorU32(ImGuiCol_FrameBgHovered) : GetColorU32(ImGuiCol_FrameBg));
         const float bindR  = Theme::px(4.0f);
         dl->AddRectFilled(bindBB.Min, bindBB.Max, bindBg, bindR);
@@ -228,7 +226,6 @@ namespace OverlayWidgets
         ImVec2 txtSz = CalcTextSize(keyName);
         RenderText(bindBB.GetCenter() - txtSz * 0.5f, keyName);
 
-        // Render Label
         ImVec2 labelSz = CalcTextSize(label, nullptr, true);
         RenderText(ImVec2(bb.Min.x, bb.GetCenter().y - labelSz.y * 0.5f), label);
 

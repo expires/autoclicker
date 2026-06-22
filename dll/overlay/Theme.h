@@ -11,15 +11,12 @@ namespace Theme
 
     namespace M
     {
-        // Window
         inline constexpr float WindowW       = px(638.0f);
-        inline constexpr float WindowH       = px(420.0f * 0.90f);   // 10% shorter
+        inline constexpr float WindowH       = px(420.0f * 0.90f);
 
-        // Fonts
         inline constexpr float FontBody      = px(16.0f);
         inline constexpr float FontTitle     = px(19.0f);
 
-        // Chrome / layout
         inline constexpr float Margin        = px(10.0f);
         inline constexpr float TopbarH       = px(52.0f);
         inline constexpr float SidebarW      = px(150.0f);
@@ -29,20 +26,17 @@ namespace Theme
         inline constexpr float SidebarTopPad = px(20.0f);
         inline constexpr float BodyPad       = px(22.0f);
 
-        // Sidebar tab
         inline constexpr float TabH          = px(32.0f);
         inline constexpr float TabMarginX    = px(10.0f);
         inline constexpr float TabMarginY    = px(1.0f);
         inline constexpr float TabRound      = px(7.0f);
         inline constexpr float TabTextPadX   = px(20.0f);
 
-        // Checkbox row (toggle pill)
         inline constexpr float CheckRowH     = px(30.0f);
         inline constexpr float PillW         = px(42.0f);
         inline constexpr float PillH         = px(22.0f);
         inline constexpr float KnobInset     = px(3.0f);
 
-        // Keybind row
         inline constexpr float KeybindH      = px(24.0f);
         inline constexpr float KeybindInlineW= px(80.0f);
         inline constexpr float KeybindPillW  = px(80.0f);
@@ -50,7 +44,6 @@ namespace Theme
         inline constexpr float KeybindRound  = px(6.0f);
         inline constexpr float KeybindGap    = px(8.0f);
 
-        // Slider row
         inline constexpr float SliderH       = px(24.0f);
         inline constexpr float SliderLabelGap= px(4.0f);
         inline constexpr float SliderTrackTop= px(6.0f);
@@ -59,13 +52,11 @@ namespace Theme
         inline constexpr float SliderKnobGlow= px(9.5f);
         inline constexpr float SliderKnob    = px(6.5f);
 
-        // Numeric input rows
         inline constexpr float InputRowH     = px(36.0f);
         inline constexpr float InputW        = px(160.0f);
         inline constexpr float InputPairW    = px(110.0f);
         inline constexpr float InputPairGap  = px(6.0f);
 
-        // List rows (friends / macros)
         inline constexpr float ListBtnW      = px(24.0f);
         inline constexpr float ListGap       = px(6.0f);
         inline constexpr float ListBindW     = px(80.0f);

@@ -114,7 +114,6 @@ namespace Notifications
             const float boxW = textSize.x + PAD_X * 2.0f;
             const float boxH = textSize.y + PAD_Y * 2.0f;
 
-            // Slide down from above
             const float slide =
                 (elapsed < FADE_IN)
                 ? (1.0f - alpha) * 40.0f

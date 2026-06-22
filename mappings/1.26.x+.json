@@ -130,8 +130,8 @@
 
   "fld_GameRenderer_mainCamera":   "mainCamera",
   "desc_GameRenderer_mainCamera":  "Lnet/minecraft/client/Camera;",
-  "mtd_GameRenderer_getFov":       "getFov",
-  "desc_GameRenderer_getFov":      "(Lnet/minecraft/client/Camera;FZ)F",
+  "mtd_GameRenderer_getFov":       "",
+  "desc_GameRenderer_getFov":      "",
 
   "mtd_ClientLevel_players":       "players",
   "desc_ClientLevel_players":      "()Ljava/util/List;",
