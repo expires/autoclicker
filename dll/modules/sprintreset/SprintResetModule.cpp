@@ -1,11 +1,14 @@
 #include "SprintResetModule.h"
 #include <Windows.h>
-#include <thread>
+#include <atomic>
 #include <chrono>
+#include <thread>
 #include "../../config/Settings.h"
 
 namespace SprintResetModule {
-    static bool s_wWasHeld = false;
+    static std::atomic<bool> s_inProgress{false};
+    static bool              s_wWasHeld   = false;
+    static bool              s_pending    = false;
 
     static void sendKey(DWORD vk, bool down) {
         INPUT in      = {};
@@ -16,30 +19,39 @@ namespace SprintResetModule {
     }
 
     void PreClick(bool entityHit) {
-        if (!g_settings.sprintResetEnabled || !entityHit) return;
-
-        if (g_settings.sprintResetDelay > 0)
-            std::this_thread::sleep_for(std::chrono::milliseconds(g_settings.sprintResetDelay));
-
-        if (GetAsyncKeyState(0x57) & 0x8000) {
-            sendKey(0x57, false);
-            s_wWasHeld = true;
+        if (!g_settings.sprintResetEnabled || !entityHit) {
+            s_pending = false;
+            return;
         }
-        if (g_settings.sprintResetMode == 1)
-            sendKey(0x53, true);
+        s_wWasHeld = (GetAsyncKeyState(0x57) & 0x8000) != 0;
+        s_pending  = true;
     }
 
     void PostClick() {
-        if (!g_settings.sprintResetEnabled) return;
+        if (!s_pending) return;
+        s_pending = false;
 
-        if (g_settings.sprintResetDuration > 0)
-            std::this_thread::sleep_for(std::chrono::milliseconds(g_settings.sprintResetDuration));
+        if (s_inProgress.exchange(true)) return;
 
-        if (g_settings.sprintResetMode == 1)
-            sendKey(0x53, false);
-        if (s_wWasHeld) {
-            s_wWasHeld = false;
-            sendKey(0x57, true);
-        }
+        const int  delay    = g_settings.sprintResetDelay;
+        const int  duration = g_settings.sprintResetDuration;
+        const int  mode     = g_settings.sprintResetMode;
+        const bool wHeld    = s_wWasHeld;
+
+        std::thread([delay, duration, mode, wHeld]() {
+            if (delay > 0)
+                std::this_thread::sleep_for(std::chrono::milliseconds(delay));
+
+            if (wHeld)     sendKey(0x57, false);
+            if (mode == 1) sendKey(0x53, true);
+
+            if (duration > 0)
+                std::this_thread::sleep_for(std::chrono::milliseconds(duration));
+
+            if (mode == 1) sendKey(0x53, false);
+            if (wHeld)     sendKey(0x57, true);
+
+            s_inProgress = false;
+        }).detach();
     }
 }
