@@ -1,5 +1,7 @@
 #include "SprintResetModule.h"
 #include <Windows.h>
+#include <thread>
+#include <chrono>
 #include "../../config/Settings.h"
 
 namespace SprintResetModule {
@@ -16,23 +18,26 @@ namespace SprintResetModule {
     void PreClick(bool entityHit) {
         if (!g_settings.sprintResetEnabled || !entityHit) return;
 
-        if (g_settings.sprintResetMode == 1) {
-            sendKey(0x53, true);
-        } else {
-            if (GetAsyncKeyState(0x57) & 0x8000) {
-                sendKey(0x57, false);
-                s_wWasHeld = true;
-            }
+        if (g_settings.sprintResetDelay > 0)
+            std::this_thread::sleep_for(std::chrono::milliseconds(g_settings.sprintResetDelay));
+
+        if (GetAsyncKeyState(0x57) & 0x8000) {
+            sendKey(0x57, false);
+            s_wWasHeld = true;
         }
+        if (g_settings.sprintResetMode == 1)
+            sendKey(0x53, true);
     }
 
     void PostClick() {
         if (!g_settings.sprintResetEnabled) return;
 
-        if (g_settings.sprintResetMode == 1) {
+        if (g_settings.sprintResetDuration > 0)
+            std::this_thread::sleep_for(std::chrono::milliseconds(g_settings.sprintResetDuration));
+
+        if (g_settings.sprintResetMode == 1)
             sendKey(0x53, false);
-        } else {
-            if (!s_wWasHeld) return;
+        if (s_wWasHeld) {
             s_wWasHeld = false;
             sendKey(0x57, true);
         }

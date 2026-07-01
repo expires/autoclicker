@@ -69,9 +69,11 @@ void Settings::Save()
     fprintf(f, "scaffoldEnabled=%d\n", scaffoldEnabled ? 1 : 0);
     fprintf(f, "scaffoldKey=%d\n",     scaffoldKey);
 
-    fprintf(f, "sprintResetEnabled=%d\n", sprintResetEnabled ? 1 : 0);
-    fprintf(f, "sprintResetKey=%d\n",     sprintResetKey);
-    fprintf(f, "sprintResetMode=%d\n",    sprintResetMode);
+    fprintf(f, "sprintResetEnabled=%d\n",  sprintResetEnabled ? 1 : 0);
+    fprintf(f, "sprintResetKey=%d\n",      sprintResetKey);
+    fprintf(f, "sprintResetMode=%d\n",     sprintResetMode);
+    fprintf(f, "sprintResetDelay=%d\n",    sprintResetDelay);
+    fprintf(f, "sprintResetDuration=%d\n", sprintResetDuration);
 
     fprintf(f, "notificationsEnabled=%d\n", notificationsEnabled ? 1 : 0);
 
@@ -147,6 +149,8 @@ void Settings::Load()
         else if (k == "sprintResetEnabled")    sprintResetEnabled    = (val != 0);
         else if (k == "sprintResetKey")        sprintResetKey        = val;
         else if (k == "sprintResetMode")       sprintResetMode       = val;
+        else if (k == "sprintResetDelay")      sprintResetDelay      = val;
+        else if (k == "sprintResetDuration")   sprintResetDuration   = val;
         else if (k == "notificationsEnabled")  notificationsEnabled  = (val != 0);
         else if (k == "friendKey")               friendKey               = val;
         else if (k == "friendCount") {
@@ -222,6 +226,10 @@ void Settings::Load()
     autoblockKey     = clampVK(autoblockKey);
     scaffoldKey      = clampVK(scaffoldKey);
     sprintResetKey   = clampVK(sprintResetKey);
+    if (sprintResetDelay    < 0)   sprintResetDelay    = 0;
+    if (sprintResetDelay    > 200) sprintResetDelay    = 200;
+    if (sprintResetDuration < 0)   sprintResetDuration = 0;
+    if (sprintResetDuration > 200) sprintResetDuration = 200;
 
     friendKey = clampVK(friendKey);
 

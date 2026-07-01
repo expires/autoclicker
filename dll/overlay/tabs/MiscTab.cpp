@@ -39,6 +39,8 @@ namespace OverlayTabs
                 g_settings.sprintResetMode = mode;
                 dirty = true;
             }
+            dirty |= RowSlider("Delay (ms)",    &g_settings.sprintResetDelay,    0, 200);
+            dirty |= RowSlider("Duration (ms)", &g_settings.sprintResetDuration, 0, 200);
         }
         ImGui::PopID();
 
