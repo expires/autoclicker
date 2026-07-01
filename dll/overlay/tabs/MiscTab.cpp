@@ -22,6 +22,7 @@ namespace OverlayTabs
                     g_settings.autoblockCooldown = cooldownSec * 1000;
                     dirty = true;
                 }
+                ImGui::Dummy(ImVec2(0, Theme::M::BodyPad));
             }
         }
         
@@ -39,8 +40,7 @@ namespace OverlayTabs
                 g_settings.sprintResetMode = mode;
                 dirty = true;
             }
-            dirty |= RowSlider("Delay (ms)",    &g_settings.sprintResetDelay,    0, 200);
-            dirty |= RowSlider("Duration (ms)", &g_settings.sprintResetDuration, 0, 200);
+            ImGui::Dummy(ImVec2(0, Theme::M::BodyPad));
         }
         ImGui::PopID();
 
