@@ -27,13 +27,9 @@ namespace OverlayTabs
         
         ImGui::PopID();
 
-        ImGui::Dummy(ImVec2(0, Theme::M::BodyPad));
-
         ImGui::PushID("scaffold");
         dirty |= ModuleHeader("Legit Scaffold", &g_settings.scaffoldEnabled, &g_settings.scaffoldKey);
         ImGui::PopID();
-
-        ImGui::Dummy(ImVec2(0, Theme::M::BodyPad));
 
         ImGui::PushID("sprintreset");
         dirty |= ModuleHeader("Sprint Reset", &g_settings.sprintResetEnabled, &g_settings.sprintResetKey);
