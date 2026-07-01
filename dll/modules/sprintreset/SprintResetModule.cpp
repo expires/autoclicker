@@ -2,6 +2,7 @@
 #include <Windows.h>
 #include <atomic>
 #include <chrono>
+#include <random>
 #include <thread>
 #include "../../config/Settings.h"
 
@@ -45,8 +46,12 @@ namespace SprintResetModule {
             if (wHeld)     sendKey(0x57, false);
             if (mode == 1) sendKey(0x53, true);
 
-            if (duration > 0)
-                std::this_thread::sleep_for(std::chrono::milliseconds(duration));
+            if (duration > 0) {
+                static thread_local std::mt19937 rng(std::random_device{}());
+                std::uniform_int_distribution<int> jitter(
+                    (int)(duration * 0.9f), (int)(duration * 1.1f));
+                std::this_thread::sleep_for(std::chrono::milliseconds(jitter(rng)));
+            }
 
             if (mode == 1) sendKey(0x53, false);
             if (wHeld)     sendKey(0x57, true);
