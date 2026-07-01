@@ -60,6 +60,10 @@ struct Settings
     bool scaffoldEnabled = false;
     int  scaffoldKey     = 0;
 
+    bool sprintResetEnabled = false;
+    int  sprintResetKey     = 0;
+    int  sprintResetMode    = 0;
+
     bool notificationsEnabled = true;
 
     mutable std::mutex       friendsMutex;

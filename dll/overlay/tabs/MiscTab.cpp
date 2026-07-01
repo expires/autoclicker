@@ -33,6 +33,19 @@ namespace OverlayTabs
         dirty |= ModuleHeader("Legit Scaffold", &g_settings.scaffoldEnabled, &g_settings.scaffoldKey);
         ImGui::PopID();
 
+        ImGui::Dummy(ImVec2(0, Theme::M::BodyPad));
+
+        ImGui::PushID("sprintreset");
+        dirty |= ModuleHeader("Sprint Reset", &g_settings.sprintResetEnabled, &g_settings.sprintResetKey);
+        if (g_settings.sprintResetEnabled) {
+            int mode = g_settings.sprintResetMode;
+            if (RowRadio("Mode", &mode, "W-Tap\0S-Tap\0")) {
+                g_settings.sprintResetMode = mode;
+                dirty = true;
+            }
+        }
+        ImGui::PopID();
+
         return dirty;
     }
 }

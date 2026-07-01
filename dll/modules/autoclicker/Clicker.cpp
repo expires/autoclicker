@@ -1,4 +1,5 @@
 #include "Clicker.h"
+#include "../sprintreset/SprintResetModule.h"
 
 int Clicker::randomDelay(double fraction)
 {
@@ -45,9 +46,11 @@ void Clicker::lclick(HWND hwnd, int jitterStrength)
 
     POINT pt;
     GetCursorPos(&pt);
+    SprintResetModule::PreClick();
     SendMessage(hwnd, WM_LBUTTONDOWN, MK_LBUTTON, MAKELPARAM(pt.x, pt.y));
     jitterFor(randomDelay(downFrac), jitterStrength);
     SendMessage(hwnd, WM_LBUTTONUP, MK_LBUTTON, MAKELPARAM(pt.x, pt.y));
+    SprintResetModule::PostClick();
 
     int gap = randomDelay(1.0 - downFrac);
 

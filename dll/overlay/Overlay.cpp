@@ -820,6 +820,7 @@ static BOOL WINAPI hk_wglSwapBuffers(HDC hdc)
         static bool s_acKeyHeldPrev       = false;
         static bool s_aimKeyHeldPrev      = false;
         static bool s_scaffoldKeyHeldPrev = false;
+        static bool s_sprintResetKeyHeldPrev = false;
         static bool s_destructKeyHeldPrev = false;
 
         const bool espHeld =
@@ -834,6 +835,9 @@ static BOOL WINAPI hk_wglSwapBuffers(HDC hdc)
         const bool scaffoldHeld =
             (g_settings.scaffoldKey > 0 && g_settings.scaffoldKey <= 0xFE) &&
             (GetAsyncKeyState(g_settings.scaffoldKey) & 0x8000);
+        const bool sprintResetHeld =
+            (g_settings.sprintResetKey > 0 && g_settings.sprintResetKey <= 0xFE) &&
+            (GetAsyncKeyState(g_settings.sprintResetKey) & 0x8000);
         const bool destructHeld =
             (g_settings.selfDestructKey > 0 && g_settings.selfDestructKey <= 0xFE) &&
             (GetAsyncKeyState(g_settings.selfDestructKey) & 0x8000);
@@ -848,12 +852,14 @@ static BOOL WINAPI hk_wglSwapBuffers(HDC hdc)
             if (acHeld       && !s_acKeyHeldPrev)       { g_settings.acEnabled       = !g_settings.acEnabled;       notifyToggle("Autoclicker", g_settings.acEnabled); }
             if (aimHeld      && !s_aimKeyHeldPrev)      { g_settings.aimEnabled      = !g_settings.aimEnabled;      notifyToggle("Aim assist", g_settings.aimEnabled); }
             if (scaffoldHeld && !s_scaffoldKeyHeldPrev) { g_settings.scaffoldEnabled = !g_settings.scaffoldEnabled; notifyToggle("Scaffold", g_settings.scaffoldEnabled); }
+            if (sprintResetHeld && !s_sprintResetKeyHeldPrev) { g_settings.sprintResetEnabled = !g_settings.sprintResetEnabled; notifyToggle("Sprint Reset", g_settings.sprintResetEnabled); }
             if (destructHeld && !s_destructKeyHeldPrev) { g_settings.selfDestruct = true; Notifications::Push("Unloading...", Notifications::Kind::Alert); }
         }
         s_espKeyHeldPrev      = espHeld;
         s_acKeyHeldPrev       = acHeld;
         s_aimKeyHeldPrev      = aimHeld;
         s_scaffoldKeyHeldPrev = scaffoldHeld;
+        s_sprintResetKeyHeldPrev = sprintResetHeld;
         s_destructKeyHeldPrev = destructHeld;
     }
 

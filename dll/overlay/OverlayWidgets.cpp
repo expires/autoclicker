@@ -491,6 +491,64 @@ namespace OverlayWidgets
         return changedA || changedB;
     }
 
+    bool RowRadio(const char* label, int* v, const char* items)
+    {
+        using namespace ImGui;
+        ImGuiWindow* window = GetCurrentWindow();
+        if (window->SkipItems) return false;
+
+        int itemCount = 0;
+        for (const char* p = items; *p; p += strlen(p) + 1) ++itemCount;
+        if (itemCount < 2) return false;
+
+        const float w    = GetContentRegionAvail().x;
+        const float rowH = Theme::M::CheckRowH;
+        const ImVec2 pos = window->DC.CursorPos;
+        ItemSize(ImRect(pos, ImVec2(pos.x + w, pos.y + rowH)));
+
+        const float btnH = Theme::M::PillH;
+        const float btnW = Theme::px(60.0f);
+        const float gap  = Theme::px(3.0f);
+        const float rad  = Theme::px(6.0f);
+        const float totalBtnW = itemCount * btnW + (itemCount - 1) * gap;
+        const float btnAreaX  = pos.x + w - totalBtnW;
+        const float btnY      = pos.y + (rowH - btnH) * 0.5f;
+
+        ImDrawList* dl  = window->DrawList;
+        const ImU32 border = GetColorU32(ImGuiCol_Border);
+        const ImU32 bgOff  = GetColorU32(ImGuiCol_FrameBg);
+        const ImU32 bgOn   = ColorConvertFloat4ToU32(FromHex(Theme::AccentTrack));
+        const ImU32 bgHov  = GetColorU32(ImGuiCol_FrameBgHovered);
+
+        bool changed = false;
+        const char* p = items;
+        for (int i = 0; i < itemCount; ++i, p += strlen(p) + 1) {
+            const float x0 = btnAreaX + i * (btnW + gap);
+            const ImRect bb(ImVec2(x0, btnY), ImVec2(x0 + btnW, btnY + btnH));
+
+            ImGuiID id = window->GetID(p);
+            if (!ItemAdd(bb, id)) continue;
+
+            bool hov, held;
+            bool pressed = ButtonBehavior(bb, id, &hov, &held);
+            if (hov) SetMouseCursor(ImGuiMouseCursor_Hand);
+            if (pressed && *v != i) { *v = i; changed = true; MarkItemEdited(id); }
+
+            const ImU32 bg = (*v == i) ? bgOn : (hov ? bgHov : bgOff);
+            dl->AddRectFilled(bb.Min, bb.Max, bg, rad);
+            dl->AddRect(bb.Min, bb.Max, border, rad, 0, 1.0f);
+
+            const ImVec2 textSz = CalcTextSize(p);
+            RenderText(ImVec2(bb.GetCenter().x - textSz.x * 0.5f,
+                              bb.GetCenter().y - textSz.y * 0.5f), p);
+        }
+
+        ImVec2 labelSz = CalcTextSize(label, nullptr, true);
+        RenderText(ImVec2(pos.x, pos.y + (rowH - labelSz.y) * 0.5f), label);
+
+        return changed;
+    }
+
     bool SidebarTab(const char* label, bool selected)
     {
         using namespace ImGui;
