@@ -1,6 +1,6 @@
 #pragma once
 
 namespace SprintResetModule {
-    void PreClick();
+    void PreClick(bool entityHit);
     void PostClick();
 }

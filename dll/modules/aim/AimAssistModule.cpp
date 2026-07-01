@@ -140,6 +140,17 @@ namespace AimAssistModule
             Level level = mc.GetLevel();
             if (level.GetInstance() == nullptr) { lc->env->PopLocalFrame(nullptr); continue; }
 
+            {
+                MultiPlayerGameMode gm = mc.GetMultiPlayerGameMode();
+                if (lc->env->ExceptionCheck()) lc->env->ExceptionClear();
+                if (gm.GetInstance() != nullptr && gm.isDestroying()) {
+                    if (lc->env->ExceptionCheck()) lc->env->ExceptionClear();
+                    lc->env->PopLocalFrame(nullptr);
+                    continue;
+                }
+                if (lc->env->ExceptionCheck()) lc->env->ExceptionClear();
+            }
+
             Vec3 lpos = local.getPosition();
             if (lpos.GetInstance() == nullptr) { lc->env->PopLocalFrame(nullptr); continue; }
 

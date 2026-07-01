@@ -33,7 +33,7 @@ void Clicker::updatePace()
     }
 }
 
-void Clicker::lclick(HWND hwnd, int jitterStrength)
+void Clicker::lclick(HWND hwnd, int jitterStrength, int hitType)
 {
     if (getClicksPerSecond() == 0)
         DELAY(100);
@@ -46,7 +46,7 @@ void Clicker::lclick(HWND hwnd, int jitterStrength)
 
     POINT pt;
     GetCursorPos(&pt);
-    SprintResetModule::PreClick();
+    SprintResetModule::PreClick(hitType == 2);
     SendMessage(hwnd, WM_LBUTTONDOWN, MK_LBUTTON, MAKELPARAM(pt.x, pt.y));
     jitterFor(randomDelay(downFrac), jitterStrength);
     SendMessage(hwnd, WM_LBUTTONUP, MK_LBUTTON, MAKELPARAM(pt.x, pt.y));

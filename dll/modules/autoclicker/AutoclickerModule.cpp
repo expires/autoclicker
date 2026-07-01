@@ -237,7 +237,7 @@ namespace AutoclickerModule
                             const int js = g_settings.jitterEnabled
                                 ? g_settings.jitterStrength
                                 : 0;
-                            clicker.lclick(mcWindow, js);
+                            clicker.lclick(mcWindow, js, hitType);
                         }
                     }
                 }

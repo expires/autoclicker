@@ -13,8 +13,8 @@ namespace SprintResetModule {
         SendInput(1, &in, sizeof(INPUT));
     }
 
-    void PreClick() {
-        if (!g_settings.sprintResetEnabled) return;
+    void PreClick(bool entityHit) {
+        if (!g_settings.sprintResetEnabled || !entityHit) return;
 
         if (g_settings.sprintResetMode == 1) {
             sendKey(0x53, true);

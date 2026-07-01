@@ -24,9 +24,9 @@ jobject MultiPlayerGameMode::GetInstance()
 
 bool MultiPlayerGameMode::isDestroying()
 {
-	static jmethodID isDestroying = nullptr;
-	JMethod(isDestroying, this->GetClass(), MTD_MPGM_isDestroying, "()Z");
-	return lc->env->CallBooleanMethod(this->GetInstance(), isDestroying);
+	static jmethodID m = nullptr;
+	if (!JMethod(m, this->GetClass(), MTD_MPGM_isDestroying, "()Z")) return false;
+	return lc->env->CallBooleanMethod(this->GetInstance(), m);
 }
 
 int MultiPlayerGameMode::getDestroyStage()
