@@ -3,6 +3,7 @@
 #include "../../config/Settings.h"
 #include "imgui.h"
 #include "imgui_internal.h"
+#include <mutex>
 
 namespace OverlayTabs
 {
@@ -10,6 +11,8 @@ namespace OverlayTabs
     {
         using namespace OverlayWidgets;
         bool dirty = false;
+
+        std::lock_guard<std::mutex> macrosLock(g_settings.macrosMutex);
 
         ImGui::PopStyleVar();
 

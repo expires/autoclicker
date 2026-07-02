@@ -4,33 +4,17 @@
 #include "Mappings.h"
 #include "Platform.h"
 #include "../autoclicker/AutoclickerModule.h"
+#include "../ModuleCommon.h"
 #include "../../overlay/Overlay.h"
 #include "../../logger/Logger.h"
-#include <algorithm>
 #include <cctype>
 #include <chrono>
+#include <mutex>
 #include <string>
 #include <thread>
 
 namespace AutoblockModule
 {
-    static bool jvmReady()
-    {
-        return lc->vm != nullptr && lc->classesLoaded.load(std::memory_order_acquire);
-    }
-
-    static bool ContainsCi(const std::string& hay, const char* needle)
-    {
-        if (!needle || !*needle) return false;
-        std::string h = hay;
-        std::string n = needle;
-        std::transform(h.begin(), h.end(), h.begin(),
-            [](unsigned char c) { return (char)std::tolower(c); });
-        std::transform(n.begin(), n.end(), n.begin(),
-            [](unsigned char c) { return (char)std::tolower(c); });
-        return h.find(n) != std::string::npos;
-    }
-
     static std::string SelectedItemName(Minecraft& mc)
     {
         if (lc->env->PushLocalFrame(32) != 0) {
@@ -134,21 +118,11 @@ namespace AutoblockModule
     DWORD WINAPI init(LPVOID )
     {
         LOG("autoblock: thread start");
-        while (!AutoclickerModule::destruct && !jvmReady())
-            std::this_thread::sleep_for(std::chrono::milliseconds(100));
-        if (AutoclickerModule::destruct) return 0;
-
-        if (lc->vm->AttachCurrentThread(reinterpret_cast<void**>(&lc->env), nullptr) != JNI_OK)
-            return 0;
-        if (lc->env == nullptr) return 0;
+        if (!ModuleCommon::AttachToJvm()) return 0;
         LOG("autoblock: attached; entering loop");
 
         Minecraft  mc;
-        const HWND mcWindow = FindGameWindow();
-        if (mcWindow == nullptr) {
-            lc->vm->DetachCurrentThread();
-            return 0;
-        }
+        HWND       mcWindow = nullptr;
 
         auto lastAttempt = std::chrono::steady_clock::now() - std::chrono::seconds(10);
         auto lastFire    = std::chrono::steady_clock::now() - std::chrono::seconds(10);
@@ -157,13 +131,18 @@ namespace AutoblockModule
         {
             std::this_thread::sleep_for(std::chrono::milliseconds(50));
 
+            if (mcWindow == nullptr) {
+                mcWindow = FindGameWindow();
+                if (mcWindow == nullptr) continue;
+            }
+
             if (!g_settings.autoblockEnabled)          continue;
             if (Overlay::IsMenuVisible())              continue;
             if (GetForegroundWindow() != mcWindow)     continue;
 
             {
                 const std::string name = SelectedItemName(mc);
-                if (!ContainsCi(name, "sword")) continue;
+                if (!ModuleCommon::ContainsCi(name, "sword")) continue;
             }
 
             if (!HoveringLivingEntity(mc)) continue;

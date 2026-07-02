@@ -4,6 +4,7 @@
 #include "Mappings.h"
 #include "Platform.h"
 #include "../autoclicker/AutoclickerModule.h"
+#include "../ModuleCommon.h"
 #include "../../overlay/Overlay.h"
 #include "../../overlay/Notifications.h"
 #include "../../logger/Logger.h"
@@ -14,11 +15,6 @@
 
 namespace FriendsModule
 {
-    static bool jvmReady()
-    {
-        return lc->vm != nullptr && lc->classesLoaded.load(std::memory_order_acquire);
-    }
-
     static std::string HoveredPlayerName(Minecraft& mc)
     {
         std::string out;
@@ -74,27 +70,22 @@ namespace FriendsModule
     DWORD WINAPI init(LPVOID )
     {
         LOG("friends: thread start");
-        while (!AutoclickerModule::destruct && !jvmReady())
-            std::this_thread::sleep_for(std::chrono::milliseconds(100));
-        if (AutoclickerModule::destruct) return 0;
-
-        if (lc->vm->AttachCurrentThread(reinterpret_cast<void**>(&lc->env), nullptr) != JNI_OK)
-            return 0;
-        if (lc->env == nullptr) return 0;
+        if (!ModuleCommon::AttachToJvm()) return 0;
         LOG("friends: attached; entering loop");
 
         Minecraft  mc;
-        const HWND mcWindow = FindGameWindow();
-        if (mcWindow == nullptr) {
-            lc->vm->DetachCurrentThread();
-            return 0;
-        }
+        HWND       mcWindow = nullptr;
 
         bool prevDown = false;
 
         while (!AutoclickerModule::destruct)
         {
             std::this_thread::sleep_for(std::chrono::milliseconds(50));
+
+            if (mcWindow == nullptr) {
+                mcWindow = FindGameWindow();
+                if (mcWindow == nullptr) { prevDown = false; continue; }
+            }
 
             const int key = g_settings.friendKey;
 

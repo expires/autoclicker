@@ -37,7 +37,7 @@ void Clicker::lclick(HWND hwnd, int jitterStrength, int hitType)
 {
     if (getClicksPerSecond() == 0)
         DELAY(100);
-    if (GetAsyncKeyState(VK_LBUTTON) >= 0)
+    if (!(GetAsyncKeyState(VK_LBUTTON) & 0x8000))
         return;
 
     updatePace();

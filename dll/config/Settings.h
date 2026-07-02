@@ -1,5 +1,6 @@
 #pragma once
 
+#include <atomic>
 #include <mutex>
 #include <string>
 #include <vector>
@@ -17,7 +18,7 @@ struct Settings
     bool breakBlocks  = true;
     bool inventoryClick = false;
     int  cps          = 10;
-    bool selfDestruct = false;
+    std::atomic<bool> selfDestruct{false};
 
     bool jitterEnabled  = false;
     int  jitterStrength = 5;
@@ -41,6 +42,7 @@ struct Settings
     int dropKey         = 0x51;
 
     static constexpr int MAX_MACROS = 10;
+    mutable std::mutex macrosMutex;
     int   macroCount = 0;
     Macro macros[MAX_MACROS];
 

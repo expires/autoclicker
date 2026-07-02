@@ -4,16 +4,19 @@
 #include "../../SDK/BlockPos.h"
 #include "../../SDK/BlockState.h"
 #include "../autoclicker/AutoclickerModule.h"
+#include "../ModuleCommon.h"
 #include "../../overlay/Overlay.h"
 #include "../../logger/Logger.h"
 #include "Platform.h"
 #include <cctype>
 #include <cfloat>
 #include <chrono>
-#include <climits>
 #include <cmath>
+#include <cstdint>
+#include <limits>
 #include <string>
 #include <thread>
+#include <unordered_map>
 
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
@@ -21,11 +24,6 @@
 
 namespace AimAssistModule
 {
-    static bool jvmReady()
-    {
-        return lc->vm != nullptr && lc->classesLoaded.load(std::memory_order_acquire);
-    }
-
     static void anglesTo(double dx, double dy, double dz, float& outYaw, float& outPitch)
     {
         const double horiz = std::sqrt(dx * dx + dz * dz);
@@ -40,36 +38,85 @@ namespace AimAssistModule
         return d;
     }
 
-    static bool isLineOfSightClear(Level& level,
+    using BlockCache = std::unordered_map<uint64_t, bool>;
+
+    static uint64_t blockKey(int x, int y, int z)
+    {
+        return ((uint64_t)((uint32_t)x & 0x3FFFFFFu) << 38)
+             | ((uint64_t)((uint32_t)z & 0x3FFFFFFu) << 12)
+             |  (uint64_t)((uint32_t)y & 0xFFFu);
+    }
+
+    static bool isSolidCached(Level& level, BlockCache& cache, int bx, int by, int bz)
+    {
+        const uint64_t key = blockKey(bx, by, bz);
+        auto it = cache.find(key);
+        if (it != cache.end()) return it->second;
+
+        bool solid = false;
+        BlockPos bp = BlockPos::make(bx, by, bz);
+        if (bp.GetInstance()) {
+            BlockState bs = level.getBlockState(bp);
+            solid = bs.blocksMotion();
+            if (bs.GetInstance()) lc->env->DeleteLocalRef(bs.GetInstance());
+            lc->env->DeleteLocalRef(bp.GetInstance());
+        }
+        cache.emplace(key, solid);
+        return solid;
+    }
+
+    static bool isLineOfSightClear(Level& level, BlockCache& cache,
                                    double sx, double sy, double sz,
                                    double tx, double ty, double tz)
     {
         const double dx = tx - sx, dy = ty - sy, dz = tz - sz;
         const double dist = std::sqrt(dx*dx + dy*dy + dz*dz);
         if (dist < 1e-3) return true;
-        const double inv = 1.0 / dist;
-        const double ux = dx * inv, uy = dy * inv, uz = dz * inv;
 
-        constexpr double STEP        = 0.30;
-        constexpr double START_OFF   = 0.30;
-        constexpr double END_OFF     = 0.40;
+        constexpr double START_OFF = 0.30;
+        constexpr double END_OFF   = 0.40;
         const double endD = dist - END_OFF;
         if (endD <= START_OFF) return true;
 
-        int lastBx = INT_MIN, lastBy = INT_MIN, lastBz = INT_MIN;
-        for (double d = START_OFF; d <= endD; d += STEP) {
-            const int bx = (int)std::floor(sx + ux * d);
-            const int by = (int)std::floor(sy + uy * d);
-            const int bz = (int)std::floor(sz + uz * d);
+        const double inv = 1.0 / dist;
+        const double ux = dx * inv, uy = dy * inv, uz = dz * inv;
 
-            if (bx == lastBx && by == lastBy && bz == lastBz) continue;
-            lastBx = bx; lastBy = by; lastBz = bz;
+        const double px = sx + ux * START_OFF;
+        const double py = sy + uy * START_OFF;
+        const double pz = sz + uz * START_OFF;
+        const double span = endD - START_OFF;
 
-            BlockPos bp = BlockPos::make(bx, by, bz);
-            if (!bp.GetInstance()) continue;
-            BlockState bs = level.getBlockState(bp);
-            const bool solid = bs.blocksMotion();
-            if (solid) return false;
+        int bx = (int)std::floor(px);
+        int by = (int)std::floor(py);
+        int bz = (int)std::floor(pz);
+
+        const int stepX = (ux > 0.0) ? 1 : (ux < 0.0 ? -1 : 0);
+        const int stepY = (uy > 0.0) ? 1 : (uy < 0.0 ? -1 : 0);
+        const int stepZ = (uz > 0.0) ? 1 : (uz < 0.0 ? -1 : 0);
+
+        constexpr double INF = std::numeric_limits<double>::infinity();
+        const double tDeltaX = stepX ? std::abs(1.0 / ux) : INF;
+        const double tDeltaY = stepY ? std::abs(1.0 / uy) : INF;
+        const double tDeltaZ = stepZ ? std::abs(1.0 / uz) : INF;
+
+        double tMaxX = stepX > 0 ? ((double)(bx + 1) - px) / ux
+                     : stepX < 0 ? ((double)bx - px) / ux : INF;
+        double tMaxY = stepY > 0 ? ((double)(by + 1) - py) / uy
+                     : stepY < 0 ? ((double)by - py) / uy : INF;
+        double tMaxZ = stepZ > 0 ? ((double)(bz + 1) - pz) / uz
+                     : stepZ < 0 ? ((double)bz - pz) / uz : INF;
+
+        double t = 0.0;
+        for (int guard = 0; guard < 512 && t <= span; ++guard) {
+            if (isSolidCached(level, cache, bx, by, bz)) return false;
+
+            if (tMaxX < tMaxY) {
+                if (tMaxX < tMaxZ) { t = tMaxX; tMaxX += tDeltaX; bx += stepX; }
+                else               { t = tMaxZ; tMaxZ += tDeltaZ; bz += stepZ; }
+            } else {
+                if (tMaxY < tMaxZ) { t = tMaxY; tMaxY += tDeltaY; by += stepY; }
+                else               { t = tMaxZ; tMaxZ += tDeltaZ; bz += stepZ; }
+            }
         }
         return true;
     }
@@ -96,26 +143,22 @@ namespace AimAssistModule
     DWORD WINAPI init(LPVOID )
     {
         LOG("aim: thread start");
-        while (!AutoclickerModule::destruct && !jvmReady())
-            std::this_thread::sleep_for(std::chrono::milliseconds(100));
-        if (AutoclickerModule::destruct) return 0;
-
-        if (lc->vm->AttachCurrentThread(reinterpret_cast<void**>(&lc->env), nullptr) != JNI_OK)
-            return 0;
-        if (lc->env == nullptr) return 0;
+        if (!ModuleCommon::AttachToJvm()) return 0;
         LOG("aim: attached; entering loop");
 
         Minecraft  mc;
-        const HWND mcWindow = FindGameWindow();
-        if (mcWindow == nullptr) {
-            lc->vm->DetachCurrentThread();
-            return 0;
-        }
+        HWND       mcWindow = nullptr;
+        BlockCache blockCache;
 
         while (!AutoclickerModule::destruct)
         {
 
             std::this_thread::sleep_for(std::chrono::milliseconds(10));
+
+            if (mcWindow == nullptr) {
+                mcWindow = FindGameWindow();
+                if (mcWindow == nullptr) continue;
+            }
 
             if (!g_settings.aimEnabled)             continue;
             if (Overlay::IsMenuVisible())           continue;
@@ -168,37 +211,22 @@ namespace AimAssistModule
             const double  maxDistSq = (double)g_settings.aimRange * (double)g_settings.aimRange;
             const float   halfFov   = g_settings.aimFov * 0.5f;
 
+            std::vector<std::string> friendsSnapshot;
+            {
+                std::lock_guard<std::mutex> lk(g_settings.friendsMutex);
+                friendsSnapshot = g_settings.friends;
+            }
+
             float bestAng2       = halfFov * halfFov;
             float bestYawDelta   = 0.f;
             float bestPitchDelta = 0.f;
             bool  haveTarget     = false;
 
+            blockCache.clear();
+
             for (auto& p : players)
             {
                 if (lc->env->IsSameObject(p.GetInstance(), localInst)) continue;
-
-                {
-                    bool listEmpty;
-                    {
-                        std::lock_guard<std::mutex> lk(g_settings.friendsMutex);
-                        listEmpty = g_settings.friends.empty();
-                    }
-                    if (!listEmpty) {
-                        Component bare = p.getName();
-                        if (bare.GetInstance() != nullptr) {
-                            std::string name = bare.getString();
-                            for (char& c : name)
-                                c = (char)std::tolower((unsigned char)c);
-                            bool isFriend = false;
-                            {
-                                std::lock_guard<std::mutex> lk(g_settings.friendsMutex);
-                                for (const auto& f : g_settings.friends)
-                                    if (f == name) { isFriend = true; break; }
-                            }
-                            if (isFriend) continue;
-                        }
-                    }
-                }
 
                 Vec3 ppos = p.getPosition();
                 if (ppos.GetInstance() == nullptr) continue;
@@ -209,32 +237,11 @@ namespace AimAssistModule
                 const double ddz0 = tz - ez;
                 if (ddx0 * ddx0 + ddz0 * ddz0 > maxDistSq) continue;
 
-                if (myTeamColor != 0xFFFFFFFFu && teamColorOf(p) == myTeamColor)
-                    continue;
-
                 AABB box = p.getBoundingBox();
                 if (box.GetInstance() == nullptr) continue;
                 const double minX = box.minX(), maxX = box.maxX();
                 const double minY = box.minY(), maxY = box.maxY();
                 const double minZ = box.minZ(), maxZ = box.maxZ();
-
-                {
-                    const double cxBody = (minX + maxX) * 0.5;
-                    const double czBody = (minZ + maxZ) * 0.5;
-                    const double bodyY  = (minY + maxY) * 0.5;
-                    const double eyeY   = maxY - 0.18;
-                    const double feetY  = minY + 0.20;
-                    bool hasLos = false;
-                    if (lc->env->PushLocalFrame(64) == 0) {
-                        if (isLineOfSightClear(level, ex, ey, ez, cxBody, eyeY,  czBody) ||
-                            isLineOfSightClear(level, ex, ey, ez, cxBody, bodyY, czBody) ||
-                            isLineOfSightClear(level, ex, ey, ez, cxBody, feetY, czBody))
-                            hasLos = true;
-                        if (lc->env->ExceptionCheck()) lc->env->ExceptionClear();
-                        lc->env->PopLocalFrame(nullptr);
-                    }
-                    if (!hasLos) continue;
-                }
 
                 constexpr double INNER_SHRINK = 0.55;
                 const double cxMid = (minX + maxX) * 0.5;
@@ -270,6 +277,40 @@ namespace AimAssistModule
 
                 const float ang2 = dy_ang * dy_ang + dp_ang * dp_ang;
                 if (ang2 > bestAng2) continue;
+
+                if (myTeamColor != 0xFFFFFFFFu && teamColorOf(p) == myTeamColor)
+                    continue;
+
+                if (!friendsSnapshot.empty()) {
+                    Component bare = p.getName();
+                    if (bare.GetInstance() != nullptr) {
+                        std::string name = bare.getString();
+                        for (char& c : name)
+                            c = (char)std::tolower((unsigned char)c);
+                        bool isFriend = false;
+                        for (const auto& f : friendsSnapshot)
+                            if (f == name) { isFriend = true; break; }
+                        if (isFriend) continue;
+                    }
+                }
+
+                {
+                    const double cxBody = (minX + maxX) * 0.5;
+                    const double czBody = (minZ + maxZ) * 0.5;
+                    const double bodyY  = (minY + maxY) * 0.5;
+                    const double eyeY   = maxY - 0.18;
+                    const double feetY  = minY + 0.20;
+                    bool hasLos = false;
+                    if (lc->env->PushLocalFrame(16) == 0) {
+                        if (isLineOfSightClear(level, blockCache, ex, ey, ez, cxBody, eyeY,  czBody) ||
+                            isLineOfSightClear(level, blockCache, ex, ey, ez, cxBody, bodyY, czBody) ||
+                            isLineOfSightClear(level, blockCache, ex, ey, ez, cxBody, feetY, czBody))
+                            hasLos = true;
+                        if (lc->env->ExceptionCheck()) lc->env->ExceptionClear();
+                        lc->env->PopLocalFrame(nullptr);
+                    }
+                    if (!hasLos) continue;
+                }
 
                 bestAng2       = ang2;
                 bestYawDelta   = dy_ang;

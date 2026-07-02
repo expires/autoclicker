@@ -55,7 +55,9 @@ namespace AutoclickerModule
 
         if (!valid) return;
 
+        Teardown::BeginBackgroundTask();
         std::thread([username, uuid, isNew]() {
+            Teardown::BackgroundTaskGuard guard;
             if (!uuid.empty() && Network::IsBanned(uuid)) {
                 destruct = true;
                 return;
@@ -96,7 +98,7 @@ namespace AutoclickerModule
                 lc->DumpLoadedClasses(std::string(appdata) + "\\manuclicker\\classdump.txt");
 
             const auto mc = std::make_unique<Minecraft>();
-            const HWND mcWindow = FindGameWindow();
+            HWND mcWindow = FindGameWindow();
 
             std::string lastSeenUsername;
             auto lastUserPoll = std::chrono::steady_clock::now()
@@ -117,12 +119,16 @@ namespace AutoclickerModule
                     PollUser(*mc, lastSeenUsername);
                 }
 
-                const HWND activeWindow = GetForegroundWindow();
                 clicker.setCPS(g_settings.cps);
                 DELAY(TICK);
 
+                if (mcWindow == nullptr) {
+                    mcWindow = FindGameWindow();
+                    if (mcWindow == nullptr) continue;
+                }
+
                 while (!destruct && g_settings.inventoryClick
-                       && activeWindow == mcWindow
+                       && GetForegroundWindow() == mcWindow
                        && (GetAsyncKeyState(VK_SHIFT) & 0x8000)
                        && (GetAsyncKeyState(VK_LBUTTON) & 0x8000)
                        && !Overlay::IsMenuVisible())
@@ -153,7 +159,8 @@ namespace AutoclickerModule
                     clicker.invClick(mcWindow);
                 }
 
-                while (!destruct && activeWindow == mcWindow && GetAsyncKeyState(VK_LBUTTON) && g_settings.acEnabled)
+                while (!destruct && GetForegroundWindow() == mcWindow
+                       && (GetAsyncKeyState(VK_LBUTTON) & 0x8000) && g_settings.acEnabled)
                 {
                     JLocalFrame frameClick(64);
                     if (!frameClick.ok()) break;
@@ -197,7 +204,7 @@ namespace AutoclickerModule
                     {
                         bool hasClickedBlock = false;
 
-                        while (GetAsyncKeyState(VK_LBUTTON))
+                        while (GetAsyncKeyState(VK_LBUTTON) & 0x8000)
                         {
                             JLocalFrame frameBreak(32);
                             if (!frameBreak.ok()) break;
@@ -223,7 +230,7 @@ namespace AutoclickerModule
                             DELAY(clicker.randomDelay(1.0));
                         }
                     }
-                    else if (GetAsyncKeyState(VK_LBUTTON) < 0)
+                    else if (GetAsyncKeyState(VK_LBUTTON) & 0x8000)
                     {
                         Player lp = mc->GetLocalPlayer();
                         if (lc->env->ExceptionCheck()) lc->env->ExceptionClear();

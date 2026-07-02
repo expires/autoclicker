@@ -44,14 +44,8 @@ BOOL APIENTRY DllMain(const HINSTANCE instance, const DWORD reason, LPVOID reser
     {
         DisableThreadLibraryCalls(instance);
         g_instance = instance;
-        CreateThread(nullptr, 0, Bootstrap, nullptr, 0, nullptr);
-    }
-    else if (reason == DLL_PROCESS_DETACH)
-    {
-        LOG("dllmain: process detach");
-        g_settings.Save();
-        Overlay::Shutdown();
-        Logger::Shutdown();
+        HANDLE h = CreateThread(nullptr, 0, Bootstrap, nullptr, 0, nullptr);
+        if (h) CloseHandle(h);
     }
     return TRUE;
 }

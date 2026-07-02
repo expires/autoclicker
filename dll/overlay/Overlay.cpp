@@ -2,6 +2,7 @@
 #include <Windows.h>
 #include <gl/GL.h>
 #include <atomic>
+#include <chrono>
 #include <climits>
 #include <cmath>
 #include <memory>
@@ -134,6 +135,9 @@ static std::atomic<bool> s_nonChatScreenOpen{false};
 
 static volatile bool s_shutdownRequested = false;
 static volatile bool s_renderDrained     = false;
+
+static bool s_cfgDirty = false;
+static std::chrono::steady_clock::time_point s_cfgDirtyAt;
 
 static bool ProjectWorld(double wx, double wy, double wz,
                          const EspModule::CameraState& cam,
@@ -346,7 +350,7 @@ static void DrawEsp(float dispW, float dispH)
 
         if (g_settings.drawName || g_settings.drawDistance || g_settings.drawHealth)
         {
-            struct Chunk { std::string text; ImU32 col; };
+            struct Chunk { std::string text; ImU32 col; float w = 0.0f; };
             std::vector<Chunk> chunks;
             if (g_settings.drawName) {
                 for (const auto& nc : t.nameChunks)
@@ -392,6 +396,7 @@ static void DrawEsp(float dispW, float dispH)
             float contentH = 0.0f;
             for (auto& c : chunks) {
                 ImVec2 sz = font->CalcTextSizeA(fontSize, FLT_MAX, 0.0f, c.text.c_str());
+                c.w = sz.x;
                 contentW += sz.x;
                 if (sz.y > contentH) contentH = sz.y;
             }
@@ -415,7 +420,7 @@ static void DrawEsp(float dispW, float dispH)
             const float textY = bgTop + padY + (contentH - fontSize) * 0.5f;
             for (auto& c : chunks) {
                 dl->AddText(font, fontSize, ImVec2(cursorX, textY), c.col, c.text.c_str());
-                cursorX += font->CalcTextSizeA(fontSize, FLT_MAX, 0.0f, c.text.c_str()).x;
+                cursorX += c.w;
             }
         }
     }
@@ -809,7 +814,7 @@ static BOOL WINAPI hk_wglSwapBuffers(HDC hdc)
                 }
             }
             if (s_visible && !wasVisible) ReleaseAllHeldInputs();
-            if (!s_visible && wasVisible) g_settings.Save();
+            if (!s_visible && wasVisible) { g_settings.Save(); s_cfgDirty = false; }
             if (escEdge) s_eatEscUntilRelease = true;
         }
 
@@ -952,7 +957,7 @@ static BOOL WINAPI hk_wglSwapBuffers(HDC hdc)
             ImGui::TextUnformatted("manuclicker");
             ImGui::PopFont();
 
-            const std::string revStr = "v" + std::string(BUILD_REVISION);
+            static const std::string revStr = "v" + std::string(BUILD_REVISION);
             const ImVec2 revSz = ImGui::CalcTextSize(revStr.c_str());
             ImGui::SetCursorPos(ImVec2(winSize.x - MARGIN - revSz.x - Theme::M::TitlePadX,
                                        MARGIN + (TOPBAR_H - revSz.y) * 0.5f));
@@ -1015,7 +1020,15 @@ static BOOL WINAPI hk_wglSwapBuffers(HDC hdc)
                 case 6: dirty = OverlayTabs::RenderSettings();    break;
                 }
 
-                if (dirty) g_settings.Save();
+                if (dirty) {
+                    s_cfgDirty  = true;
+                    s_cfgDirtyAt = std::chrono::steady_clock::now();
+                }
+                if (s_cfgDirty &&
+                    std::chrono::steady_clock::now() - s_cfgDirtyAt >= std::chrono::milliseconds(500)) {
+                    g_settings.Save();
+                    s_cfgDirty = false;
+                }
 
                 ImGui::PopStyleVar();
 

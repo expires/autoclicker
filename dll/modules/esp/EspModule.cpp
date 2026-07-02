@@ -4,6 +4,7 @@
 #include "../../SDK/View.h"
 #include "Mappings.h"
 #include "../autoclicker/AutoclickerModule.h"
+#include "../ModuleCommon.h"
 #include "../../logger/Logger.h"
 #include <cctype>
 #include <chrono>
@@ -27,34 +28,99 @@ namespace EspModule
         s_snapshot = std::move(snap);
     }
 
-    static bool jvmReady()
+    struct NameEntry
     {
-        return lc->vm != nullptr && lc->classesLoaded.load(std::memory_order_acquire);
+        jobject ref = nullptr;
+        std::vector<std::pair<std::string, uint32_t>> chunks;
+        std::string lowerName;
+        std::chrono::steady_clock::time_point refreshedAt{};
+        bool seen = false;
+    };
+
+    static void purgeNames(std::vector<NameEntry>& cache)
+    {
+        for (auto& e : cache)
+            if (e.ref) lc->env->DeleteGlobalRef(e.ref);
+        cache.clear();
+    }
+
+    static void refreshName(NameEntry& e, Player& p,
+                            std::chrono::steady_clock::time_point now)
+    {
+        e.chunks = p.getFormattedNameChunks();
+        e.lowerName.clear();
+        Component bare = p.getName();
+        if (bare.GetInstance() != nullptr) {
+            e.lowerName = bare.getString();
+            for (char& c : e.lowerName)
+                c = (char)std::tolower((unsigned char)c);
+        }
+        e.refreshedAt = now;
+    }
+
+    static const NameEntry& lookupName(std::vector<NameEntry>& cache, size_t hint,
+                                       Player& p, std::chrono::steady_clock::time_point now)
+    {
+        constexpr auto TTL = std::chrono::milliseconds(100);
+
+        size_t found = cache.size();
+        if (hint < cache.size() &&
+            lc->env->IsSameObject(cache[hint].ref, p.GetInstance()) == JNI_TRUE) {
+            found = hint;
+        } else {
+            for (size_t i = 0; i < cache.size(); ++i) {
+                if (i == hint) continue;
+                if (lc->env->IsSameObject(cache[i].ref, p.GetInstance()) == JNI_TRUE) {
+                    found = i;
+                    break;
+                }
+            }
+        }
+
+        if (found == cache.size()) {
+            NameEntry e;
+            e.ref  = lc->env->NewGlobalRef(p.GetInstance());
+            e.seen = true;
+            refreshName(e, p, now);
+            cache.push_back(std::move(e));
+        } else {
+            NameEntry& e = cache[found];
+            e.seen = true;
+            if (now - e.refreshedAt >= TTL)
+                refreshName(e, p, now);
+        }
+
+        if (hint < cache.size() && found < cache.size() && found != hint) {
+            std::swap(cache[hint], cache[found]);
+            found = hint;
+        }
+        return cache[found];
     }
 
     DWORD WINAPI init(LPVOID lpParam)
     {
         LOG("esp: thread start");
-        while (!AutoclickerModule::destruct && !jvmReady())
-            std::this_thread::sleep_for(std::chrono::milliseconds(100));
-
-        if (AutoclickerModule::destruct) return 0;
-
-        if (lc->vm->AttachCurrentThread(reinterpret_cast<void**>(&lc->env), nullptr) != JNI_OK)
-            return 0;
-        if (lc->env == nullptr) return 0;
+        if (!ModuleCommon::AttachToJvm()) return 0;
         LOG("esp: attached; entering loop");
 
         Minecraft mc;
+        bool clearedWhileDisabled = false;
+        std::vector<NameEntry> nameCache;
 
         while (!AutoclickerModule::destruct)
         {
             if (!g_settings.espEnabled)
             {
-                Publish(std::make_shared<Snapshot>());
+                if (!clearedWhileDisabled)
+                {
+                    purgeNames(nameCache);
+                    Publish(std::make_shared<Snapshot>());
+                    clearedWhileDisabled = true;
+                }
                 std::this_thread::sleep_for(std::chrono::milliseconds(50));
                 continue;
             }
+            clearedWhileDisabled = false;
 
             if (lc->env->PushLocalFrame(2048) != 0)
             {
@@ -68,15 +134,15 @@ namespace EspModule
             auto publishDiag = [&]() { Publish(back); };
 
             jobject mcInst = mc.GetInstance();
-            if (mcInst == nullptr) { lc->env->PopLocalFrame(nullptr); publishDiag(); std::this_thread::yield(); continue; }
+            if (mcInst == nullptr) { lc->env->PopLocalFrame(nullptr); purgeNames(nameCache); publishDiag(); std::this_thread::yield(); continue; }
             back->gotMinecraft = true;
 
             Player localPlayer = mc.GetLocalPlayer();
-            if (localPlayer.GetInstance() == nullptr) { lc->env->PopLocalFrame(nullptr); publishDiag(); std::this_thread::yield(); continue; }
+            if (localPlayer.GetInstance() == nullptr) { lc->env->PopLocalFrame(nullptr); purgeNames(nameCache); publishDiag(); std::this_thread::yield(); continue; }
             back->gotLocalPlayer = true;
 
             Level level = mc.GetLevel();
-            if (level.GetInstance() == nullptr) { lc->env->PopLocalFrame(nullptr); publishDiag(); std::this_thread::yield(); continue; }
+            if (level.GetInstance() == nullptr) { lc->env->PopLocalFrame(nullptr); purgeNames(nameCache); publishDiag(); std::this_thread::yield(); continue; }
             back->gotLevel = true;
 
             ViewState view = AcquireView(mc, localPlayer);
@@ -99,6 +165,16 @@ namespace EspModule
                 (double)g_settings.maxDistance * (double)g_settings.maxDistance;
 
             back->targets.reserve(players.size());
+
+            std::vector<std::string> friendsSnapshot;
+            {
+                std::lock_guard<std::mutex> lk(g_settings.friendsMutex);
+                friendsSnapshot = g_settings.friends;
+            }
+
+            const auto scanNow = std::chrono::steady_clock::now();
+            for (auto& e : nameCache) e.seen = false;
+            size_t cacheHint = 0;
 
             for (auto& p : players)
             {
@@ -132,23 +208,17 @@ namespace EspModule
                     t.halfDepth = 0.3;
                 }
 
-                t.nameChunks = p.getFormattedNameChunks();
-
                 {
-                    Component bare = p.getName();
-                    if (bare.GetInstance() != nullptr) {
-                        t.playerName = bare.getString();
-                        for (char& c : t.playerName)
-                            c = (char)std::tolower((unsigned char)c);
-                    }
+                    const NameEntry& ni = lookupName(nameCache, cacheHint++, p, scanNow);
+                    t.nameChunks = ni.chunks;
+                    t.playerName = ni.lowerName;
                 }
 
                 t.health    = p.getHealth();
                 t.maxHealth = p.getMaxHealth();
 
                 if (!t.playerName.empty()) {
-                    std::lock_guard<std::mutex> lk(g_settings.friendsMutex);
-                    for (const auto& f : g_settings.friends) {
+                    for (const auto& f : friendsSnapshot) {
                         if (f == t.playerName) { t.isFriend = true; break; }
                     }
                 }
@@ -163,6 +233,16 @@ namespace EspModule
                 back->targets.push_back(std::move(t));
             }
 
+            for (size_t i = 0; i < nameCache.size(); ) {
+                if (!nameCache[i].seen) {
+                    if (nameCache[i].ref) lc->env->DeleteGlobalRef(nameCache[i].ref);
+                    nameCache[i] = std::move(nameCache.back());
+                    nameCache.pop_back();
+                } else {
+                    ++i;
+                }
+            }
+
             if (lc->env->ExceptionCheck()) lc->env->ExceptionClear();
 
             back->valid = true;
@@ -175,6 +255,7 @@ namespace EspModule
         }
 
         LOG("esp: loop exit; detaching");
+        purgeNames(nameCache);
         lc->vm->DetachCurrentThread();
         return 0;
     }

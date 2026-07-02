@@ -3,34 +3,17 @@
 #include "../../SDK/Minecraft.h"
 #include "../../SDK/Capabilities.h"
 #include "../autoclicker/AutoclickerModule.h"
+#include "../ModuleCommon.h"
 #include "../../overlay/Overlay.h"
 #include "../../logger/Logger.h"
 #include "Platform.h"
-#include <algorithm>
-#include <cctype>
 #include <chrono>
+#include <mutex>
 #include <string>
 #include <thread>
 
 namespace MacrosModule
 {
-    static bool jvmReady()
-    {
-        return lc->vm != nullptr && lc->classesLoaded.load(std::memory_order_acquire);
-    }
-
-    static bool ContainsCi(const std::string& hay, const char* needle)
-    {
-        if (!needle || !*needle) return false;
-        std::string h = hay;
-        std::string n = needle;
-        std::transform(h.begin(), h.end(), h.begin(),
-            [](unsigned char c) { return (char)std::tolower(c); });
-        std::transform(n.begin(), n.end(), n.begin(),
-            [](unsigned char c) { return (char)std::tolower(c); });
-        return h.find(n) != std::string::npos;
-    }
-
     static void SendKey(HWND hwnd, WORD vk)
     {
         UINT  scan = MapVirtualKeyW(vk, MAPVK_VK_TO_VSC);
@@ -63,7 +46,7 @@ namespace MacrosModule
             if (stack.GetInstance() == nullptr || stack.isEmpty()) return false;
             Component name = stack.getHoverName();
             if (name.GetInstance() == nullptr) return false;
-            return ContainsCi(name.getString(), m.name);
+            return ModuleCommon::ContainsCi(name.getString(), m.name);
         };
 
         if (cachedSlot >= 0 && cachedSlot <= 8 && slotMatches(cachedSlot))
@@ -112,21 +95,11 @@ namespace MacrosModule
     DWORD WINAPI init(LPVOID )
     {
         LOG("macros: thread start");
-        while (!AutoclickerModule::destruct && !jvmReady())
-            std::this_thread::sleep_for(std::chrono::milliseconds(100));
-        if (AutoclickerModule::destruct) return 0;
-
-        if (lc->vm->AttachCurrentThread(reinterpret_cast<void**>(&lc->env), nullptr) != JNI_OK)
-            return 0;
-        if (lc->env == nullptr) return 0;
+        if (!ModuleCommon::AttachToJvm()) return 0;
         LOG("macros: attached; entering loop");
 
         Minecraft  mc;
-        const HWND mcWindow = FindGameWindow();
-        if (mcWindow == nullptr) {
-            lc->vm->DetachCurrentThread();
-            return 0;
-        }
+        HWND       mcWindow = nullptr;
 
         int  cachedSlot[Settings::MAX_MACROS];
         bool heldPrev  [Settings::MAX_MACROS] = {};
@@ -137,13 +110,22 @@ namespace MacrosModule
 
             std::this_thread::sleep_for(std::chrono::milliseconds(33));
 
+            if (mcWindow == nullptr) {
+                mcWindow = FindGameWindow();
+                if (mcWindow == nullptr) continue;
+            }
+
             if (GetForegroundWindow() != mcWindow) continue;
             if (Overlay::IsMenuVisible()) continue;
 
-            const int count = g_settings.macroCount;
-            for (int i = 0; i < count && i < Settings::MAX_MACROS; ++i) {
+            for (int i = 0; i < Settings::MAX_MACROS; ++i) {
 
-                const Macro m = g_settings.macros[i];
+                Macro m;
+                {
+                    std::lock_guard<std::mutex> lk(g_settings.macrosMutex);
+                    if (i >= g_settings.macroCount) break;
+                    m = g_settings.macros[i];
+                }
 
                 if (m.key <= 0 || m.key > 0xFE || m.name[0] == '\0') {
                     heldPrev[i] = false;

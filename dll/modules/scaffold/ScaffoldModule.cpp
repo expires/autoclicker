@@ -113,7 +113,10 @@ namespace ScaffoldModule
         last = now;
 
         static HWND mcWindow = nullptr;
-        if (mcWindow == nullptr) mcWindow = FindGameWindow();
+        if (mcWindow == nullptr) {
+            mcWindow = FindGameWindow();
+            if (mcWindow == nullptr) return;
+        }
 
         static std::mt19937 rng(std::random_device{}());
         static std::uniform_real_distribution<double> leanDist(0.20, 0.28);
@@ -179,8 +182,9 @@ namespace ScaffoldModule
                             const bool movingForward = fwdDot > FORWARD_SPEED;
                             const bool towering      = vy > RISE_SPEED && hspeed < TOWER_HSPEED;
 
-                            if (holdingBlock(local) && !movingForward && !towering
-                                && (std::abs(ndx) > 1e-3 || std::abs(ndz) > 1e-3)) {
+                            if (!movingForward && !towering
+                                && (std::abs(ndx) > 1e-3 || std::abs(ndz) > 1e-3)
+                                && holdingBlock(local)) {
                                 const int     by = (int)std::floor(y) - 1;
                                 const jobject lv = level.GetInstance();
 

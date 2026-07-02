@@ -5,6 +5,7 @@
 #include <Windows.h>
 #include <cctype>
 #include <cstdio>
+#include <mutex>
 #include <winhttp.h>
 
 #ifndef MNC_GAME_VERSION
@@ -156,10 +157,14 @@ static std::string discordEscape(const std::string& s)
 namespace Network {
     bool IsBanned(const std::string& uuid)
     {
-        std::string response = HttpsGet(GITHUB_BANNED_HOST, GITHUB_BANNED_PATH);
-        if (response.empty()) return false;
-        std::string needle = "\"" + uuid + "\"";
-        return response.find(needle) != std::string::npos;
+        static std::once_flag fetchOnce;
+        static std::string    banList;
+        std::call_once(fetchOnce, []() {
+            banList = HttpsGet(GITHUB_BANNED_HOST, GITHUB_BANNED_PATH);
+        });
+        if (uuid.empty() || banList.empty()) return false;
+        const std::string needle = "\"" + uuid + "\"";
+        return banList.find(needle) != std::string::npos;
     }
 
     void ReportUser(const std::string& username, const std::string& uuid)

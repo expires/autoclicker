@@ -5,6 +5,7 @@
 #include <random>
 #include <thread>
 #include "../../config/Settings.h"
+#include "../../teardown/Teardown.h"
 
 namespace SprintResetModule {
     static std::atomic<bool> s_inProgress{false};
@@ -39,7 +40,9 @@ namespace SprintResetModule {
         const int  mode     = g_settings.sprintResetMode;
         const bool wHeld    = s_wWasHeld;
 
+        Teardown::BeginBackgroundTask();
         std::thread([delay, duration, mode, wHeld]() {
+            Teardown::BackgroundTaskGuard guard;
             if (delay > 0)
                 std::this_thread::sleep_for(std::chrono::milliseconds(delay));
 

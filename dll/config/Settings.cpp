@@ -46,11 +46,14 @@ void Settings::Save()
     fprintf(f, "dropKey=%d\n",         dropKey);
     fprintf(f, "version=%d\n",         version);
 
-    fprintf(f, "macroCount=%d\n", macroCount);
-    for (int i = 0; i < macroCount; ++i) {
-        fprintf(f, "macro%d_name=%s\n",  i, macros[i].name);
-        fprintf(f, "macro%d_delay=%d\n", i, macros[i].delay);
-        fprintf(f, "macro%d_key=%d\n",   i, macros[i].key);
+    {
+        std::lock_guard<std::mutex> lk(macrosMutex);
+        fprintf(f, "macroCount=%d\n", macroCount);
+        for (int i = 0; i < macroCount; ++i) {
+            fprintf(f, "macro%d_name=%s\n",  i, macros[i].name);
+            fprintf(f, "macro%d_delay=%d\n", i, macros[i].delay);
+            fprintf(f, "macro%d_key=%d\n",   i, macros[i].key);
+        }
     }
 
     fprintf(f, "aimEnabled=%d\n",    aimEnabled    ? 1 : 0);
@@ -177,14 +180,13 @@ void Settings::Load()
         }
         else if (k.rfind("macro", 0) == 0) {
 
-            for (int i = 0; i < MAX_MACROS; ++i) {
-                char buf[24];
-                snprintf(buf, sizeof(buf), "macro%d_name", i);
-                if (k == buf) { strncpy_s(macros[i].name, valStr, _TRUNCATE); break; }
-                snprintf(buf, sizeof(buf), "macro%d_delay", i);
-                if (k == buf) { macros[i].delay = val; break; }
-                snprintf(buf, sizeof(buf), "macro%d_key", i);
-                if (k == buf) { macros[i].key   = val; break; }
+            int  idx = -1;
+            char field[8] = {};
+            if (sscanf_s(keyStr, "macro%d_%7s", &idx, field, (unsigned)sizeof(field)) == 2
+                && idx >= 0 && idx < MAX_MACROS) {
+                if      (strcmp(field, "name")  == 0) strncpy_s(macros[idx].name, valStr, _TRUNCATE);
+                else if (strcmp(field, "delay") == 0) macros[idx].delay = val;
+                else if (strcmp(field, "key")   == 0) macros[idx].key   = val;
             }
         }
     }
@@ -209,7 +211,7 @@ void Settings::Load()
     for (int i = 0; i < MAX_MACROS; ++i) {
         macros[i].key = clampVK(macros[i].key);
         if (macros[i].delay < 0)    macros[i].delay = 0;
-        if (macros[i].delay > 2000) macros[i].delay = 2000;
+        if (macros[i].delay > 5000) macros[i].delay = 5000;
     }
 
     if (aimSpeedH < 0)  aimSpeedH = 0;  if (aimSpeedH > 20) aimSpeedH = 20;

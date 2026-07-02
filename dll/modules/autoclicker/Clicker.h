@@ -1,9 +1,11 @@
+#pragma once
 #include <Windows.h>
 #include <chrono>
 #include <thread>
 #include <random>
 #include <algorithm>
 #include <cmath>
+#include <vector>
 
 #define DELAY(x) std::this_thread::sleep_for(std::chrono::milliseconds(x));
 
@@ -17,8 +19,7 @@ public:
         pauseMult(1.6, 3.0),
         slowTrigger(1, 15),
         slowDuration(2, 5),
-        slowFactor(1.25, 1.67),
-        isMouseDown(false) {}
+        slowFactor(1.25, 1.67) {}
     void setCPS(int newCps) { cps = newCps; }
 
     void lclick(HWND hwnd, int jitterStrength = 0, int hitType = -1);
@@ -30,7 +31,6 @@ public:
 
 private:
     int cps;
-    bool isMouseDown;
     std::vector<std::chrono::steady_clock::time_point> clicks;
     std::random_device rd;
     std::mt19937 gen;
