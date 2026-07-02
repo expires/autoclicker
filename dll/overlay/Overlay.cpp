@@ -20,6 +20,7 @@
 #include "../logger/Logger.h"
 #include "../modules/esp/EspModule.h"
 #include "../modules/scaffold/ScaffoldModule.h"
+#include "../modules/sprintreset/SprintResetModule.h"
 #include "../SDK/Lunar.h"
 #include "Mappings.h"
 #include "../SDK/Capabilities.h"
@@ -599,6 +600,16 @@ static void ReleaseAllHeldInputs()
 
 static LRESULT CALLBACK HookedWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
+    switch (msg)
+    {
+    case WM_KEYDOWN: case WM_SYSKEYDOWN:
+    case WM_KEYUP:   case WM_SYSKEYUP:
+        if ((ULONG_PTR)GetMessageExtraInfo() != SprintResetModule::kInjectedExtraInfo)
+            SprintResetModule::NotePhysicalKey(wParam,
+                msg == WM_KEYDOWN || msg == WM_SYSKEYDOWN);
+        break;
+    }
+
     if (s_eatEscUntilRelease && wParam == VK_ESCAPE)
     {
         switch (msg)
