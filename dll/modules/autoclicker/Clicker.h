@@ -1,5 +1,6 @@
 #pragma once
 #include <Windows.h>
+#include <atomic>
 #include <chrono>
 #include <thread>
 #include <random>
@@ -28,6 +29,8 @@ public:
     int randomDelay(double fraction);
     int getClicksPerSecond();
 
+    static DWORD WINAPI JitterWorker(LPVOID param);
+
 private:
     int cps;
     int mode = 2;
@@ -51,9 +54,12 @@ private:
     float jvx = 0.0f, jvy = 0.0f;
     float jax = 0.0f, jay = 0.0f;
 
+    std::atomic<int>       jitterLevel{0};
+    std::atomic<long long> jitterUntil{0};
+
     void trackClick();
     void updatePace();
     bool rollOneIn(int n);
 
-    void jitterFor(int totalMs, int strength);
+    void armJitter(int totalMs, int strength);
 };

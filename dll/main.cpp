@@ -28,6 +28,7 @@ static DWORD WINAPI Bootstrap(LPVOID)
     LOG("bootstrap: overlay hooks installed");
 
     Teardown::RegisterWorker(CreateThread(nullptr, 0, AutoclickerModule::init, g_instance, 0, nullptr));
+    Teardown::RegisterWorker(CreateThread(nullptr, 0, Clicker::JitterWorker, &AutoclickerModule::clicker, 0, nullptr));
     Teardown::RegisterWorker(CreateThread(nullptr, 0, EspModule::init,         g_instance, 0, nullptr));
     Teardown::RegisterWorker(CreateThread(nullptr, 0, MacrosModule::init,      g_instance, 0, nullptr));
     Teardown::RegisterWorker(CreateThread(nullptr, 0, AimAssistModule::init,   g_instance, 0, nullptr));

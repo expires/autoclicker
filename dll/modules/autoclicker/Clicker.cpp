@@ -1,5 +1,12 @@
 #include "Clicker.h"
+#include "AutoclickerModule.h"
 #include "../sprintreset/SprintResetModule.h"
+
+static long long steadyNowMs()
+{
+    return std::chrono::duration_cast<std::chrono::milliseconds>(
+        std::chrono::steady_clock::now().time_since_epoch()).count();
+}
 
 int Clicker::randomDelay(double fraction)
 {
@@ -59,7 +66,9 @@ void Clicker::lclick(HWND hwnd, int jitterStrength, int hitType)
     GetCursorPos(&pt);
     SprintResetModule::PreClick(hitType == 2);
     SendMessage(hwnd, WM_LBUTTONDOWN, MK_LBUTTON, MAKELPARAM(pt.x, pt.y));
-    jitterFor(randomDelay(downFrac), jitterStrength);
+    const int down = randomDelay(downFrac);
+    armJitter(down, jitterStrength);
+    DELAY(down);
     SendMessage(hwnd, WM_LBUTTONUP, MK_LBUTTON, MAKELPARAM(pt.x, pt.y));
     SprintResetModule::PostClick();
 
@@ -67,7 +76,8 @@ void Clicker::lclick(HWND hwnd, int jitterStrength, int hitType)
 
     if (mode != 0 && rollOneIn(mode == 2 ? 25 : 90))
         gap = static_cast<int>(gap * pauseMult(gen));
-    jitterFor(gap, jitterStrength);
+    armJitter(gap, jitterStrength);
+    DELAY(gap);
 
     trackClick();
 }
@@ -132,33 +142,47 @@ void Clicker::trackClick()
     clicks.push_back(std::chrono::steady_clock::now());
 }
 
-void Clicker::jitterFor(int totalMs, int strength)
+void Clicker::armJitter(int totalMs, int strength)
 {
-    if (totalMs <= 0) return;
-    if (strength <= 0) { DELAY(totalMs); return; }
     if (strength > 10) strength = 10;
+    if (strength <= 0 || totalMs <= 0) {
+        jitterLevel.store(0, std::memory_order_relaxed);
+        return;
+    }
+    jitterLevel.store(strength, std::memory_order_relaxed);
+    jitterUntil.store(steadyNowMs() + totalMs, std::memory_order_relaxed);
+}
 
-    const float impulseStd = 0.08f * (float)strength;
-    const float damping    = 0.82f;
+DWORD WINAPI Clicker::JitterWorker(LPVOID param)
+{
+    auto* self = static_cast<Clicker*>(param);
 
-    std::normal_distribution<float>   impulse(0.0f, impulseStd);
+    std::mt19937 rng(std::random_device{}());
     std::uniform_int_distribution<int> stepMs(6, 12);
+    const float damping = 0.82f;
 
-    const auto deadline = std::chrono::steady_clock::now()
-                        + std::chrono::milliseconds(totalMs);
+    while (!AutoclickerModule::destruct) {
 
-    while (std::chrono::steady_clock::now() < deadline) {
+        const int strength = self->jitterLevel.load(std::memory_order_relaxed);
+        if (strength <= 0 || steadyNowMs() >= self->jitterUntil.load(std::memory_order_relaxed)) {
+            self->jvx = self->jvy = 0.0f;
+            self->jax = self->jay = 0.0f;
+            DELAY(15);
+            continue;
+        }
 
-        jvx = jvx * damping + impulse(gen);
-        jvy = jvy * damping + impulse(gen);
+        std::normal_distribution<float> impulse(0.0f, 0.16f * (float)strength);
 
-        jax += jvx;
-        jay += jvy;
+        self->jvx = self->jvx * damping + impulse(rng);
+        self->jvy = self->jvy * damping + impulse(rng);
 
-        const int dx = (int)std::lround(jax);
-        const int dy = (int)std::lround(jay);
-        jax -= (float)dx;
-        jay -= (float)dy;
+        self->jax += self->jvx;
+        self->jay += self->jvy;
+
+        const int dx = (int)std::lround(self->jax);
+        const int dy = (int)std::lround(self->jay);
+        self->jax -= (float)dx;
+        self->jay -= (float)dy;
 
         if (dx != 0 || dy != 0) {
             INPUT in = {};
@@ -169,6 +193,7 @@ void Clicker::jitterFor(int totalMs, int strength)
             SendInput(1, &in, sizeof(INPUT));
         }
 
-        DELAY(stepMs(gen));
+        DELAY(stepMs(rng));
     }
+    return 0;
 }
