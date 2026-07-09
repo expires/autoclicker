@@ -10,6 +10,9 @@ static long long steadyNowMs()
 
 int Clicker::randomDelay(double fraction)
 {
+    const double cps = (cpsMax > cpsMin)
+        ? cpsDist(gen, std::uniform_real_distribution<double>::param_type((double)cpsMin, (double)cpsMax))
+        : (double)cpsMin;
     const double base  = (1000.0 / cps) * fraction;
     const double drift = 1.0 + (double)paceFactor;
     const double effective = base * (drift < 0.5 ? 0.5 : drift) * (double)slowMultiplier;

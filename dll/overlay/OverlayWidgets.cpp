@@ -411,6 +411,112 @@ namespace OverlayWidgets
         return changed;
     }
 
+    bool RowRangeSlider(const char* label, int* vLo, int* vHi, int v_min, int v_max)
+    {
+        using namespace ImGui;
+        ImGuiWindow* window = GetCurrentWindow();
+        if (window->SkipItems) return false;
+
+        ImGuiContext& g = *GImGui;
+        const float w   = GetContentRegionAvail().x;
+
+        const ImVec2 labelSz = CalcTextSize(label, nullptr, true);
+        const float heightOffset = labelSz.y + Theme::M::SliderLabelGap;
+        const ImRect total(window->DC.CursorPos, ImVec2(window->DC.CursorPos.x + w, window->DC.CursorPos.y + heightOffset + Theme::M::SliderH));
+
+        const ImRect frame(ImVec2(total.Min.x, total.Min.y + heightOffset + Theme::M::SliderTrackTop),
+                           ImVec2(total.Max.x, total.Max.y - Theme::M::SliderTrackBot));
+
+        const ImRect hitFrame(ImVec2(total.Min.x, total.Min.y + heightOffset),
+                              ImVec2(total.Max.x, total.Max.y));
+
+        ImGuiID id = window->GetID(label);
+        ItemSize(total, g.Style.FramePadding.y);
+        if (!ItemAdd(total, id, &hitFrame)) return false;
+
+        bool hovered, held;
+        ButtonBehavior(hitFrame, id, &hovered, &held);
+        if (hovered) SetMouseCursor(ImGuiMouseCursor_Hand);
+
+        const float pad   = Theme::M::SliderGrabPad;
+        const float x0    = frame.Min.x + pad;
+        const float x1    = frame.Max.x - pad;
+        const float span  = (x1 - x0) > 1.0f ? (x1 - x0) : 1.0f;
+        const float range = (float)(v_max - v_min);
+
+        ImGuiStorage* storage = &window->StateStorage;
+
+        bool changed = false;
+        if (held && range > 0.0f) {
+            float t = (g.IO.MousePos.x - x0) / span;
+            if (t < 0.0f) t = 0.0f;
+            if (t > 1.0f) t = 1.0f;
+            const int val = v_min + (int)(t * range + 0.5f);
+
+            int active = storage->GetInt(id + 1, 1);
+            if (g.ActiveIdIsJustActivated) {
+                const float tLo = (float)(*vLo - v_min) / range;
+                const float tHi = (float)(*vHi - v_min) / range;
+                const float dLo = ImFabs(t - tLo);
+                const float dHi = ImFabs(t - tHi);
+                if      (dLo < dHi) active = 0;
+                else if (dHi < dLo) active = 1;
+                else                active = (t < tLo) ? 0 : 1;
+                storage->SetInt(id + 1, active);
+            }
+
+            if (active == 0) {
+                const int nv = val > *vHi ? *vHi : val;
+                if (nv != *vLo) { *vLo = nv; changed = true; }
+            } else {
+                const int nv = val < *vLo ? *vLo : val;
+                if (nv != *vHi) { *vHi = nv; changed = true; }
+            }
+            if (changed) MarkItemEdited(id);
+        }
+
+        const float tLo = range > 0.0f ? (float)(*vLo - v_min) / range : 0.0f;
+        const float tHi = range > 0.0f ? (float)(*vHi - v_min) / range : 0.0f;
+
+        float animLo = storage->GetFloat(id + 2, tLo);
+        float animHi = storage->GetFloat(id + 3, tHi);
+        animLo = ImLerp(animLo, tLo, 0.20f);
+        animHi = ImLerp(animHi, tHi, 0.20f);
+        storage->SetFloat(id + 2, animLo);
+        storage->SetFloat(id + 3, animHi);
+
+        char buf[32];
+        snprintf(buf, sizeof(buf), "%d - %d", *vLo, *vHi);
+
+        RenderText(total.Min, label);
+        ImVec2 valSz = CalcTextSize(buf);
+        RenderText(ImVec2(total.Max.x - valSz.x, total.Min.y), buf);
+
+        const float trackR = frame.GetHeight() * 0.5f;
+        const ImU32 accent = ColorConvertFloat4ToU32(FromHex(Theme::Accent));
+
+        ImDrawList* dl = window->DrawList;
+        dl->AddRectFilled(frame.Min, frame.Max, GetColorU32(ImGuiCol_FrameBg), trackR);
+
+        const float xLo = ImLerp(x0, x1, animLo);
+        const float xHi = ImLerp(x0, x1, animHi);
+        if (xHi - xLo > 1.0f)
+            dl->AddRectFilled(ImVec2(xLo, frame.Min.y), ImVec2(xHi, frame.Max.y), accent, trackR);
+        dl->AddLine(ImVec2(frame.Min.x + trackR, frame.Min.y + 0.5f),
+                    ImVec2(frame.Max.x - trackR, frame.Min.y + 0.5f),
+                    IM_COL32(255, 255, 255, 20), 1.0f);
+
+        const ImVec2 knobs[2] = { ImVec2(xLo, frame.GetCenter().y),
+                                  ImVec2(xHi, frame.GetCenter().y) };
+        for (const ImVec2& knob : knobs) {
+            dl->AddCircleFilled(knob, Theme::M::SliderKnobGlow, ColorConvertFloat4ToU32(FromHex(Theme::AccentGlow)));
+            dl->AddCircleFilled(ImVec2(knob.x, knob.y + Theme::px(1.0f)), Theme::M::SliderKnob, IM_COL32(0, 0, 0, 55));
+            dl->AddCircleFilled(knob, Theme::M::SliderKnob, GetColorU32(ImGuiCol_SliderGrab));
+        }
+
+        return changed;
+    }
+
     bool RowInputInt(const char* label, int* v, int v_min, int v_max, int step, int fastStep)
     {
         using namespace ImGui;

@@ -11,6 +11,7 @@ namespace OverlayWidgets
     bool RowCheckbox(const char* label, bool* v);
     bool ModuleHeader(const char* label, bool* v, int* vk);
     bool RowSlider(const char* label, int* v, int v_min, int v_max, const char* fmt = "%d");
+    bool RowRangeSlider(const char* label, int* vLo, int* vHi, int v_min, int v_max);
     bool RowKeybind(const char* label, int* vk, bool allowMouse = false);
     bool RowInputInt(const char* label, int* v, int v_min, int v_max, int step = 1, int fastStep = 10);
     bool RowInputIntPair(const char* labelA, int* vA, int minA, int maxA, int stepA, int fastA,

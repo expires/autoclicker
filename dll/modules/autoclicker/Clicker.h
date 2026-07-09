@@ -13,13 +13,13 @@
 class Clicker
 {
 public:
-    Clicker(int cps) : cps(cps), gen(rd()),
+    Clicker(int cps) : cpsMin(cps), cpsMax(cps), gen(rd()),
         paceImpulse(0.0f, 0.028f),
         downFracDist(0.22, 0.38),
         pauseMult(1.6, 3.0),
         slowDuration(2, 5),
         slowFactor(1.25, 1.67) {}
-    void setCPS(int newCps) { cps = newCps; }
+    void setCPS(int lo, int hi) { cpsMin = lo; cpsMax = hi < lo ? lo : hi; }
     void setMode(int m) { mode = m; }
 
     void lclick(HWND hwnd, int jitterStrength = 0, int hitType = -1);
@@ -32,8 +32,10 @@ public:
     static DWORD WINAPI JitterWorker(LPVOID param);
 
 private:
-    int cps;
+    int cpsMin;
+    int cpsMax;
     int mode = 2;
+    std::uniform_real_distribution<double> cpsDist;
     std::vector<std::chrono::steady_clock::time_point> clicks;
     std::random_device rd;
     std::mt19937 gen;

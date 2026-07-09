@@ -17,7 +17,8 @@ struct Settings
     bool acEnabled    = true;
     bool breakBlocks  = true;
     bool inventoryClick = false;
-    int  cps          = 10;
+    int  cpsMin       = 10;
+    int  cpsMax       = 10;
     int  clickerMode  = 2;
     std::atomic<bool> selfDestruct{false};
 

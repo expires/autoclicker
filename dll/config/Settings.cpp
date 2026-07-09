@@ -29,7 +29,8 @@ void Settings::Save()
     fprintf(f, "acEnabled=%d\n",    acEnabled    ? 1 : 0);
     fprintf(f, "breakBlocks=%d\n",  breakBlocks  ? 1 : 0);
     fprintf(f, "inventoryClick=%d\n", inventoryClick ? 1 : 0);
-    fprintf(f, "cps=%d\n",          cps);
+    fprintf(f, "cpsMin=%d\n",       cpsMin);
+    fprintf(f, "cpsMax=%d\n",       cpsMax);
     fprintf(f, "clickerMode=%d\n",  clickerMode);
     fprintf(f, "jitterEnabled=%d\n",  jitterEnabled ? 1 : 0);
     fprintf(f, "jitterStrength=%d\n", jitterStrength);
@@ -120,7 +121,9 @@ void Settings::Load()
         if      (k == "acEnabled")    acEnabled    = (val != 0);
         else if (k == "breakBlocks")  breakBlocks  = (val != 0);
         else if (k == "inventoryClick") inventoryClick = (val != 0);
-        else if (k == "cps")          cps          = val;
+        else if (k == "cps")        { cpsMin = val; cpsMax = val; }
+        else if (k == "cpsMin")       cpsMin       = val;
+        else if (k == "cpsMax")       cpsMax       = val;
         else if (k == "clickerMode")  clickerMode  = val;
         else if (k == "jitterEnabled")  jitterEnabled  = (val != 0);
         else if (k == "jitterStrength") jitterStrength = val;
@@ -202,8 +205,11 @@ void Settings::Load()
     selfDestructKey = clampVK(selfDestructKey);
     dropKey         = clampVK(dropKey);
 
-    if (cps < 1)  cps = 1;
-    if (cps > 20) cps = 20;
+    if (cpsMin < 1)      cpsMin = 1;
+    if (cpsMin > 20)     cpsMin = 20;
+    if (cpsMax < 1)      cpsMax = 1;
+    if (cpsMax > 20)     cpsMax = 20;
+    if (cpsMax < cpsMin) cpsMax = cpsMin;
 
     if (clickerMode < 0 || clickerMode > 2) clickerMode = 2;
 

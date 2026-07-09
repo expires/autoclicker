@@ -88,7 +88,7 @@ namespace AutoclickerModule
         if (lc->env != nullptr)
         {
 
-            clicker.setCPS(g_settings.cps);
+            clicker.setCPS(g_settings.cpsMin, g_settings.cpsMax);
             clicker.setMode(g_settings.clickerMode);
 
             LOG("autoclicker: GetLoadedClasses begin");
@@ -120,7 +120,7 @@ namespace AutoclickerModule
                     PollUser(*mc, lastSeenUsername);
                 }
 
-                clicker.setCPS(g_settings.cps);
+                clicker.setCPS(g_settings.cpsMin, g_settings.cpsMax);
                 clicker.setMode(g_settings.clickerMode);
                 DELAY(TICK);
 
