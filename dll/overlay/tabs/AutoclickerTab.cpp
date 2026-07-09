@@ -11,7 +11,7 @@ namespace OverlayTabs
         dirty |= ModuleHeader("Enabled", &g_settings.acEnabled, &g_settings.acKey);
         if (g_settings.acEnabled) {
             int mode = g_settings.clickerMode;
-            if (RowRadio("Mode", &mode, "Extra+\0Normal\0")) {
+            if (RowRadio("Mode", &mode, "Extra+\0Extra\0Normal\0")) {
                 g_settings.clickerMode = mode;
                 dirty = true;
             }

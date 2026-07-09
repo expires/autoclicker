@@ -15,13 +15,11 @@ public:
     Clicker(int cps) : cps(cps), gen(rd()),
         paceImpulse(0.0f, 0.028f),
         downFracDist(0.22, 0.38),
-        pauseRoll(1, 25),
         pauseMult(1.6, 3.0),
-        slowTrigger(1, 15),
         slowDuration(2, 5),
         slowFactor(1.25, 1.67) {}
     void setCPS(int newCps) { cps = newCps; }
-    void setExtraMode(bool extra) { extraMode = extra; }
+    void setMode(int m) { mode = m; }
 
     void lclick(HWND hwnd, int jitterStrength = 0, int hitType = -1);
     void invClick(HWND hwnd);
@@ -32,7 +30,7 @@ public:
 
 private:
     int cps;
-    bool extraMode = true;
+    int mode = 0;
     std::vector<std::chrono::steady_clock::time_point> clicks;
     std::random_device rd;
     std::mt19937 gen;
@@ -42,12 +40,11 @@ private:
 
     std::uniform_real_distribution<double> downFracDist;
 
-    std::uniform_int_distribution<> pauseRoll;
+    std::uniform_int_distribution<> chanceRoll;
     std::uniform_real_distribution<double> pauseMult;
 
     int slowPhaseClicks = 0;
     float slowMultiplier = 1.0f;
-    std::uniform_int_distribution<> slowTrigger;
     std::uniform_int_distribution<> slowDuration;
     std::uniform_real_distribution<double> slowFactor;
 
@@ -56,6 +53,7 @@ private:
 
     void trackClick();
     void updatePace();
+    bool rollOneIn(int n);
 
     void jitterFor(int totalMs, int strength);
 };
