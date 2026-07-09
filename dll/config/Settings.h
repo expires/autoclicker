@@ -18,6 +18,7 @@ struct Settings
     bool breakBlocks  = true;
     bool inventoryClick = false;
     int  cps          = 10;
+    int  clickerMode  = 0;
     std::atomic<bool> selfDestruct{false};
 
     bool jitterEnabled  = false;

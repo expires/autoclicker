@@ -30,6 +30,7 @@ void Settings::Save()
     fprintf(f, "breakBlocks=%d\n",  breakBlocks  ? 1 : 0);
     fprintf(f, "inventoryClick=%d\n", inventoryClick ? 1 : 0);
     fprintf(f, "cps=%d\n",          cps);
+    fprintf(f, "clickerMode=%d\n",  clickerMode);
     fprintf(f, "jitterEnabled=%d\n",  jitterEnabled ? 1 : 0);
     fprintf(f, "jitterStrength=%d\n", jitterStrength);
     fprintf(f, "espEnabled=%d\n",   espEnabled   ? 1 : 0);
@@ -120,6 +121,7 @@ void Settings::Load()
         else if (k == "breakBlocks")  breakBlocks  = (val != 0);
         else if (k == "inventoryClick") inventoryClick = (val != 0);
         else if (k == "cps")          cps          = val;
+        else if (k == "clickerMode")  clickerMode  = val;
         else if (k == "jitterEnabled")  jitterEnabled  = (val != 0);
         else if (k == "jitterStrength") jitterStrength = val;
         else if (k == "espEnabled")   espEnabled   = (val != 0);
@@ -202,6 +204,8 @@ void Settings::Load()
 
     if (cps < 1)  cps = 1;
     if (cps > 20) cps = 20;
+
+    if (clickerMode < 0 || clickerMode > 1) clickerMode = 0;
 
     if (jitterStrength < 0)  jitterStrength = 0;
     if (jitterStrength > 10) jitterStrength = 10;

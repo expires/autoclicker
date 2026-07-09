@@ -10,6 +10,11 @@ namespace OverlayTabs
         bool dirty = false;
         dirty |= ModuleHeader("Enabled", &g_settings.acEnabled, &g_settings.acKey);
         if (g_settings.acEnabled) {
+            int mode = g_settings.clickerMode;
+            if (RowRadio("Mode", &mode, "Extra+\0Normal\0")) {
+                g_settings.clickerMode = mode;
+                dirty = true;
+            }
             dirty |= RowCheckbox("Break Blocks",    &g_settings.breakBlocks);
             dirty |= RowCheckbox("Inventory Click", &g_settings.inventoryClick);
             dirty |= RowSlider  ("CPS",             &g_settings.cps, 1, 20);

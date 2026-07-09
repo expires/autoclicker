@@ -21,6 +21,7 @@ public:
         slowDuration(2, 5),
         slowFactor(1.25, 1.67) {}
     void setCPS(int newCps) { cps = newCps; }
+    void setExtraMode(bool extra) { extraMode = extra; }
 
     void lclick(HWND hwnd, int jitterStrength = 0, int hitType = -1);
     void invClick(HWND hwnd);
@@ -31,6 +32,7 @@ public:
 
 private:
     int cps;
+    bool extraMode = true;
     std::vector<std::chrono::steady_clock::time_point> clicks;
     std::random_device rd;
     std::mt19937 gen;

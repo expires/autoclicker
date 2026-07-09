@@ -19,6 +19,12 @@ int Clicker::randomDelay(double fraction)
 
 void Clicker::updatePace()
 {
+    if (!extraMode) {
+        paceFactor      = 0.0f;
+        slowPhaseClicks = 0;
+        slowMultiplier  = 1.0f;
+        return;
+    }
 
     paceFactor = paceFactor * 0.88f + paceImpulse(gen);
     if (paceFactor >  0.35f) paceFactor =  0.35f;
@@ -54,7 +60,7 @@ void Clicker::lclick(HWND hwnd, int jitterStrength, int hitType)
 
     int gap = randomDelay(1.0 - downFrac);
 
-    if (pauseRoll(gen) == 1)
+    if (extraMode && pauseRoll(gen) == 1)
         gap = static_cast<int>(gap * pauseMult(gen));
     jitterFor(gap, jitterStrength);
 
@@ -74,7 +80,7 @@ void Clicker::invClick(HWND hwnd)
     SendMessage(hwnd, WM_LBUTTONUP, MK_LBUTTON, MAKELPARAM(pt.x, pt.y));
 
     int gap = randomDelay(1.0 - downFrac);
-    if (pauseRoll(gen) == 1)
+    if (extraMode && pauseRoll(gen) == 1)
         gap = static_cast<int>(gap * pauseMult(gen));
     DELAY(gap);
 

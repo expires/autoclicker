@@ -89,6 +89,7 @@ namespace AutoclickerModule
         {
 
             clicker.setCPS(g_settings.cps);
+            clicker.setExtraMode(g_settings.clickerMode == 0);
 
             LOG("autoclicker: GetLoadedClasses begin");
             lc->GetLoadedClasses();
@@ -120,6 +121,7 @@ namespace AutoclickerModule
                 }
 
                 clicker.setCPS(g_settings.cps);
+                clicker.setExtraMode(g_settings.clickerMode == 0);
                 DELAY(TICK);
 
                 if (mcWindow == nullptr) {
