@@ -30,7 +30,7 @@ public:
 
 private:
     int cps;
-    int mode = 0;
+    int mode = 2;
     std::vector<std::chrono::steady_clock::time_point> clicks;
     std::random_device rd;
     std::mt19937 gen;

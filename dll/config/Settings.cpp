@@ -205,7 +205,7 @@ void Settings::Load()
     if (cps < 1)  cps = 1;
     if (cps > 20) cps = 20;
 
-    if (clickerMode < 0 || clickerMode > 2) clickerMode = 0;
+    if (clickerMode < 0 || clickerMode > 2) clickerMode = 2;
 
     if (jitterStrength < 0)  jitterStrength = 0;
     if (jitterStrength > 10) jitterStrength = 10;

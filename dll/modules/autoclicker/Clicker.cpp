@@ -24,7 +24,7 @@ bool Clicker::rollOneIn(int n)
 
 void Clicker::updatePace()
 {
-    if (mode == 2) {
+    if (mode == 0) {
         paceFactor      = 0.0f;
         slowPhaseClicks = 0;
         slowMultiplier  = 1.0f;
@@ -38,7 +38,7 @@ void Clicker::updatePace()
     if (slowPhaseClicks > 0) {
         if (--slowPhaseClicks == 0)
             slowMultiplier = 1.0f;
-    } else if (rollOneIn(mode == 0 ? 15 : 50)) {
+    } else if (rollOneIn(mode == 2 ? 15 : 50)) {
         slowPhaseClicks = slowDuration(gen);
         slowMultiplier  = static_cast<float>(slowFactor(gen));
     }
@@ -65,7 +65,7 @@ void Clicker::lclick(HWND hwnd, int jitterStrength, int hitType)
 
     int gap = randomDelay(1.0 - downFrac);
 
-    if (mode != 2 && rollOneIn(mode == 0 ? 25 : 90))
+    if (mode != 0 && rollOneIn(mode == 2 ? 25 : 90))
         gap = static_cast<int>(gap * pauseMult(gen));
     jitterFor(gap, jitterStrength);
 
@@ -85,7 +85,7 @@ void Clicker::invClick(HWND hwnd)
     SendMessage(hwnd, WM_LBUTTONUP, MK_LBUTTON, MAKELPARAM(pt.x, pt.y));
 
     int gap = randomDelay(1.0 - downFrac);
-    if (mode != 2 && rollOneIn(mode == 0 ? 25 : 90))
+    if (mode != 0 && rollOneIn(mode == 2 ? 25 : 90))
         gap = static_cast<int>(gap * pauseMult(gen));
     DELAY(gap);
 
