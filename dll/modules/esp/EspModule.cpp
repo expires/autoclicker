@@ -73,18 +73,13 @@ namespace EspModule
 
     static uint32_t scanArmorColor(Player& p)
     {
-        int best = 0;
-        for (int i = 0; i < 4; ++i) {
-            ItemStack st = p.getArmorItem(i);
-            if (st.GetInstance() == nullptr) continue;
-            Component hn = st.getHoverName();
-            if (hn.GetInstance() == nullptr) continue;
-            std::string s = hn.getString();
-            for (char& c : s) c = (char)std::tolower((unsigned char)c);
-            int tier = armorTier(s);
-            if (tier > best) best = tier;
-        }
-        return armorTierColor(best);
+        ItemStack boots = p.getArmorItem(3);
+        if (boots.GetInstance() == nullptr) return 0u;
+        Component hn = boots.getHoverName();
+        if (hn.GetInstance() == nullptr) return 0u;
+        std::string s = hn.getString();
+        for (char& c : s) c = (char)std::tolower((unsigned char)c);
+        return armorTierColor(armorTier(s));
     }
 
     static void purgeNames(std::vector<NameEntry>& cache)
