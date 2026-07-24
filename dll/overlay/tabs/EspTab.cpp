@@ -14,6 +14,7 @@ namespace OverlayTabs
             dirty |= RowCheckbox("Name",               &g_settings.drawName);
             dirty |= RowCheckbox("Distance",           &g_settings.drawDistance);
             dirty |= RowCheckbox("Health",             &g_settings.drawHealth);
+            dirty |= RowCheckbox("Armor",              &g_settings.drawArmor);
             dirty |= RowCheckbox("Highlight Friends",  &g_settings.highlightFriends);
         }
         

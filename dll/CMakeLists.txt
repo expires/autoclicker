@@ -60,6 +60,10 @@ foreach(KEY
     mtd_LivingEntity_isUsingItem
     mtd_LivingEntity_getItemInHand desc_LivingEntity_getItemInHand
     mtd_LivingEntity_getHealth     mtd_LivingEntity_getMaxHealth
+    mtd_LivingEntity_getItemBySlot      desc_LivingEntity_getItemBySlot
+    mtd_LivingEntity_getEquipmentInSlot desc_LivingEntity_getEquipmentInSlot
+    class_EquipmentSlot desc_EquipmentSlot
+    fld_EquipmentSlot_HEAD fld_EquipmentSlot_CHEST fld_EquipmentSlot_LEGS fld_EquipmentSlot_FEET
     mtd_Entity_getName             desc_Entity_getName
     mtd_Entity_getUUID             desc_Entity_getUUID
     mtd_Entity_getTypeName         desc_Entity_getTypeName

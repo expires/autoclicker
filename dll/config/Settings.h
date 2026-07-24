@@ -30,6 +30,7 @@ struct Settings
     bool drawName     = true;
     bool drawDistance = true;
     bool drawHealth   = true;
+    bool drawArmor    = false;
 
     bool highlightFriends = true;
 

@@ -15,6 +15,7 @@ namespace EspModule
         double halfWidth, height, halfDepth;
         std::vector<std::pair<std::string, uint32_t>> nameChunks;
         uint32_t boxColor = 0xFFFFFFFFu;
+        uint32_t armorColor = 0u;
         std::string playerName;
         bool        isFriend = false;
         float       health    = -1.0f;

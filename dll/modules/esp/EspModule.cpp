@@ -1,6 +1,8 @@
 #include "EspModule.h"
 #include "../../config/Settings.h"
 #include "../../SDK/Minecraft.h"
+#include "../../SDK/ItemStack.h"
+#include "../../SDK/Component.h"
 #include "../../SDK/View.h"
 #include "Mappings.h"
 #include "../autoclicker/AutoclickerModule.h"
@@ -33,9 +35,57 @@ namespace EspModule
         jobject ref = nullptr;
         std::vector<std::pair<std::string, uint32_t>> chunks;
         std::string lowerName;
+        uint32_t armorColor = 0u;
         std::chrono::steady_clock::time_point refreshedAt{};
         bool seen = false;
     };
+
+    static constexpr uint32_t packColor(uint32_t r, uint32_t g, uint32_t b)
+    {
+        return (0xFFu << 24) | (b << 16) | (g << 8) | r;
+    }
+
+    static int armorTier(const std::string& lower)
+    {
+        if (lower.find("netherite") != std::string::npos) return 7;
+        if (lower.find("diamond")   != std::string::npos) return 6;
+        if (lower.find("iron")      != std::string::npos) return 5;
+        if (lower.find("turtle")    != std::string::npos) return 4;
+        if (lower.find("chain")     != std::string::npos) return 3;
+        if (lower.find("gold")      != std::string::npos) return 2;
+        if (lower.find("leather")   != std::string::npos) return 1;
+        return 0;
+    }
+
+    static uint32_t armorTierColor(int tier)
+    {
+        switch (tier) {
+            case 7: return packColor( 70,  62,  66);
+            case 6: return packColor( 85, 200, 255);
+            case 5: return packColor(225, 225, 230);
+            case 4: return packColor( 90, 180, 100);
+            case 3: return packColor(170, 170, 175);
+            case 2: return packColor(250, 210,  60);
+            case 1: return packColor(150, 100,  60);
+            default: return 0u;
+        }
+    }
+
+    static uint32_t scanArmorColor(Player& p)
+    {
+        int best = 0;
+        for (int i = 0; i < 4; ++i) {
+            ItemStack st = p.getArmorItem(i);
+            if (st.GetInstance() == nullptr) continue;
+            Component hn = st.getHoverName();
+            if (hn.GetInstance() == nullptr) continue;
+            std::string s = hn.getString();
+            for (char& c : s) c = (char)std::tolower((unsigned char)c);
+            int tier = armorTier(s);
+            if (tier > best) best = tier;
+        }
+        return armorTierColor(best);
+    }
 
     static void purgeNames(std::vector<NameEntry>& cache)
     {
@@ -55,6 +105,7 @@ namespace EspModule
             for (char& c : e.lowerName)
                 c = (char)std::tolower((unsigned char)c);
         }
+        e.armorColor = g_settings.drawArmor ? scanArmorColor(p) : 0u;
         e.refreshedAt = now;
     }
 
@@ -212,6 +263,7 @@ namespace EspModule
                     const NameEntry& ni = lookupName(nameCache, cacheHint++, p, scanNow);
                     t.nameChunks = ni.chunks;
                     t.playerName = ni.lowerName;
+                    t.armorColor = ni.armorColor;
                 }
 
                 t.health    = p.getHealth();

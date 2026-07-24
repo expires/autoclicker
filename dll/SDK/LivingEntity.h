@@ -12,6 +12,8 @@ public:
 
     ItemStack getItemInHand();
 
+    ItemStack getArmorItem(int index);
+
     bool isUsingItem();
 
     float getHealth();

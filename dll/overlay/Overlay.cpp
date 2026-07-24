@@ -349,7 +349,9 @@ static void DrawEsp(float dispW, float dispH)
             }
         }
 
-        if (g_settings.drawName || g_settings.drawDistance || g_settings.drawHealth)
+        const bool hasArmor = g_settings.drawArmor && t.armorColor != 0u;
+
+        if (g_settings.drawName || g_settings.drawDistance || g_settings.drawHealth || hasArmor)
         {
             struct Chunk { std::string text; ImU32 col; float w = 0.0f; };
             std::vector<Chunk> chunks;
@@ -376,7 +378,7 @@ static void DrawEsp(float dispW, float dispH)
                 snprintf(distBuf, sizeof(distBuf), " %.1fm", (float)std::sqrt(distSq));
                 chunks.push_back({distBuf, IM_COL32(170, 200, 255, 220)});
             }
-            if (chunks.empty()) continue;
+            if (chunks.empty() && !hasArmor) continue;
 
             ImVec2 tagPos;
             if (!ProjectWorld(ix, iy + t.height + 0.5, iz, cam, dispW, dispH, tagPos))
@@ -402,6 +404,14 @@ static void DrawEsp(float dispW, float dispH)
                 if (sz.y > contentH) contentH = sz.y;
             }
 
+            const float armorGap    = fontSize * 0.28f;
+            const float armorSquare = fontSize * 0.70f;
+            if (hasArmor) {
+                contentW += armorSquare + (chunks.empty() ? 0.0f : armorGap);
+                if (contentH < armorSquare) contentH = armorSquare;
+                if (contentH < fontSize)    contentH = fontSize;
+            }
+
             const float padX     = fontSize * 0.35f;
             const float padY     = fontSize * 0.12f;
             const float anchorY  = tagPos.y + NAMETAG_Y_SHIFT_PX;
@@ -422,6 +432,16 @@ static void DrawEsp(float dispW, float dispH)
             for (auto& c : chunks) {
                 dl->AddText(font, fontSize, ImVec2(cursorX, textY), c.col, c.text.c_str());
                 cursorX += c.w;
+            }
+
+            if (hasArmor) {
+                if (!chunks.empty()) cursorX += armorGap;
+                const float sqTop = (bgTop + bgBottom) * 0.5f - armorSquare * 0.5f;
+                const ImVec2 sqA(cursorX, sqTop);
+                const ImVec2 sqB(cursorX + armorSquare, sqTop + armorSquare);
+                const ImU32 armorCol  = (t.armorColor & 0x00FFFFFFu) | (235u << 24);
+                dl->AddRectFilled(sqA, sqB, armorCol, 2.0f);
+                dl->AddRect(sqA, sqB, IM_COL32(15, 15, 20, 220), 2.0f, 0, 1.0f);
             }
         }
     }
