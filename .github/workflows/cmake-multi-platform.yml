@@ -21,6 +21,8 @@ jobs:
             asset: mnc_1.21.11.dll
           - mapping: lunar_1.8.9
             asset: mnc_1.8.9.dll
+          - mapping: forge_1.8.9
+            asset: mnc_forge_1.8.9.dll
           - mapping: 1.26.x+
             asset: mnc_1.26.x+.dll
 
@@ -96,6 +98,7 @@ jobs:
           mkdir -p release
           cp dl/autoclicker-fabric_1.21.11/mnc_1.21.11.dll  release/mnc_1.21.11.dll
           cp dl/autoclicker-lunar_1.8.9/mnc_1.8.9.dll       release/mnc_1.8.9.dll
+          cp dl/autoclicker-forge_1.8.9/mnc_forge_1.8.9.dll  release/mnc_forge_1.8.9.dll
           cp dl/autoclicker-1.26.x+/mnc_1.26.x+.dll         release/mnc_1.26.x+.dll
           cp dl/autoclicker-fabric_1.21.11/mnc.exe    release/mnc.exe
           cp versions.txt                                  release/versions.txt
@@ -127,6 +130,7 @@ jobs:
           mkdir -p rolling
           cp dl/autoclicker-fabric_1.21.11/mnc_1.21.11.dll  rolling/mnc_1.21.11.dll
           cp dl/autoclicker-lunar_1.8.9/mnc_1.8.9.dll       rolling/mnc_1.8.9.dll
+          cp dl/autoclicker-forge_1.8.9/mnc_forge_1.8.9.dll  rolling/mnc_forge_1.8.9.dll
           cp dl/autoclicker-1.26.x+/mnc_1.26.x+.dll         rolling/mnc_1.26.x+.dll
           cp dl/autoclicker-fabric_1.21.11/mnc.exe    rolling/mnc.exe
           cp versions.txt                                  rolling/versions.txt
@@ -145,6 +149,7 @@ jobs:
             echo 'files<<EOF'
             echo './rolling/mnc_1.21.11.dll'
             echo './rolling/mnc_1.8.9.dll'
+            echo './rolling/mnc_forge_1.8.9.dll'
             echo './rolling/mnc_1.26.x+.dll'
             echo './rolling/versions.txt'
             if [ "$new" != "$old" ]; then echo './rolling/mnc.exe'; fi
@@ -195,6 +200,7 @@ jobs:
           mkdir -p rolling
           cp dl/autoclicker-fabric_1.21.11/mnc_1.21.11.dll  rolling/mnc_1.21.11.dll
           cp dl/autoclicker-lunar_1.8.9/mnc_1.8.9.dll       rolling/mnc_1.8.9.dll
+          cp dl/autoclicker-forge_1.8.9/mnc_forge_1.8.9.dll  rolling/mnc_forge_1.8.9.dll
           cp dl/autoclicker-1.26.x+/mnc_1.26.x+.dll         rolling/mnc_1.26.x+.dll
           cp dl/autoclicker-fabric_1.21.11/mnc.exe    rolling/mnc.exe
           cp versions.txt                                  rolling/versions.txt
@@ -213,6 +219,7 @@ jobs:
             echo 'files<<EOF'
             echo './rolling/mnc_1.21.11.dll'
             echo './rolling/mnc_1.8.9.dll'
+            echo './rolling/mnc_forge_1.8.9.dll'
             echo './rolling/mnc_1.26.x+.dll'
             echo './rolling/versions.txt'
             if [ "$new" != "$old" ]; then echo './rolling/mnc.exe'; fi
