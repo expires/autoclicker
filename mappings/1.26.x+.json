@@ -171,5 +171,10 @@
   "mtd_Level_getBlockState":       "getBlockState",
   "desc_Level_getBlockState":      "(Lnet/minecraft/core/BlockPos;)Lnet/minecraft/world/level/block/state/BlockState;",
   "mtd_BlockState_isAir":          "isAir",
-  "mtd_BlockState_blocksMotion":   "blocksMotion"
+  "mtd_BlockState_blocksMotion":   "blocksMotion",
+
+  "class_MobEffectInstance":            "net.minecraft.world.effect.MobEffectInstance",
+  "fld_LivingEntity_activeEffects":     "activeEffects",
+  "desc_LivingEntity_activeEffects":    "Ljava/util/Map;",
+  "mtd_MobEffectInstance_getName":      "getDescriptionId"
 }

@@ -192,5 +192,10 @@
   "fld_ActiveRenderInfo_viewport": "VIEWPORT",
   "desc_ActiveRenderInfo_viewport": "Ljava/nio/IntBuffer;",
   "mtd_Entity_getDisplayName": "getDisplayName",
-  "desc_Entity_getDisplayName": "()Lnet/minecraft/util/IChatComponent;"
+  "desc_Entity_getDisplayName": "()Lnet/minecraft/util/IChatComponent;",
+
+  "class_MobEffectInstance":            "net.minecraft.potion.PotionEffect",
+  "fld_LivingEntity_activeEffects":     "activePotionsMap",
+  "desc_LivingEntity_activeEffects":    "Ljava/util/Map;",
+  "mtd_MobEffectInstance_getName":      "getEffectName"
 }

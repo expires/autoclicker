@@ -71,6 +71,11 @@ struct Settings
     int  sprintResetDelay    = 0;
     int  sprintResetDuration = 0;
 
+    bool shiftRecallEnabled = false;
+    int  shiftRecallKey     = 0;
+    int  shiftRecallDelay   = 60;
+    int  shiftRecallHold    = 120;
+
     bool notificationsEnabled = true;
 
     mutable std::mutex       friendsMutex;

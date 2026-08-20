@@ -60,6 +60,9 @@ foreach(KEY
     mtd_LivingEntity_isUsingItem
     mtd_LivingEntity_getItemInHand desc_LivingEntity_getItemInHand
     mtd_LivingEntity_getHealth     mtd_LivingEntity_getMaxHealth
+    class_MobEffectInstance
+    fld_LivingEntity_activeEffects desc_LivingEntity_activeEffects
+    mtd_MobEffectInstance_getName
     mtd_LivingEntity_getItemBySlot      desc_LivingEntity_getItemBySlot
     mtd_LivingEntity_getEquipmentInSlot desc_LivingEntity_getEquipmentInSlot
     class_EquipmentSlot desc_EquipmentSlot

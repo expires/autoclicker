@@ -18,4 +18,6 @@ public:
 
     float getHealth();
     float getMaxHealth();
+
+    bool hasEffectNamed(const char* needle);
 };

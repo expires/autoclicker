@@ -82,6 +82,27 @@ namespace MacrosModule
         return target;
     }
 
+    static void SetSneak(bool down)
+    {
+        INPUT in      = {};
+        in.type       = INPUT_KEYBOARD;
+        in.ki.wScan   = (WORD)MapVirtualKeyW(VK_LSHIFT, MAPVK_VK_TO_VSC);
+        in.ki.dwFlags = KEYEVENTF_SCANCODE | (down ? 0u : KEYEVENTF_KEYUP);
+        SendInput(1, &in, sizeof(INPUT));
+    }
+
+    static bool HasSlowness(Minecraft& mc)
+    {
+        if (lc->env->PushLocalFrame(32) != 0) { lc->env->ExceptionClear(); return false; }
+        bool slowed = false;
+        Player player = mc.GetLocalPlayer();
+        if (player.GetInstance() != nullptr)
+            slowed = player.hasEffectNamed("slowness") || player.hasEffectNamed("moveslowdown");
+        if (lc->env->ExceptionCheck()) lc->env->ExceptionClear();
+        lc->env->PopLocalFrame(nullptr);
+        return slowed;
+    }
+
     static void FireDrop(Minecraft& mc, bool entireStack)
     {
         if (lc->env->PushLocalFrame(16) != 0) { lc->env->ExceptionClear(); return; }
@@ -139,14 +160,36 @@ namespace MacrosModule
                 if (edge) cachedSlot[i] = FireMacro(mc, mcWindow, m, cachedSlot[i]);
             }
 
-            if (kNativeDropOverride) {
+            {
                 static bool dropHeldPrev = false;
                 const int  dropKey = g_settings.dropKey;
                 if (dropKey > 0 && dropKey <= 0xFE && !Overlay::IsScreenOpen()) {
                     const bool held = (GetAsyncKeyState(dropKey) & 0x8000) != 0;
                     if (held && !dropHeldPrev) {
                         const bool entireStack = (GetAsyncKeyState(VK_CONTROL) & 0x8000) != 0;
-                        FireDrop(mc, entireStack);
+
+                        const bool alreadySneaking =
+                            (GetAsyncKeyState(VK_LSHIFT) & 0x8000) != 0 ||
+                            (GetAsyncKeyState(VK_RSHIFT) & 0x8000) != 0;
+                        const bool sneakForRecall =
+                            g_settings.shiftRecallEnabled && !alreadySneaking && HasSlowness(mc);
+
+                        if (sneakForRecall) {
+                            SetSneak(true);
+                            if (g_settings.shiftRecallDelay > 0)
+                                std::this_thread::sleep_for(
+                                    std::chrono::milliseconds(g_settings.shiftRecallDelay));
+                        }
+
+                        if (kNativeDropOverride)
+                            FireDrop(mc, entireStack);
+
+                        if (sneakForRecall) {
+                            if (g_settings.shiftRecallHold > 0)
+                                std::this_thread::sleep_for(
+                                    std::chrono::milliseconds(g_settings.shiftRecallHold));
+                            SetSneak(false);
+                        }
                     }
                     dropHeldPrev = held;
                 }
