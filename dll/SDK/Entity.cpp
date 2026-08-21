@@ -108,6 +108,19 @@ float Entity::getXRot()
     return lc->env->GetFloatField(this->instance, f);
 }
 
+float Entity::getYHeadRot()
+{
+    if (MTD_Entity_getYHeadRot[0] == 0) return getYRot();
+
+    static jmethodID m = nullptr;
+    JMethod(m, this->GetClass(), MTD_Entity_getYHeadRot, "()F");
+    if (!m) { lc->env->ExceptionClear(); return getYRot(); }
+
+    const jfloat v = lc->env->CallFloatMethod(this->instance, m);
+    if (lc->env->ExceptionCheck()) { lc->env->ExceptionClear(); return getYRot(); }
+    return v;
+}
+
 AABB Entity::getBoundingBox()
 {
     static jmethodID m = nullptr;

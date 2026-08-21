@@ -90,6 +90,7 @@
   "fld_Entity_position":           "field_22467",
   "desc_Entity_position":          "Lnet/minecraft/class_243;",
   "fld_Entity_yRot":               "field_6031",
+  "mtd_Entity_getYHeadRot":        "method_5791",
   "fld_Entity_xRot":               "field_5965",
   "mtd_Entity_getBoundingBox":     "method_5829",
   "desc_Entity_getBoundingBox":    "()Lnet/minecraft/class_238;",

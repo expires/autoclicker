@@ -66,6 +66,7 @@ void Settings::Save()
     fprintf(f, "aimFov=%d\n",        aimFov);
     fprintf(f, "aimRange=%d\n",      aimRange);
     fprintf(f, "aimKey=%d\n",        aimKey);
+    fprintf(f, "aimMode=%d\n",       aimMode);
 
     fprintf(f, "autoblockEnabled=%d\n",      autoblockEnabled      ? 1 : 0);
     fprintf(f, "autoblockDelay=%d\n",        autoblockDelay);
@@ -157,6 +158,7 @@ void Settings::Load()
         else if (k == "aimFov")        aimFov        = val;
         else if (k == "aimRange")      aimRange      = val;
         else if (k == "aimKey")        aimKey        = val;
+        else if (k == "aimMode")       aimMode       = val;
         else if (k == "autoblockEnabled")      autoblockEnabled      = (val != 0);
         else if (k == "autoblockDelay")        autoblockDelay        = val;
         else if (k == "autoblockCooldown")     autoblockCooldown     = val;
@@ -244,6 +246,7 @@ void Settings::Load()
     if (aimFov    < 1)  aimFov    = 1;  if (aimFov    > 180) aimFov   = 180;
     if (aimRange  < 1)  aimRange  = 1;  if (aimRange  > 64)  aimRange = 64;
     aimKey = clampVK(aimKey);
+    if (aimMode < 0 || aimMode > 1) aimMode = 0;
 
     if (autoblockDelay    < 30)   autoblockDelay    = 30;
     if (autoblockDelay    > 1000) autoblockDelay    = 1000;

@@ -78,6 +78,7 @@ foreach(KEY
     fld_Minecraft_level         desc_Minecraft_level
     fld_Minecraft_gameRenderer  desc_Minecraft_gameRenderer
     fld_Entity_position desc_Entity_position fld_Entity_yRot fld_Entity_xRot
+    mtd_Entity_getYHeadRot
     mtd_Entity_getBoundingBox   desc_Entity_getBoundingBox
     fld_Entity_xo fld_Entity_yo fld_Entity_zo
     class_DeltaTracker

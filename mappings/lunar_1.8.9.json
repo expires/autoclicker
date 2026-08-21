@@ -86,6 +86,7 @@
   "fld_Entity_position": "",
   "desc_Entity_position": "",
   "fld_Entity_yRot": "rotationYaw",
+  "mtd_Entity_getYHeadRot": "getRotationYawHead",
   "fld_Entity_xRot": "rotationPitch",
   "mtd_Entity_getBoundingBox": "getEntityBoundingBox",
   "desc_Entity_getBoundingBox": "()Lnet/minecraft/util/AxisAlignedBB;",

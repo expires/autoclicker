@@ -37,6 +37,7 @@ public:
 
     float getYRot();
     float getXRot();
+    float getYHeadRot();
 
     AABB getBoundingBox();
 

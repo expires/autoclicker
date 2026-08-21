@@ -91,6 +91,7 @@
   "fld_Entity_position":           "position",
   "desc_Entity_position":          "Lnet/minecraft/world/phys/Vec3;",
   "fld_Entity_yRot":               "yRot",
+  "mtd_Entity_getYHeadRot":        "getYHeadRot",
   "fld_Entity_xRot":               "xRot",
   "mtd_Entity_getBoundingBox":     "getBoundingBox",
   "desc_Entity_getBoundingBox":    "()Lnet/minecraft/world/phys/AABB;",

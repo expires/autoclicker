@@ -86,6 +86,7 @@
   "fld_Entity_position": "",
   "desc_Entity_position": "",
   "fld_Entity_yRot": "field_70177_z",
+  "mtd_Entity_getYHeadRot": "func_70079_am",
   "fld_Entity_xRot": "field_70125_A",
   "mtd_Entity_getBoundingBox": "func_174813_aQ",
   "desc_Entity_getBoundingBox": "()Lnet/minecraft/util/AxisAlignedBB;",

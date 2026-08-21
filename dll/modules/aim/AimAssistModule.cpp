@@ -278,6 +278,22 @@ namespace AimAssistModule
                 const float ang2 = dy_ang * dy_ang + dp_ang * dp_ang;
                 if (ang2 > bestAng2) continue;
 
+                float driveYaw = dy_ang;
+                if (g_settings.aimMode == 1) {
+                    const double rad = (double)p.getYHeadRot() * M_PI / 180.0;
+
+                    const double backX = std::sin(rad);
+                    const double backZ = -std::cos(rad);
+
+                    constexpr double BACK_REACH = 0.85;
+                    const double bx = cxMid + backX * (maxX - minX) * 0.5 * BACK_REACH;
+                    const double bz = czMid + backZ * (maxZ - minZ) * 0.5 * BACK_REACH;
+
+                    float backYaw, backPitch;
+                    anglesTo(bx - ex, 0.0, bz - ez, backYaw, backPitch);
+                    driveYaw = wrapDeg(backYaw - curYaw);
+                }
+
                 if (myTeamColor != 0xFFFFFFFFu && teamColorOf(p) == myTeamColor)
                     continue;
 
@@ -313,7 +329,7 @@ namespace AimAssistModule
                 }
 
                 bestAng2       = ang2;
-                bestYawDelta   = dy_ang;
+                bestYawDelta   = driveYaw;
                 bestPitchDelta = dp_ang;
                 haveTarget     = true;
             }
@@ -325,10 +341,14 @@ namespace AimAssistModule
 
             const float fH = (float)g_settings.aimSpeedH / 10.0f;
             const float fV = (float)g_settings.aimSpeedV / 10.0f;
-            float stepYaw   = bestYawDelta   * fH * fH * 0.22f;
+
+            constexpr float BACKSTAB_BOOST = 1.8f;
+            const float boost = (g_settings.aimMode == 1) ? BACKSTAB_BOOST : 1.0f;
+
+            float stepYaw   = bestYawDelta   * fH * fH * 0.22f * boost;
             float stepPitch = bestPitchDelta * fV * fV * 0.22f;
 
-            constexpr float MAX_STEP_DEG = 8.0f;
+            const float MAX_STEP_DEG = (g_settings.aimMode == 1) ? 14.0f : 8.0f;
             if (stepYaw   >  MAX_STEP_DEG) stepYaw   =  MAX_STEP_DEG;
             if (stepYaw   < -MAX_STEP_DEG) stepYaw   = -MAX_STEP_DEG;
             if (stepPitch >  MAX_STEP_DEG) stepPitch =  MAX_STEP_DEG;

@@ -95,6 +95,7 @@
 #define FLD_Entity_position         "@fld_Entity_position@"
 #define DESC_Entity_position        "@desc_Entity_position@"
 #define FLD_Entity_yRot             "@fld_Entity_yRot@"
+#define MTD_Entity_getYHeadRot      "@mtd_Entity_getYHeadRot@"
 #define FLD_Entity_xRot             "@fld_Entity_xRot@"
 #define MTD_Entity_getBoundingBox   "@mtd_Entity_getBoundingBox@"
 #define DESC_Entity_getBoundingBox  "@desc_Entity_getBoundingBox@"

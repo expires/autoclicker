@@ -56,6 +56,7 @@ struct Settings
     int  aimFov        = 30;
     int  aimRange      = 6;
     int  aimKey        = 0;
+    int  aimMode       = 0;
 
     bool autoblockEnabled       = false;
     int  autoblockDelay         = 100;
