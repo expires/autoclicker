@@ -272,7 +272,6 @@ namespace AutoclickerModule
                                     ? g_settings.jitterStrength
                                     : 0;
                                 clicker.lclick(mcWindow, js, hitType);
-                                if (hitType == 2) AntiEvadeModule::NoteHit();
                             }
                         }
                     }

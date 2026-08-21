@@ -23,7 +23,7 @@ namespace AntiEvadeModule
     using Clock   = std::chrono::steady_clock;
     using Instant = Clock::time_point;
 
-    static constexpr auto kBlockThreshold = std::chrono::milliseconds(50);
+    static constexpr auto kBlockThreshold = std::chrono::milliseconds(0);
     static constexpr auto kHoldWindow     = std::chrono::milliseconds(900);
     static constexpr auto kEntryTtl       = std::chrono::seconds(18);
     static constexpr auto kPollInterval   = std::chrono::milliseconds(5);
@@ -292,7 +292,7 @@ namespace AntiEvadeModule
                 PushEvent(now, "%s block start", track.name.c_str());
             }
 
-            if (!st.handled && now - st.blockStarted > kBlockThreshold) {
+            if (!st.handled && now - st.blockStarted >= kBlockThreshold) {
                 st.thresholdReached = true;
                 st.handled          = true;
                 st.holdingClicks    = true;
