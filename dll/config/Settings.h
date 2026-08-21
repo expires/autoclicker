@@ -74,6 +74,9 @@ struct Settings
     bool shiftRecallEnabled = false;
     int  shiftRecallKey     = 0;
 
+    bool antiEvadeEnabled = false;
+    int  antiEvadeKey     = 0;
+
     bool notificationsEnabled = true;
 
     mutable std::mutex       friendsMutex;

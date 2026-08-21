@@ -2,6 +2,7 @@
 #include "../../teardown/Teardown.h"
 #include "../../config/Settings.h"
 #include "../../network/Network.h"
+#include "../antievade/AntiEvadeModule.h"
 #include "../../overlay/Overlay.h"
 #include "../../logger/Logger.h"
 #include "config/Config.h"
@@ -243,10 +244,16 @@ namespace AutoclickerModule
                             if (lc->env->ExceptionCheck()) lc->env->ExceptionClear();
                         }
                         if (!usingItem) {
-                            const int js = g_settings.jitterEnabled
-                                ? g_settings.jitterStrength
-                                : 0;
-                            clicker.lclick(mcWindow, js, hitType);
+                            if (AntiEvadeModule::ShouldHoldClicks()) {
+                                DELAY(10);
+                            }
+                            else {
+                                const int js = g_settings.jitterEnabled
+                                    ? g_settings.jitterStrength
+                                    : 0;
+                                clicker.lclick(mcWindow, js, hitType);
+                                if (hitType == 2) AntiEvadeModule::NoteHit();
+                            }
                         }
                     }
                 }

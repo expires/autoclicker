@@ -327,6 +327,8 @@ file(GLOB FRIENDS_HEADERS      "modules/friends/*.h")
 file(GLOB FRIENDS_SOURCES      "modules/friends/*.cpp")
 file(GLOB SCAFFOLD_HEADERS     "modules/scaffold/*.h")
 file(GLOB SCAFFOLD_SOURCES     "modules/scaffold/*.cpp")
+file(GLOB ANTIEVADE_HEADERS    "modules/antievade/*.h")
+file(GLOB ANTIEVADE_SOURCES    "modules/antievade/*.cpp")
 file(GLOB SPRINTRESET_HEADERS  "modules/sprintreset/*.h")
 file(GLOB SPRINTRESET_SOURCES  "modules/sprintreset/*.cpp")
 file(GLOB OVERLAY_HEADERS      "overlay/*.h" "overlay/tabs/*.h")
@@ -358,6 +360,8 @@ add_library(${PROJECT_NAME} SHARED
     ${SCAFFOLD_SOURCES}
     ${SPRINTRESET_HEADERS}
     ${SPRINTRESET_SOURCES}
+    ${ANTIEVADE_HEADERS}
+    ${ANTIEVADE_SOURCES}
     ${SDK_SOURCES}
     ${SDK_HEADERS}
     ${OVERLAY_HEADERS}
@@ -389,6 +393,8 @@ source_group("Header Files\\Scaffold"    FILES ${SCAFFOLD_HEADERS})
 source_group("Source Files\\Scaffold"    FILES ${SCAFFOLD_SOURCES})
 source_group("Header Files\\SprintReset" FILES ${SPRINTRESET_HEADERS})
 source_group("Source Files\\SprintReset" FILES ${SPRINTRESET_SOURCES})
+source_group("Header Files\\AntiEvade"   FILES ${ANTIEVADE_HEADERS})
+source_group("Source Files\\AntiEvade"   FILES ${ANTIEVADE_SOURCES})
 source_group("Header Files\\Overlay"     FILES ${OVERLAY_HEADERS})
 source_group("Source Files\\Overlay"     FILES ${OVERLAY_SOURCES})
 source_group("Header Files\\Network"     FILES ${NETWORK_HEADERS})

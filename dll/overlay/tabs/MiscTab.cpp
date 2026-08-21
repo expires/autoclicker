@@ -33,6 +33,11 @@ namespace OverlayTabs
                               &g_settings.shiftRecallKey);
         ImGui::PopID();
 
+        ImGui::PushID("antievade");
+        dirty |= ModuleHeader("AntiEvade", &g_settings.antiEvadeEnabled,
+                              &g_settings.antiEvadeKey);
+        ImGui::PopID();
+
         ImGui::PushID("scaffold");
         dirty |= ModuleHeader("Legit Scaffold", &g_settings.scaffoldEnabled, &g_settings.scaffoldKey);
         ImGui::PopID();

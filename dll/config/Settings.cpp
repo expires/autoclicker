@@ -83,6 +83,8 @@ void Settings::Save()
 
     fprintf(f, "shiftRecallEnabled=%d\n", shiftRecallEnabled ? 1 : 0);
     fprintf(f, "shiftRecallKey=%d\n",     shiftRecallKey);
+    fprintf(f, "antiEvadeEnabled=%d\n",   antiEvadeEnabled ? 1 : 0);
+    fprintf(f, "antiEvadeKey=%d\n",       antiEvadeKey);
 
     fprintf(f, "notificationsEnabled=%d\n", notificationsEnabled ? 1 : 0);
 
@@ -166,6 +168,8 @@ void Settings::Load()
         else if (k == "sprintResetDuration")   sprintResetDuration   = val;
         else if (k == "shiftRecallEnabled")    shiftRecallEnabled    = (val != 0);
         else if (k == "shiftRecallKey")        shiftRecallKey        = val;
+        else if (k == "antiEvadeEnabled")      antiEvadeEnabled      = (val != 0);
+        else if (k == "antiEvadeKey")          antiEvadeKey          = val;
         else if (k == "notificationsEnabled")  notificationsEnabled  = (val != 0);
         else if (k == "friendKey")               friendKey               = val;
         else if (k == "friendCount") {
@@ -251,6 +255,7 @@ void Settings::Load()
     if (sprintResetDuration > 200) sprintResetDuration = 200;
 
     shiftRecallKey = clampVK(shiftRecallKey);
+    antiEvadeKey   = clampVK(antiEvadeKey);
 
     friendKey = clampVK(friendKey);
 
