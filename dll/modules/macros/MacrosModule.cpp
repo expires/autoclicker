@@ -15,6 +15,9 @@
 
 namespace MacrosModule
 {
+    static constexpr int kRecallLeadMs = 40;
+    static constexpr int kRecallHoldMs = 15;
+
     static std::atomic<bool> s_recallDropPassThrough{false};
 
     bool IsRecallDropPassThrough()
@@ -184,6 +187,7 @@ namespace MacrosModule
 
                         if (sneakForRecall) {
                             SetSneak(true);
+                            std::this_thread::sleep_for(std::chrono::milliseconds(kRecallLeadMs));
 
                             if (kNativeDropOverride) {
                                 s_recallDropPassThrough.store(true, std::memory_order_relaxed);
@@ -191,6 +195,7 @@ namespace MacrosModule
                                 s_recallDropPassThrough.store(false, std::memory_order_relaxed);
                             }
 
+                            std::this_thread::sleep_for(std::chrono::milliseconds(kRecallHoldMs));
                             SetSneak(false);
                         }
                         else if (kNativeDropOverride) {
