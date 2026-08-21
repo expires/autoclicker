@@ -15,45 +15,35 @@
 #include <thread>
 #include <unordered_map>
 #include <vector>
-#include <shlobj.h>
-#include <cstdarg>
-#include <cstdio>
-#include <deque>
 
 namespace AntiEvadeModule
 {
     using Clock   = std::chrono::steady_clock;
     using Instant = Clock::time_point;
 
-    static constexpr auto kBlockThreshold = std::chrono::milliseconds(0);
     static constexpr auto kHoldWindow     = std::chrono::milliseconds(750);
     static constexpr auto kEntryTtl       = std::chrono::seconds(18);
     static constexpr auto kPollInterval   = std::chrono::milliseconds(5);
     static constexpr auto kExpiryInterval = std::chrono::seconds(1);
-    static constexpr auto kArmorTtl       = std::chrono::milliseconds(500);
     static constexpr auto kHoverGrace     = std::chrono::milliseconds(250);
     static constexpr auto kChatInterval   = std::chrono::milliseconds(100);
 
     static constexpr int  kChatScan       = 8;
     static constexpr const char* kEvadeMarker = "used evade";
 
-    static constexpr size_t kDebugEvents   = 10;
+    static constexpr double kTrackRadiusSq = 8.0 * 8.0;
     static constexpr double kReachRadiusSq = 4.5 * 4.5;
 
-    static constexpr double kTrackRadiusSq = 8.0 * 8.0;
+    static constexpr size_t kNoTrack = (size_t)-1;
 
     struct PlayerState
     {
         Instant blockStarted{};
         Instant holdUntil{};
-        int     swingsAtTrigger = 0;
-        int     skipsAtTrigger  = 0;
-        bool    blocking         = false;
-        bool    thresholdReached = false;
-        bool    handled          = false;
-        bool    holdingClicks    = false;
-        bool    struckBlock      = false;
         Instant lastSeen{};
+        bool    blocking      = false;
+        bool    handled       = false;
+        bool    holdingClicks = false;
     };
 
     struct Track
@@ -61,13 +51,8 @@ namespace AntiEvadeModule
         jobject     ref = nullptr;
         std::string uuid;
         std::string name;
-        bool        leather   = false;
-        Instant     checkedAt{};
-        bool        seen      = false;
-        bool        logged    = false;
-        bool        usingItem = false;
-        bool        sword     = false;
-        double      distSq    = 0.0;
+        bool        seen   = false;
+        double      distSq = 0.0;
     };
 
     struct Observation
@@ -78,83 +63,10 @@ namespace AntiEvadeModule
 
     static std::mutex                                    s_mutex;
     static std::unordered_map<std::string, PlayerState>  s_states;
-    static std::string                                   s_holdTarget;
-    static std::string                                   s_activeTarget;
     static std::atomic<bool>                             s_hold{false};
 
     static std::vector<Track>       s_tracks;
     static std::vector<Observation> s_observations;
-
-    struct DebugEvent
-    {
-        Instant     at{};
-        std::string text;
-    };
-
-    static std::deque<DebugEvent> s_events;
-    static DebugState             s_debug;
-    static int                    s_chatLines = 0;
-    static HWND                   s_window = nullptr;
-    static bool                   s_buttonReleased = false;
-    static std::atomic<int>       s_swings{0};
-    static std::atomic<int>       s_skips{0};
-
-    static FILE* s_trace      = nullptr;
-    static bool  s_traceOpened = false;
-
-    static void TraceLine(const char* text)
-    {
-        if (!s_traceOpened) {
-            s_traceOpened = true;
-
-            char appdata[MAX_PATH] = {};
-            if (SUCCEEDED(SHGetFolderPathA(nullptr, CSIDL_APPDATA, nullptr, 0, appdata))) {
-                const std::string base = std::string(appdata) + "\\manuclicker";
-                const std::string dir  = base + "\\logs";
-                CreateDirectoryA(base.c_str(), nullptr);
-                CreateDirectoryA(dir.c_str(),  nullptr);
-                if (fopen_s(&s_trace, (dir + "\\antievade.log").c_str(), "w") != 0)
-                    s_trace = nullptr;
-            }
-        }
-
-        if (!s_trace) return;
-
-        SYSTEMTIME st;
-        GetLocalTime(&st);
-        fprintf(s_trace, "[%02d:%02d:%02d.%03d] %s\n",
-                st.wHour, st.wMinute, st.wSecond, st.wMilliseconds, text);
-        fflush(s_trace);
-    }
-
-    static void TraceClose()
-    {
-        if (s_trace) { fflush(s_trace); fclose(s_trace); s_trace = nullptr; }
-    }
-
-    static void PushEvent(Instant now, const char* format, ...)
-    {
-        char line[160];
-        va_list args;
-        va_start(args, format);
-        vsnprintf(line, sizeof(line), format, args);
-        va_end(args);
-
-        TraceLine(line);
-
-        s_events.push_front(DebugEvent{ now, line });
-        while (s_events.size() > kDebugEvents) s_events.pop_back();
-    }
-
-    static void TraceLinef(const char* format, ...)
-    {
-        char line[512];
-        va_list args;
-        va_start(args, format);
-        vsnprintf(line, sizeof(line), format, args);
-        va_end(args);
-        TraceLine(line);
-    }
 
     static std::string s_lastHovered;
     static Instant     s_lastHoveredAt{};
@@ -164,64 +76,22 @@ namespace AntiEvadeModule
     static bool        s_chatPrimed   = false;
     static Instant     s_lastChatPoll{};
 
-    static constexpr size_t kNoTrack = (size_t)-1;
-
-    static bool NameIsLeather(const std::string& lower)
-    {
-        return lower.find("leather") != std::string::npos
-            || lower.find("cloth")   != std::string::npos;
-    }
-
-    static bool NameIsSword(const std::string& lower)
-    {
-        return lower.find("sword") != std::string::npos;
-    }
-
-    static bool StackMatches(ItemStack& stack, bool (*pred)(const std::string&))
-    {
-        if (stack.GetInstance() == nullptr || stack.isEmpty()) return false;
-
-        std::string id = stack.getDescriptionId();
-        if (id.empty()) {
-            Component name = stack.getHoverName();
-            if (name.GetInstance() == nullptr) return false;
-            id = name.getString();
-        }
-        for (char& c : id) c = (char)std::tolower((unsigned char)c);
-        return pred(id);
-    }
-
-    static bool WearingLeather(LivingEntity& entity)
-    {
-        ItemStack chest = entity.getArmorItem(1);
-        if (chest.GetInstance() != nullptr && !chest.isEmpty())
-            return StackMatches(chest, NameIsLeather);
-
-        static const int others[3] = { 2, 0, 3 };
-        for (int slot : others) {
-            ItemStack piece = entity.getArmorItem(slot);
-            if (StackMatches(piece, NameIsLeather)) return true;
-        }
-        return false;
-    }
-
-    static std::string SlotId(LivingEntity& entity, int slot)
-    {
-        ItemStack piece = entity.getArmorItem(slot);
-        if (piece.GetInstance() == nullptr || piece.isEmpty()) return "empty";
-
-        std::string id = piece.getDescriptionId();
-        if (id.empty()) {
-            Component name = piece.getHoverName();
-            if (name.GetInstance() != nullptr) id = name.getString();
-        }
-        return id.empty() ? "unknown" : id;
-    }
+    static HWND s_window         = nullptr;
+    static bool s_buttonReleased = false;
 
     static bool HoldingSword(LivingEntity& entity)
     {
         ItemStack held = entity.getItemInHand();
-        return StackMatches(held, NameIsSword);
+        if (held.GetInstance() == nullptr || held.isEmpty()) return false;
+
+        std::string id = held.getDescriptionId();
+        if (id.empty()) {
+            Component name = held.getHoverName();
+            if (name.GetInstance() == nullptr) return false;
+            id = name.getString();
+        }
+        for (char& c : id) c = (char)std::tolower((unsigned char)c);
+        return id.find("sword") != std::string::npos;
     }
 
     static size_t FindTrack(jobject inst)
@@ -251,7 +121,7 @@ namespace AntiEvadeModule
         jobject ref = lc->env->NewGlobalRef(inst);
         if (ref == nullptr) { lc->env->ExceptionClear(); return kNoTrack; }
 
-        s_tracks.push_back(Track{ ref, std::move(uuid), std::move(name), false, Instant{}, false });
+        s_tracks.push_back(Track{ ref, std::move(uuid), std::move(name), false, 0.0 });
         return s_tracks.size() - 1;
     }
 
@@ -276,7 +146,7 @@ namespace AntiEvadeModule
     {
         for (auto it = s_states.begin(); it != s_states.end(); ) {
             if (now - it->second.lastSeen > kEntryTtl) it = s_states.erase(it);
-            else                                          ++it;
+            else                                       ++it;
         }
     }
 
@@ -287,49 +157,33 @@ namespace AntiEvadeModule
 
         if (blocking) {
             if (!st.blocking) {
-                st.blocking         = true;
-                st.blockStarted     = now;
-                st.thresholdReached = false;
-                st.handled          = false;
-                st.holdingClicks    = false;
-                st.struckBlock      = false;
-                PushEvent(now, "%s block start", track.name.c_str());
-            }
-
-            if (!st.handled && now - st.blockStarted >= kBlockThreshold) {
-                st.thresholdReached = true;
-                st.handled          = true;
-                st.holdingClicks    = true;
-                st.holdUntil        = now + kHoldWindow;
-                st.swingsAtTrigger  = s_swings.load(std::memory_order_relaxed);
-                st.skipsAtTrigger   = s_skips.load(std::memory_order_relaxed);
-                PushEvent(now, "%s TRIGGER hold %dms", track.name.c_str(),
-                          (int)std::chrono::duration_cast<std::chrono::milliseconds>(kHoldWindow).count());
-            }
-
-            if (st.holdingClicks && now >= st.holdUntil) {
+                st.blocking      = true;
+                st.blockStarted  = now;
+                st.handled       = false;
                 st.holdingClicks = false;
-                PushEvent(now, "%s hold expired  swings %d  skips %d", track.name.c_str(),
-                          s_swings.load(std::memory_order_relaxed) - st.swingsAtTrigger,
-                          s_skips.load(std::memory_order_relaxed)  - st.skipsAtTrigger);
             }
+
+            if (!st.handled) {
+                st.handled       = true;
+                st.holdingClicks = true;
+                st.holdUntil     = now + kHoldWindow;
+            }
+
+            if (st.holdingClicks && now >= st.holdUntil)
+                st.holdingClicks = false;
         }
         else if (st.blocking) {
-            const bool wasHolding = st.holdingClicks;
-
-            st.blocking         = false;
-            st.thresholdReached = false;
-            st.handled          = false;
-            st.holdingClicks    = false;
-            st.struckBlock      = false;
-
-            if (wasHolding)
-                PushEvent(now, "%s unblock (resume)  swings %d  skips %d", track.name.c_str(),
-                          s_swings.load(std::memory_order_relaxed) - st.swingsAtTrigger,
-                          s_skips.load(std::memory_order_relaxed)  - st.skipsAtTrigger);
-            else
-                PushEvent(now, "%s unblock", track.name.c_str());
+            st.blocking      = false;
+            st.handled       = false;
+            st.holdingClicks = false;
         }
+    }
+
+    static void RearmAfterEvade(PlayerState& st, Instant now)
+    {
+        st.handled      = false;
+        st.blockStarted = now;
+        st.lastSeen     = now;
     }
 
     static void CollectEvadeMessages(Minecraft& mc, Instant now, std::vector<size_t>& evaded)
@@ -344,7 +198,6 @@ namespace AntiEvadeModule
         if (chat.GetInstance() == nullptr) return;
 
         std::vector<ChatMessage> messages = chat.getRecentMessages(kChatScan);
-        s_chatLines = (int)messages.size();
         if (messages.empty()) return;
 
         const int  newest = messages.front().addedTime;
@@ -385,13 +238,6 @@ namespace AntiEvadeModule
         }
     }
 
-    static void RearmAfterEvade(PlayerState& st, Instant now)
-    {
-        st.handled      = false;
-        st.blockStarted = now;
-        st.lastSeen     = now;
-    }
-
     static bool GameHasFocus()
     {
         return s_window != nullptr
@@ -399,7 +245,7 @@ namespace AntiEvadeModule
             && !Overlay::IsMenuVisible();
     }
 
-    static void ApplyButtonState(bool hold, Instant now)
+    static void ApplyButtonState(bool hold)
     {
         if (s_window == nullptr) s_window = FindGameWindow();
         if (s_window == nullptr) return;
@@ -414,9 +260,6 @@ namespace AntiEvadeModule
             if (!lmb || !GameHasFocus()) return;
             SendMessageW(s_window, WM_LBUTTONUP, 0, MAKELPARAM(pt.x, pt.y));
             s_buttonReleased = true;
-
-            std::lock_guard<std::mutex> lk(s_mutex);
-            PushEvent(now, "mouse RELEASED (button held)");
             return;
         }
 
@@ -424,9 +267,6 @@ namespace AntiEvadeModule
         if (!lmb || !GameHasFocus()) return;
 
         SendMessageW(s_window, WM_LBUTTONDOWN, MK_LBUTTON, MAKELPARAM(pt.x, pt.y));
-
-        std::lock_guard<std::mutex> lk(s_mutex);
-        PushEvent(now, "mouse REPRESSED");
     }
 
     static void RestoreButton()
@@ -452,16 +292,16 @@ namespace AntiEvadeModule
         return ehr.getEntity();
     }
 
-    static const char* TickInner(Minecraft& mc, Instant now)
+    static void Tick(Minecraft& mc, Instant now)
     {
         JLocalFrame frame(2048);
-        if (!frame.ok()) return "local frame failed";
+        if (!frame.ok()) return;
 
         Player local = mc.GetLocalPlayer();
-        if (local.GetInstance() == nullptr) return "no local player";
+        if (local.GetInstance() == nullptr) return;
 
         Level level = mc.GetLevel();
-        if (level.GetInstance() == nullptr) return "no level";
+        if (level.GetInstance() == nullptr) return;
 
         const double lx = local.getX();
         const double ly = local.getY();
@@ -480,36 +320,21 @@ namespace AntiEvadeModule
             const double dx = p.getX() - lx;
             const double dy = p.getY() - ly;
             const double dz = p.getZ() - lz;
-            if (dx * dx + dy * dy + dz * dz > kTrackRadiusSq) continue;
+
+            const double distSq = dx * dx + dy * dy + dz * dz;
+            if (distSq > kTrackRadiusSq) continue;
 
             const size_t index = AcquireTrack(p);
             if (index == kNoTrack) continue;
 
             Track& track = s_tracks[index];
-            track.seen = true;
-
-            track.distSq = dx * dx + dy * dy + dz * dz;
+            track.seen   = true;
+            track.distSq = distSq;
 
             LivingEntity living(p.GetInstance());
+            const bool blocking = living.isUsingItem() && HoldingSword(living);
 
-            if (now - track.checkedAt > kArmorTtl) {
-                track.leather   = WearingLeather(living);
-                track.checkedAt = now;
-            }
-
-            track.usingItem = living.isUsingItem();
-            track.sword     = track.usingItem && HoldingSword(living);
-
-            if (!track.logged) {
-                track.logged = true;
-                const std::string chest = SlotId(living, 1);
-                const std::string feet  = SlotId(living, 3);
-                std::lock_guard<std::mutex> lk(s_mutex);
-                PushEvent(now, "%s in range, leather %d, chest %s, feet %s",
-                          track.name.c_str(), track.leather ? 1 : 0, chest.c_str(), feet.c_str());
-            }
-
-            s_observations.push_back(Observation{ index, track.usingItem && track.sword });
+            s_observations.push_back(Observation{ index, blocking });
         }
 
         size_t hovered = kNoTrack;
@@ -532,9 +357,7 @@ namespace AntiEvadeModule
             targetUuid = s_lastHovered;
         }
 
-        bool        hold = false;
-        std::string holdTarget;
-        std::string activeTarget;
+        bool hold = false;
         {
             std::lock_guard<std::mutex> lk(s_mutex);
 
@@ -547,19 +370,14 @@ namespace AntiEvadeModule
             for (size_t index : evaded) {
                 auto it = s_states.find(s_tracks[index].uuid);
                 if (it != s_states.end()) RearmAfterEvade(it->second, now);
-                PushEvent(now, "%s EVADE msg, rearmed", s_tracks[index].name.c_str());
             }
 
             for (const Observation& ob : s_observations)
                 ApplyObservation(s_tracks[ob.track], ob.blocking, now);
 
-            const char* via = "none";
-
             if (!targetUuid.empty()) {
-                activeTarget = targetUuid;
-                auto it = s_states.find(activeTarget);
+                auto it = s_states.find(targetUuid);
                 if (it != s_states.end()) hold = it->second.holdingClicks;
-                if (hold) { holdTarget = activeTarget; via = "crosshair"; }
             }
 
             if (!hold) {
@@ -567,44 +385,10 @@ namespace AntiEvadeModule
                     if (!t.seen || t.distSq > kReachRadiusSq) continue;
                     auto it = s_states.find(t.uuid);
                     if (it == s_states.end() || !it->second.holdingClicks) continue;
-                    hold       = true;
-                    holdTarget = t.uuid;
-                    via        = "reach";
+                    hold = true;
                     break;
                 }
             }
-
-            static bool holdPrev = false;
-            if (hold != holdPrev) {
-                holdPrev = hold;
-                if (hold) PushEvent(now, "clicks HELD via %s", via);
-                else      PushEvent(now, "clicks RELEASED");
-            }
-
-            const int prevTicks = s_debug.ticks;
-            s_debug = DebugState{};
-            s_debug.ticks     = prevTicks;
-            s_debug.chatLines = s_chatLines;
-            s_debug.tracked  = (int)s_tracks.size();
-            s_debug.holding  = hold;
-            s_debug.hovering = hovered != kNoTrack;
-            if (hovered != kNoTrack) {
-                const Track& t   = s_tracks[hovered];
-                s_debug.target    = t.name;
-                s_debug.leather   = t.leather;
-                s_debug.usingItem = t.usingItem;
-                s_debug.sword     = t.sword;
-
-                auto it = s_states.find(t.uuid);
-                if (it != s_states.end()) {
-                    if (it->second.blocking)
-                        s_debug.blockMs = (int)std::chrono::duration_cast<std::chrono::milliseconds>(
-                                              now - it->second.blockStarted).count();
-                }
-            }
-
-            s_holdTarget   = std::move(holdTarget);
-            s_activeTarget = std::move(activeTarget);
         }
 
         PurgeUnseenTracks();
@@ -612,61 +396,12 @@ namespace AntiEvadeModule
         if (lc->env->ExceptionCheck()) lc->env->ExceptionClear();
 
         s_hold.store(hold, std::memory_order_relaxed);
-        ApplyButtonState(hold, now);
-        return "ticking";
-    }
-
-    static void Tick(Minecraft& mc, Instant now)
-    {
-        const char* stage = TickInner(mc, now);
-
-        std::lock_guard<std::mutex> lk(s_mutex);
-        s_debug.stage = stage;
-        s_debug.ticks += 1;
-    }
-
-    DebugState Debug()
-    {
-        std::lock_guard<std::mutex> lk(s_mutex);
-
-        DebugState out = s_debug;
-        const Instant now = Clock::now();
-
-        out.events.reserve(s_events.size());
-        for (const DebugEvent& e : s_events) {
-            const double age = std::chrono::duration<double>(now - e.at).count();
-            char line[192];
-            snprintf(line, sizeof(line), "%5.1fs  %s", age, e.text.c_str());
-            out.events.emplace_back(line);
-        }
-        return out;
+        ApplyButtonState(hold);
     }
 
     bool ShouldHoldClicks()
     {
         return g_settings.antiEvadeEnabled && s_hold.load(std::memory_order_relaxed);
-    }
-
-    void NoteSkip()
-    {
-        s_skips.fetch_add(1, std::memory_order_relaxed);
-    }
-
-    void NoteHit()
-    {
-        s_swings.fetch_add(1, std::memory_order_relaxed);
-        if (!g_settings.antiEvadeEnabled) return;
-
-        std::lock_guard<std::mutex> lk(s_mutex);
-
-        const std::string& uuid = s_holdTarget.empty() ? s_activeTarget : s_holdTarget;
-        if (uuid.empty()) return;
-
-        auto it = s_states.find(uuid);
-        if (it == s_states.end()) return;
-
-        it->second.lastSeen = Clock::now();
-        if (it->second.blocking) it->second.struckBlock = true;
     }
 
     DWORD WINAPI init(LPVOID)
@@ -695,8 +430,6 @@ namespace AntiEvadeModule
                     s_chatPrimed   = false;
                     std::lock_guard<std::mutex> lk(s_mutex);
                     s_states.clear();
-                    s_holdTarget.clear();
-                    s_activeTarget.clear();
                 }
                 continue;
             }

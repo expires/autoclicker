@@ -245,7 +245,6 @@ namespace AutoclickerModule
                         }
                         if (!usingItem) {
                             if (AntiEvadeModule::ShouldHoldClicks()) {
-                                AntiEvadeModule::NoteSkip();
                                 DELAY(10);
                             }
                             else {

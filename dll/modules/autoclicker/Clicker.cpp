@@ -1,7 +1,6 @@
 #include "Clicker.h"
 #include "AutoclickerModule.h"
 #include "../sprintreset/SprintResetModule.h"
-#include "../antievade/AntiEvadeModule.h"
 
 static long long steadyNowMs()
 {
@@ -70,7 +69,6 @@ void Clicker::lclick(HWND hwnd, int jitterStrength, int hitType)
     GetCursorPos(&pt);
     SprintResetModule::PreClick(hitType == 2);
     SendMessage(hwnd, WM_LBUTTONDOWN, MK_LBUTTON, MAKELPARAM(pt.x, pt.y));
-    if (hitType == 2) AntiEvadeModule::NoteHit();
     const int down = randomDelay(downFrac);
     armJitter(down, jitterStrength);
     DELAY(down);
