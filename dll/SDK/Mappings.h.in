@@ -176,6 +176,7 @@
 #define MC_ChatMessage                "@class_ChatMessage@"
 #define MTD_ChatMessage_content       "@mtd_ChatMessage_content@"
 #define DESC_ChatMessage_content      "@desc_ChatMessage_content@"
+#define MTD_ChatMessage_addedTime     "@mtd_ChatMessage_addedTime@"
 
 #define MC_BlockPos                   "@class_BlockPos@"
 #define MC_BlockState                 "@class_BlockState@"

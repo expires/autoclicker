@@ -22,9 +22,9 @@ jobject ChatComponent::GetInstance()
     return this->instance;
 }
 
-std::vector<std::string> ChatComponent::getRecentMessages(int max)
+std::vector<ChatMessage> ChatComponent::getRecentMessages(int max)
 {
-    std::vector<std::string> out;
+    std::vector<ChatMessage> out;
     if (this->instance == nullptr || max <= 0)          return out;
     if (MTD_ChatMessage_content[0] == '\0')             return out;
 
@@ -46,6 +46,11 @@ std::vector<std::string> ChatComponent::getRecentMessages(int max)
             MTD_ChatMessage_content, DESC_ChatMessage_content);
     if (!contentM) { lc->env->ExceptionClear(); lc->env->DeleteLocalRef(list); return out; }
 
+    static jmethodID addedTimeM = nullptr;
+    if (MTD_ChatMessage_addedTime[0] != '\0')
+        JMethod(addedTimeM, messageCls, MTD_ChatMessage_addedTime, "()I");
+    if (lc->env->ExceptionCheck()) lc->env->ExceptionClear();
+
     const jint size  = lc->env->CallIntMethod(list, sizeM);
     const jint count = size < (jint)max ? size : (jint)max;
     if (lc->env->ExceptionCheck()) { lc->env->ExceptionClear(); lc->env->DeleteLocalRef(list); return out; }
@@ -59,9 +64,18 @@ std::vector<std::string> ChatComponent::getRecentMessages(int max)
         jobject content = lc->env->CallObjectMethod(message, contentM);
         if (content && !lc->env->ExceptionCheck())
         {
+            ChatMessage entry;
+
             Component text(content);
-            out.push_back(text.getString());
+            entry.text = text.getString();
             lc->env->DeleteLocalRef(content);
+
+            if (addedTimeM) {
+                entry.addedTime = (int)lc->env->CallIntMethod(message, addedTimeM);
+                if (lc->env->ExceptionCheck()) { lc->env->ExceptionClear(); entry.addedTime = 0; }
+            }
+
+            out.push_back(std::move(entry));
         }
         else
         {

@@ -4,6 +4,12 @@
 #include <string>
 #include <vector>
 
+struct ChatMessage
+{
+    int         addedTime = 0;
+    std::string text;
+};
+
 class ChatComponent
 {
 public:
@@ -15,7 +21,7 @@ public:
 
     jobject GetInstance();
 
-    std::vector<std::string> getRecentMessages(int max);
+    std::vector<ChatMessage> getRecentMessages(int max);
 
 private:
     jobject instance;

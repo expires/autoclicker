@@ -113,6 +113,7 @@ foreach(KEY
     fld_ChatComponent_messages  desc_ChatComponent_messages
     class_ChatMessage
     mtd_ChatMessage_content     desc_ChatMessage_content
+    mtd_ChatMessage_addedTime
     class_BlockPos class_BlockState
     mtd_Level_getBlockState     desc_Level_getBlockState
     mtd_BlockState_isAir

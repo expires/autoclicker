@@ -75,7 +75,9 @@ namespace AntiEvadeModule
     static std::string s_lastHovered;
     static Instant     s_lastHoveredAt{};
 
-    static std::string s_lastChatSeen;
+    static int         s_lastChatTime = 0;
+    static std::string s_lastChatText;
+    static bool        s_chatPrimed   = false;
     static Instant     s_lastChatPoll{};
 
     static constexpr size_t kNoTrack = (size_t)-1;
@@ -231,15 +233,34 @@ namespace AntiEvadeModule
         ChatComponent chat = gui.getChat();
         if (chat.GetInstance() == nullptr) return;
 
-        std::vector<std::string> messages = chat.getRecentMessages(kChatScan);
+        std::vector<ChatMessage> messages = chat.getRecentMessages(kChatScan);
         if (messages.empty()) return;
 
-        const std::string newest = messages.front();
+        const int  newest = messages.front().addedTime;
+        const bool timed  = newest != 0;
 
-        for (const std::string& raw : messages) {
-            if (raw == s_lastChatSeen) break;
+        if (timed && newest < s_lastChatTime) s_chatPrimed = false;
 
-            std::string line = raw;
+        if (!s_chatPrimed) {
+            s_chatPrimed   = true;
+            s_lastChatTime = newest;
+            s_lastChatText = messages.front().text;
+            return;
+        }
+
+        size_t fresh = 0;
+        if (timed) {
+            while (fresh < messages.size() && messages[fresh].addedTime > s_lastChatTime) ++fresh;
+        }
+        else {
+            while (fresh < messages.size() && messages[fresh].text != s_lastChatText) ++fresh;
+        }
+
+        s_lastChatTime = newest;
+        s_lastChatText = messages.front().text;
+
+        for (size_t m = 0; m < fresh; ++m) {
+            std::string line = messages[m].text;
             for (char& c : line) c = (char)std::tolower((unsigned char)c);
             if (line.find(kEvadeMarker) == std::string::npos) continue;
 
@@ -251,8 +272,6 @@ namespace AntiEvadeModule
                 }
             }
         }
-
-        s_lastChatSeen = newest;
     }
 
     static void ClearLockout(PlayerState& st, Instant now)
@@ -421,7 +440,9 @@ namespace AntiEvadeModule
                     ClearTracks();
                     s_observations.clear();
                     s_lastHovered.clear();
-                    s_lastChatSeen.clear();
+                    s_lastChatTime = 0;
+                    s_lastChatText.clear();
+                    s_chatPrimed   = false;
                     std::lock_guard<std::mutex> lk(s_mutex);
                     s_states.clear();
                     s_holdTarget.clear();

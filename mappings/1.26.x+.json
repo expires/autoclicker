@@ -172,6 +172,7 @@
   "class_ChatMessage":             "net.minecraft.client.multiplayer.chat.GuiMessage",
   "mtd_ChatMessage_content":       "content",
   "desc_ChatMessage_content":      "()Lnet/minecraft/network/chat/Component;",
+  "mtd_ChatMessage_addedTime":     "addedTime",
 
   "class_BlockPos":                "net.minecraft.core.BlockPos",
   "class_BlockState":              "net.minecraft.world.level.block.state.BlockState",
