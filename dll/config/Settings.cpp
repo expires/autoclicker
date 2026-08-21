@@ -85,6 +85,8 @@ void Settings::Save()
     fprintf(f, "shiftRecallKey=%d\n",     shiftRecallKey);
     fprintf(f, "antiEvadeEnabled=%d\n",   antiEvadeEnabled ? 1 : 0);
     fprintf(f, "antiEvadeKey=%d\n",       antiEvadeKey);
+    fprintf(f, "evadeUnblockEnabled=%d\n", evadeUnblockEnabled ? 1 : 0);
+    fprintf(f, "evadeUnblockKey=%d\n",    evadeUnblockKey);
 
     fprintf(f, "notificationsEnabled=%d\n", notificationsEnabled ? 1 : 0);
 
@@ -170,6 +172,8 @@ void Settings::Load()
         else if (k == "shiftRecallKey")        shiftRecallKey        = val;
         else if (k == "antiEvadeEnabled")      antiEvadeEnabled      = (val != 0);
         else if (k == "antiEvadeKey")          antiEvadeKey          = val;
+        else if (k == "evadeUnblockEnabled")   evadeUnblockEnabled   = (val != 0);
+        else if (k == "evadeUnblockKey")       evadeUnblockKey       = val;
         else if (k == "notificationsEnabled")  notificationsEnabled  = (val != 0);
         else if (k == "friendKey")               friendKey               = val;
         else if (k == "friendCount") {
@@ -256,6 +260,7 @@ void Settings::Load()
 
     shiftRecallKey = clampVK(shiftRecallKey);
     antiEvadeKey   = clampVK(antiEvadeKey);
+    evadeUnblockKey = clampVK(evadeUnblockKey);
 
     friendKey = clampVK(friendKey);
 

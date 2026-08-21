@@ -38,6 +38,11 @@ namespace OverlayTabs
                               &g_settings.antiEvadeKey);
         ImGui::PopID();
 
+        ImGui::PushID("evadeunblock");
+        dirty |= ModuleHeader("Evade Unblock", &g_settings.evadeUnblockEnabled,
+                              &g_settings.evadeUnblockKey);
+        ImGui::PopID();
+
         ImGui::PushID("scaffold");
         dirty |= ModuleHeader("Legit Scaffold", &g_settings.scaffoldEnabled, &g_settings.scaffoldKey);
         ImGui::PopID();

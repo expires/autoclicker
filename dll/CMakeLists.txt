@@ -331,6 +331,8 @@ file(GLOB FRIENDS_HEADERS      "modules/friends/*.h")
 file(GLOB FRIENDS_SOURCES      "modules/friends/*.cpp")
 file(GLOB SCAFFOLD_HEADERS     "modules/scaffold/*.h")
 file(GLOB SCAFFOLD_SOURCES     "modules/scaffold/*.cpp")
+file(GLOB EVADEUNBLOCK_HEADERS "modules/evadeunblock/*.h")
+file(GLOB EVADEUNBLOCK_SOURCES "modules/evadeunblock/*.cpp")
 file(GLOB ANTIEVADE_HEADERS    "modules/antievade/*.h")
 file(GLOB ANTIEVADE_SOURCES    "modules/antievade/*.cpp")
 file(GLOB SPRINTRESET_HEADERS  "modules/sprintreset/*.h")
@@ -366,6 +368,8 @@ add_library(${PROJECT_NAME} SHARED
     ${SPRINTRESET_SOURCES}
     ${ANTIEVADE_HEADERS}
     ${ANTIEVADE_SOURCES}
+    ${EVADEUNBLOCK_HEADERS}
+    ${EVADEUNBLOCK_SOURCES}
     ${SDK_SOURCES}
     ${SDK_HEADERS}
     ${OVERLAY_HEADERS}
@@ -399,6 +403,8 @@ source_group("Header Files\\SprintReset" FILES ${SPRINTRESET_HEADERS})
 source_group("Source Files\\SprintReset" FILES ${SPRINTRESET_SOURCES})
 source_group("Header Files\\AntiEvade"   FILES ${ANTIEVADE_HEADERS})
 source_group("Source Files\\AntiEvade"   FILES ${ANTIEVADE_SOURCES})
+source_group("Header Files\\EvadeUnblock" FILES ${EVADEUNBLOCK_HEADERS})
+source_group("Source Files\\EvadeUnblock" FILES ${EVADEUNBLOCK_SOURCES})
 source_group("Header Files\\Overlay"     FILES ${OVERLAY_HEADERS})
 source_group("Source Files\\Overlay"     FILES ${OVERLAY_SOURCES})
 source_group("Header Files\\Network"     FILES ${NETWORK_HEADERS})

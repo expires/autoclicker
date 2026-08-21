@@ -861,6 +861,7 @@ static BOOL WINAPI hk_wglSwapBuffers(HDC hdc)
         static bool s_sprintResetKeyHeldPrev = false;
         static bool s_shiftRecallKeyHeldPrev = false;
         static bool s_antiEvadeKeyHeldPrev = false;
+        static bool s_evadeUnblockKeyHeldPrev = false;
         static bool s_destructKeyHeldPrev = false;
 
         const bool espHeld =
@@ -881,6 +882,9 @@ static BOOL WINAPI hk_wglSwapBuffers(HDC hdc)
         const bool antiEvadeHeld =
             (g_settings.antiEvadeKey > 0 && g_settings.antiEvadeKey <= 0xFE) &&
             (GetAsyncKeyState(g_settings.antiEvadeKey) & 0x8000);
+        const bool evadeUnblockHeld =
+            (g_settings.evadeUnblockKey > 0 && g_settings.evadeUnblockKey <= 0xFE) &&
+            (GetAsyncKeyState(g_settings.evadeUnblockKey) & 0x8000);
         const bool sprintResetHeld =
             (g_settings.sprintResetKey > 0 && g_settings.sprintResetKey <= 0xFE) &&
             (GetAsyncKeyState(g_settings.sprintResetKey) & 0x8000);
@@ -901,6 +905,7 @@ static BOOL WINAPI hk_wglSwapBuffers(HDC hdc)
             if (sprintResetHeld && !s_sprintResetKeyHeldPrev) { g_settings.sprintResetEnabled = !g_settings.sprintResetEnabled; notifyToggle("Sprint Reset", g_settings.sprintResetEnabled); }
             if (shiftRecallHeld && !s_shiftRecallKeyHeldPrev) { g_settings.shiftRecallEnabled = !g_settings.shiftRecallEnabled; notifyToggle("Auto Shift Recall", g_settings.shiftRecallEnabled); }
             if (antiEvadeHeld && !s_antiEvadeKeyHeldPrev) { g_settings.antiEvadeEnabled = !g_settings.antiEvadeEnabled; notifyToggle("AntiEvade", g_settings.antiEvadeEnabled); }
+            if (evadeUnblockHeld && !s_evadeUnblockKeyHeldPrev) { g_settings.evadeUnblockEnabled = !g_settings.evadeUnblockEnabled; notifyToggle("Evade Unblock", g_settings.evadeUnblockEnabled); }
             if (destructHeld && !s_destructKeyHeldPrev) { g_settings.selfDestruct = true; Notifications::Push("Unloading...", Notifications::Kind::Alert); }
         }
         s_espKeyHeldPrev      = espHeld;
@@ -910,6 +915,7 @@ static BOOL WINAPI hk_wglSwapBuffers(HDC hdc)
         s_sprintResetKeyHeldPrev = sprintResetHeld;
         s_shiftRecallKeyHeldPrev = shiftRecallHeld;
         s_antiEvadeKeyHeldPrev = antiEvadeHeld;
+        s_evadeUnblockKeyHeldPrev = evadeUnblockHeld;
         s_destructKeyHeldPrev = destructHeld;
     }
 

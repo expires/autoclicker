@@ -11,6 +11,7 @@
 #include "modules/autoblock/AutoblockModule.h"
 #include "modules/friends/FriendsModule.h"
 #include "modules/antievade/AntiEvadeModule.h"
+#include "modules/evadeunblock/EvadeUnblockModule.h"
 #include "overlay/Overlay.h"
 
 using namespace std::chrono;
@@ -36,6 +37,7 @@ static DWORD WINAPI Bootstrap(LPVOID)
     Teardown::RegisterWorker(CreateThread(nullptr, 0, AutoblockModule::init,   g_instance, 0, nullptr));
     Teardown::RegisterWorker(CreateThread(nullptr, 0, FriendsModule::init,     g_instance, 0, nullptr));
     Teardown::RegisterWorker(CreateThread(nullptr, 0, AntiEvadeModule::init,   g_instance, 0, nullptr));
+    Teardown::RegisterWorker(CreateThread(nullptr, 0, EvadeUnblockModule::init, g_instance, 0, nullptr));
 
     LOG("bootstrap: all worker threads spawned");
     return 0;

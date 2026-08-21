@@ -77,6 +77,9 @@ struct Settings
     bool antiEvadeEnabled = false;
     int  antiEvadeKey     = 0;
 
+    bool evadeUnblockEnabled = false;
+    int  evadeUnblockKey     = 0;
+
     bool notificationsEnabled = true;
 
     mutable std::mutex       friendsMutex;
