@@ -26,6 +26,7 @@ namespace AntiEvadeModule
 
     bool ShouldHoldClicks();
     void NoteHit();
+    void NoteSkip();
 
     DebugState Debug();
 }

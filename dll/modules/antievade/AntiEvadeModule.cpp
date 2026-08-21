@@ -24,7 +24,7 @@ namespace AntiEvadeModule
     using Instant = Clock::time_point;
 
     static constexpr auto kBlockThreshold = std::chrono::milliseconds(50);
-    static constexpr auto kHoldWindow     = std::chrono::milliseconds(800);
+    static constexpr auto kHoldWindow     = std::chrono::milliseconds(900);
     static constexpr auto kEntryTtl       = std::chrono::seconds(18);
     static constexpr auto kPollInterval   = std::chrono::milliseconds(5);
     static constexpr auto kExpiryInterval = std::chrono::seconds(1);
@@ -44,6 +44,8 @@ namespace AntiEvadeModule
     {
         Instant blockStarted{};
         Instant holdUntil{};
+        int     swingsAtTrigger = 0;
+        int     skipsAtTrigger  = 0;
         bool    blocking         = false;
         bool    thresholdReached = false;
         bool    handled          = false;
@@ -90,6 +92,8 @@ namespace AntiEvadeModule
     static std::deque<DebugEvent> s_events;
     static DebugState             s_debug;
     static int                    s_chatLines = 0;
+    static std::atomic<int>       s_swings{0};
+    static std::atomic<int>       s_skips{0};
 
     static FILE* s_trace      = nullptr;
     static bool  s_traceOpened = false;
@@ -280,13 +284,17 @@ namespace AntiEvadeModule
                 st.handled          = true;
                 st.holdingClicks    = true;
                 st.holdUntil        = now + kHoldWindow;
+                st.swingsAtTrigger  = s_swings.load(std::memory_order_relaxed);
+                st.skipsAtTrigger   = s_skips.load(std::memory_order_relaxed);
                 PushEvent(now, "%s TRIGGER hold %dms", track.name.c_str(),
                           (int)std::chrono::duration_cast<std::chrono::milliseconds>(kHoldWindow).count());
             }
 
             if (st.holdingClicks && now >= st.holdUntil) {
                 st.holdingClicks = false;
-                PushEvent(now, "%s hold expired", track.name.c_str());
+                PushEvent(now, "%s hold expired  swings %d  skips %d", track.name.c_str(),
+                          s_swings.load(std::memory_order_relaxed) - st.swingsAtTrigger,
+                          s_skips.load(std::memory_order_relaxed)  - st.skipsAtTrigger);
             }
         }
         else if (st.blocking) {
@@ -298,7 +306,12 @@ namespace AntiEvadeModule
             st.holdingClicks    = false;
             st.struckBlock      = false;
 
-            PushEvent(now, "%s unblock%s", track.name.c_str(), wasHolding ? " (resume)" : "");
+            if (wasHolding)
+                PushEvent(now, "%s unblock (resume)  swings %d  skips %d", track.name.c_str(),
+                          s_swings.load(std::memory_order_relaxed) - st.swingsAtTrigger,
+                          s_skips.load(std::memory_order_relaxed)  - st.skipsAtTrigger);
+            else
+                PushEvent(now, "%s unblock", track.name.c_str());
         }
     }
 
@@ -473,11 +486,13 @@ namespace AntiEvadeModule
             for (const Observation& ob : s_observations)
                 ApplyObservation(s_tracks[ob.track], ob.blocking, now);
 
+            const char* via = "none";
+
             if (!targetUuid.empty()) {
                 activeTarget = targetUuid;
                 auto it = s_states.find(activeTarget);
                 if (it != s_states.end()) hold = it->second.holdingClicks;
-                if (hold) holdTarget = activeTarget;
+                if (hold) { holdTarget = activeTarget; via = "crosshair"; }
             }
 
             if (!hold) {
@@ -487,8 +502,16 @@ namespace AntiEvadeModule
                     if (it == s_states.end() || !it->second.holdingClicks) continue;
                     hold       = true;
                     holdTarget = t.uuid;
+                    via        = "reach";
                     break;
                 }
+            }
+
+            static bool holdPrev = false;
+            if (hold != holdPrev) {
+                holdPrev = hold;
+                if (hold) PushEvent(now, "clicks HELD via %s", via);
+                else      PushEvent(now, "clicks RELEASED");
             }
 
             const int prevTicks = s_debug.ticks;
@@ -556,8 +579,14 @@ namespace AntiEvadeModule
         return g_settings.antiEvadeEnabled && s_hold.load(std::memory_order_relaxed);
     }
 
+    void NoteSkip()
+    {
+        s_skips.fetch_add(1, std::memory_order_relaxed);
+    }
+
     void NoteHit()
     {
+        s_swings.fetch_add(1, std::memory_order_relaxed);
         if (!g_settings.antiEvadeEnabled) return;
 
         std::lock_guard<std::mutex> lk(s_mutex);
