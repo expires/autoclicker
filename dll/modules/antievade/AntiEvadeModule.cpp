@@ -20,7 +20,7 @@ namespace AntiEvadeModule
     using Instant = Clock::time_point;
 
     static constexpr auto kBlockThreshold = std::chrono::milliseconds(50);
-    static constexpr auto kHoldWindow     = std::chrono::milliseconds(700);
+    static constexpr auto kHoldWindow     = std::chrono::milliseconds(800);
     static constexpr auto kEntryTtl       = std::chrono::seconds(18);
     static constexpr auto kAbilityCooldown = std::chrono::seconds(18);
     static constexpr auto kPollInterval   = std::chrono::milliseconds(5);
