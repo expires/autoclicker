@@ -40,15 +40,19 @@ namespace OverlayTabs
         if (g_settings.antiEvadeEnabled) {
             const AntiEvadeModule::DebugState dbg = AntiEvadeModule::Debug();
 
+            ImGui::TextDisabled("%s   ticks %d", dbg.stage.c_str(), dbg.ticks);
             ImGui::TextDisabled("tracked %d   chat %d   %s",
                                 dbg.tracked, dbg.chatLines,
                                 dbg.holding ? "HOLDING" : "swinging");
+
+            if (dbg.events.empty())
+                ImGui::TextDisabled("(no events yet)");
 
             if (dbg.hovering) {
                 ImGui::TextDisabled("%s  leather %d  using %d  sword %d",
                                     dbg.target.empty() ? "?" : dbg.target.c_str(),
                                     dbg.leather ? 1 : 0, dbg.usingItem ? 1 : 0, dbg.sword ? 1 : 0);
-                ImGui::TextDisabled("block %dms   lockout %dms", dbg.blockMs, dbg.lockoutMs);
+                ImGui::TextDisabled("block %dms", dbg.blockMs);
             }
             else {
                 ImGui::TextDisabled("no target under crosshair");

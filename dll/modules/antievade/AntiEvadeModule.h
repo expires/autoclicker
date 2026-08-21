@@ -14,9 +14,10 @@ namespace AntiEvadeModule
         bool        sword     = false;
         bool        holding   = false;
         int         blockMs   = 0;
-        int         lockoutMs = 0;
         int         tracked   = 0;
         int         chatLines = 0;
+        int         ticks     = 0;
+        std::string stage     = "not started";
 
         std::vector<std::string> events;
     };

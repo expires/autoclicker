@@ -13,6 +13,7 @@
 #include <thread>
 #include <unordered_map>
 #include <vector>
+#include <shlobj.h>
 #include <cstdarg>
 #include <cstdio>
 #include <deque>
@@ -25,7 +26,6 @@ namespace AntiEvadeModule
     static constexpr auto kBlockThreshold = std::chrono::milliseconds(50);
     static constexpr auto kHoldWindow     = std::chrono::milliseconds(800);
     static constexpr auto kEntryTtl       = std::chrono::seconds(18);
-    static constexpr auto kAbilityCooldown = std::chrono::seconds(18);
     static constexpr auto kPollInterval   = std::chrono::milliseconds(5);
     static constexpr auto kExpiryInterval = std::chrono::seconds(1);
     static constexpr auto kArmorTtl       = std::chrono::milliseconds(500);
@@ -44,7 +44,6 @@ namespace AntiEvadeModule
     {
         Instant blockStarted{};
         Instant holdUntil{};
-        Instant lockoutUntil{};
         bool    blocking         = false;
         bool    thresholdReached = false;
         bool    handled          = false;
@@ -61,6 +60,7 @@ namespace AntiEvadeModule
         bool        leather   = false;
         Instant     checkedAt{};
         bool        seen      = false;
+        bool        logged    = false;
         bool        usingItem = false;
         bool        sword     = false;
         double      distSq    = 0.0;
@@ -91,6 +91,39 @@ namespace AntiEvadeModule
     static DebugState             s_debug;
     static int                    s_chatLines = 0;
 
+    static FILE* s_trace      = nullptr;
+    static bool  s_traceOpened = false;
+
+    static void TraceLine(const char* text)
+    {
+        if (!s_traceOpened) {
+            s_traceOpened = true;
+
+            char appdata[MAX_PATH] = {};
+            if (SUCCEEDED(SHGetFolderPathA(nullptr, CSIDL_APPDATA, nullptr, 0, appdata))) {
+                const std::string base = std::string(appdata) + "\\manuclicker";
+                const std::string dir  = base + "\\logs";
+                CreateDirectoryA(base.c_str(), nullptr);
+                CreateDirectoryA(dir.c_str(),  nullptr);
+                if (fopen_s(&s_trace, (dir + "\\antievade.log").c_str(), "w") != 0)
+                    s_trace = nullptr;
+            }
+        }
+
+        if (!s_trace) return;
+
+        SYSTEMTIME st;
+        GetLocalTime(&st);
+        fprintf(s_trace, "[%02d:%02d:%02d.%03d] %s\n",
+                st.wHour, st.wMinute, st.wSecond, st.wMilliseconds, text);
+        fflush(s_trace);
+    }
+
+    static void TraceClose()
+    {
+        if (s_trace) { fflush(s_trace); fclose(s_trace); s_trace = nullptr; }
+    }
+
     static void PushEvent(Instant now, const char* format, ...)
     {
         char line[160];
@@ -99,8 +132,20 @@ namespace AntiEvadeModule
         vsnprintf(line, sizeof(line), format, args);
         va_end(args);
 
+        TraceLine(line);
+
         s_events.push_front(DebugEvent{ now, line });
         while (s_events.size() > kDebugEvents) s_events.pop_back();
+    }
+
+    static void TraceLinef(const char* format, ...)
+    {
+        char line[512];
+        va_list args;
+        va_start(args, format);
+        vsnprintf(line, sizeof(line), format, args);
+        va_end(args);
+        TraceLine(line);
     }
 
     static std::string s_lastHovered;
@@ -209,9 +254,8 @@ namespace AntiEvadeModule
     static void Expire(Instant now)
     {
         for (auto it = s_states.begin(); it != s_states.end(); ) {
-            const PlayerState& st = it->second;
-            if (now - st.lastSeen > kEntryTtl && now >= st.lockoutUntil) it = s_states.erase(it);
-            else                                                        ++it;
+            if (now - it->second.lastSeen > kEntryTtl) it = s_states.erase(it);
+            else                                          ++it;
         }
     }
 
@@ -234,19 +278,10 @@ namespace AntiEvadeModule
             if (!st.handled && now - st.blockStarted > kBlockThreshold) {
                 st.thresholdReached = true;
                 st.handled          = true;
-
-                if (now >= st.lockoutUntil) {
-                    st.holdingClicks = true;
-                    st.holdUntil     = now + kHoldWindow;
-                    st.lockoutUntil  = now + kAbilityCooldown;
-                    PushEvent(now, "%s TRIGGER hold %dms", track.name.c_str(),
-                              (int)std::chrono::duration_cast<std::chrono::milliseconds>(kHoldWindow).count());
-                }
-                else {
-                    const auto left = std::chrono::duration_cast<std::chrono::milliseconds>(
-                                          st.lockoutUntil - now).count();
-                    PushEvent(now, "%s block IGNORED lockout %dms", track.name.c_str(), (int)left);
-                }
+                st.holdingClicks    = true;
+                st.holdUntil        = now + kHoldWindow;
+                PushEvent(now, "%s TRIGGER hold %dms", track.name.c_str(),
+                          (int)std::chrono::duration_cast<std::chrono::milliseconds>(kHoldWindow).count());
             }
 
             if (st.holdingClicks && now >= st.holdUntil) {
@@ -320,9 +355,8 @@ namespace AntiEvadeModule
         }
     }
 
-    static void ClearLockout(PlayerState& st, Instant now)
+    static void RearmAfterEvade(PlayerState& st, Instant now)
     {
-        st.lockoutUntil = now;
         st.handled      = false;
         st.blockStarted = now;
         st.lastSeen     = now;
@@ -339,16 +373,16 @@ namespace AntiEvadeModule
         return ehr.getEntity();
     }
 
-    static void Tick(Minecraft& mc, Instant now)
+    static const char* TickInner(Minecraft& mc, Instant now)
     {
         JLocalFrame frame(2048);
-        if (!frame.ok()) return;
+        if (!frame.ok()) return "local frame failed";
 
         Player local = mc.GetLocalPlayer();
-        if (local.GetInstance() == nullptr) return;
+        if (local.GetInstance() == nullptr) return "no local player";
 
         Level level = mc.GetLevel();
-        if (level.GetInstance() == nullptr) return;
+        if (level.GetInstance() == nullptr) return "no level";
 
         const double lx = local.getX();
         const double ly = local.getY();
@@ -386,6 +420,12 @@ namespace AntiEvadeModule
 
             track.usingItem = living.isUsingItem();
             track.sword     = track.usingItem && HoldingSword(living);
+
+            if (!track.logged) {
+                track.logged = true;
+                std::lock_guard<std::mutex> lk(s_mutex);
+                PushEvent(now, "%s in range, leather %d", track.name.c_str(), track.leather ? 1 : 0);
+            }
 
             if (!track.leather) continue;
 
@@ -426,8 +466,8 @@ namespace AntiEvadeModule
 
             for (size_t index : evaded) {
                 auto it = s_states.find(s_tracks[index].uuid);
-                if (it != s_states.end()) ClearLockout(it->second, now);
-                PushEvent(now, "%s EVADE msg, lockout cleared", s_tracks[index].name.c_str());
+                if (it != s_states.end()) RearmAfterEvade(it->second, now);
+                PushEvent(now, "%s EVADE msg, rearmed", s_tracks[index].name.c_str());
             }
 
             for (const Observation& ob : s_observations)
@@ -451,7 +491,9 @@ namespace AntiEvadeModule
                 }
             }
 
+            const int prevTicks = s_debug.ticks;
             s_debug = DebugState{};
+            s_debug.ticks     = prevTicks;
             s_debug.chatLines = s_chatLines;
             s_debug.tracked  = (int)s_tracks.size();
             s_debug.holding  = hold;
@@ -468,9 +510,6 @@ namespace AntiEvadeModule
                     if (it->second.blocking)
                         s_debug.blockMs = (int)std::chrono::duration_cast<std::chrono::milliseconds>(
                                               now - it->second.blockStarted).count();
-                    if (now < it->second.lockoutUntil)
-                        s_debug.lockoutMs = (int)std::chrono::duration_cast<std::chrono::milliseconds>(
-                                                it->second.lockoutUntil - now).count();
                 }
             }
 
@@ -483,6 +522,16 @@ namespace AntiEvadeModule
         if (lc->env->ExceptionCheck()) lc->env->ExceptionClear();
 
         s_hold.store(hold, std::memory_order_relaxed);
+        return "ticking";
+    }
+
+    static void Tick(Minecraft& mc, Instant now)
+    {
+        const char* stage = TickInner(mc, now);
+
+        std::lock_guard<std::mutex> lk(s_mutex);
+        s_debug.stage = stage;
+        s_debug.ticks += 1;
     }
 
     DebugState Debug()
