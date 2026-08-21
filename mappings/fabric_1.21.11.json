@@ -164,6 +164,8 @@
   "mtd_ItemStack_getHoverName":    "method_7964",
   "desc_ItemStack_getHoverName":   "()Lnet/minecraft/class_2561;",
   "mtd_ItemStack_isEmpty":         "method_7960",
+  "mtd_ItemStack_getDescriptionId": "",
+  "mtd_Item_getDescriptionId":      "method_7876",
 
   "class_BlockPos":                "net.minecraft.class_2338",
   "class_BlockState":              "net.minecraft.class_2680",

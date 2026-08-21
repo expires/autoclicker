@@ -150,6 +150,8 @@
   "mtd_ItemStack_getHoverName": "getDisplayName",
   "desc_ItemStack_getHoverName": "()Ljava/lang/String;",
   "mtd_ItemStack_isEmpty": "",
+  "mtd_ItemStack_getDescriptionId": "getUnlocalizedName",
+  "mtd_Item_getDescriptionId": "",
   "class_BlockPos": "net.minecraft.util.BlockPos",
   "class_BlockState": "net.minecraft.block.state.IBlockState",
   "mtd_Level_getBlockState": "getBlockState",

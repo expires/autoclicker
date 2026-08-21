@@ -1,6 +1,7 @@
 #pragma once
 #include "Lunar.h"
 #include "Item.h"
+#include <string>
 
 class ItemStack
 {
@@ -16,6 +17,8 @@ public:
     Item getItem();
 
     Component getHoverName();
+
+    std::string getDescriptionId();
 
     bool isEmpty();
 

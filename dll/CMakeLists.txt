@@ -108,6 +108,8 @@ foreach(KEY
     mtd_Inventory_getItem       desc_Inventory_getItem
     mtd_ItemStack_getHoverName  desc_ItemStack_getHoverName
     mtd_ItemStack_isEmpty
+    mtd_ItemStack_getDescriptionId
+    mtd_Item_getDescriptionId
     class_BlockPos class_BlockState
     mtd_Level_getBlockState     desc_Level_getBlockState
     mtd_BlockState_isAir

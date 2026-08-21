@@ -54,6 +54,7 @@ namespace EspModule
         if (lower.find("chain")     != std::string::npos) return 3;
         if (lower.find("gold")      != std::string::npos) return 2;
         if (lower.find("leather")   != std::string::npos) return 1;
+        if (lower.find("cloth")     != std::string::npos) return 1;
         return 0;
     }
 
@@ -71,15 +72,35 @@ namespace EspModule
         }
     }
 
-    static uint32_t scanArmorColor(Player& p)
+    static int slotArmorTier(Player& p, int slot)
     {
-        ItemStack boots = p.getArmorItem(3);
-        if (boots.GetInstance() == nullptr) return 0u;
-        Component hn = boots.getHoverName();
-        if (hn.GetInstance() == nullptr) return 0u;
+        ItemStack piece = p.getArmorItem(slot);
+        if (piece.GetInstance() == nullptr || piece.isEmpty()) return 0;
+
+        std::string id = piece.getDescriptionId();
+        if (!id.empty()) {
+            for (char& c : id) c = (char)std::tolower((unsigned char)c);
+            return armorTier(id);
+        }
+
+        Component hn = piece.getHoverName();
+        if (hn.GetInstance() == nullptr) return 0;
         std::string s = hn.getString();
         for (char& c : s) c = (char)std::tolower((unsigned char)c);
-        return armorTierColor(armorTier(s));
+        return armorTier(s);
+    }
+
+    static uint32_t scanArmorColor(Player& p)
+    {
+        int tier = slotArmorTier(p, 1);
+        if (tier == 0) {
+            static const int others[3] = { 2, 0, 3 };
+            for (int slot : others) {
+                const int t = slotArmorTier(p, slot);
+                if (t > tier) tier = t;
+            }
+        }
+        return armorTierColor(tier);
     }
 
     static void purgeNames(std::vector<NameEntry>& cache)

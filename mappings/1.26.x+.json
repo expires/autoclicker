@@ -165,6 +165,8 @@
   "mtd_ItemStack_getHoverName":    "getHoverName",
   "desc_ItemStack_getHoverName":   "()Lnet/minecraft/network/chat/Component;",
   "mtd_ItemStack_isEmpty":         "isEmpty",
+  "mtd_ItemStack_getDescriptionId": "getDescriptionId",
+  "mtd_Item_getDescriptionId":      "",
 
   "class_BlockPos":                "net.minecraft.core.BlockPos",
   "class_BlockState":              "net.minecraft.world.level.block.state.BlockState",
