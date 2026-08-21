@@ -22,9 +22,15 @@ namespace AntiEvadeModule
     static constexpr auto kBlockThreshold = std::chrono::milliseconds(50);
     static constexpr auto kHoldWindow     = std::chrono::milliseconds(700);
     static constexpr auto kEntryTtl       = std::chrono::seconds(18);
+    static constexpr auto kAbilityCooldown = std::chrono::seconds(18);
     static constexpr auto kPollInterval   = std::chrono::milliseconds(5);
     static constexpr auto kExpiryInterval = std::chrono::seconds(1);
     static constexpr auto kArmorTtl       = std::chrono::milliseconds(500);
+    static constexpr auto kHoverGrace     = std::chrono::milliseconds(250);
+    static constexpr auto kChatInterval   = std::chrono::milliseconds(100);
+
+    static constexpr int  kChatScan       = 8;
+    static constexpr const char* kEvadeMarker = "used evade";
 
     static constexpr double kTrackRadiusSq = 8.0 * 8.0;
 
@@ -32,6 +38,7 @@ namespace AntiEvadeModule
     {
         Instant blockStarted{};
         Instant holdUntil{};
+        Instant lockoutUntil{};
         bool    blocking         = false;
         bool    thresholdReached = false;
         bool    handled          = false;
@@ -44,6 +51,7 @@ namespace AntiEvadeModule
     {
         jobject     ref = nullptr;
         std::string uuid;
+        std::string name;
         bool        leather   = false;
         Instant     checkedAt{};
         bool        seen      = false;
@@ -63,6 +71,12 @@ namespace AntiEvadeModule
 
     static std::vector<Track>       s_tracks;
     static std::vector<Observation> s_observations;
+
+    static std::string s_lastHovered;
+    static Instant     s_lastHoveredAt{};
+
+    static std::string s_lastChatSeen;
+    static Instant     s_lastChatPoll{};
 
     static constexpr size_t kNoTrack = (size_t)-1;
 
@@ -128,10 +142,17 @@ namespace AntiEvadeModule
         std::string uuid = entity.getUUID();
         if (uuid.empty()) return kNoTrack;
 
+        std::string name;
+        Component named = entity.getName();
+        if (named.GetInstance() != nullptr) {
+            name = named.getString();
+            for (char& c : name) c = (char)std::tolower((unsigned char)c);
+        }
+
         jobject ref = lc->env->NewGlobalRef(inst);
         if (ref == nullptr) { lc->env->ExceptionClear(); return kNoTrack; }
 
-        s_tracks.push_back(Track{ ref, std::move(uuid), false, Instant{}, false });
+        s_tracks.push_back(Track{ ref, std::move(uuid), std::move(name), false, Instant{}, false });
         return s_tracks.size() - 1;
     }
 
@@ -155,8 +176,9 @@ namespace AntiEvadeModule
     static void Expire(Instant now)
     {
         for (auto it = s_states.begin(); it != s_states.end(); ) {
-            if (now - it->second.lastSeen > kEntryTtl) it = s_states.erase(it);
-            else                                       ++it;
+            const PlayerState& st = it->second;
+            if (now - st.lastSeen > kEntryTtl && now >= st.lockoutUntil) it = s_states.erase(it);
+            else                                                        ++it;
         }
     }
 
@@ -178,8 +200,12 @@ namespace AntiEvadeModule
             if (!st.handled && now - st.blockStarted > kBlockThreshold) {
                 st.thresholdReached = true;
                 st.handled          = true;
-                st.holdingClicks    = true;
-                st.holdUntil        = now + kHoldWindow;
+
+                if (now >= st.lockoutUntil) {
+                    st.holdingClicks = true;
+                    st.holdUntil     = now + kHoldWindow;
+                    st.lockoutUntil  = now + kAbilityCooldown;
+                }
             }
 
             if (st.holdingClicks && now >= st.holdUntil)
@@ -192,6 +218,49 @@ namespace AntiEvadeModule
             st.holdingClicks    = false;
             st.struckBlock      = false;
         }
+    }
+
+    static void CollectEvadeMessages(Minecraft& mc, Instant now, std::vector<size_t>& evaded)
+    {
+        if (now - s_lastChatPoll < kChatInterval) return;
+        s_lastChatPoll = now;
+
+        Gui gui = mc.GetGui();
+        if (gui.GetInstance() == nullptr) return;
+
+        ChatComponent chat = gui.getChat();
+        if (chat.GetInstance() == nullptr) return;
+
+        std::vector<std::string> messages = chat.getRecentMessages(kChatScan);
+        if (messages.empty()) return;
+
+        const std::string newest = messages.front();
+
+        for (const std::string& raw : messages) {
+            if (raw == s_lastChatSeen) break;
+
+            std::string line = raw;
+            for (char& c : line) c = (char)std::tolower((unsigned char)c);
+            if (line.find(kEvadeMarker) == std::string::npos) continue;
+
+            for (size_t i = 0; i < s_tracks.size(); ++i) {
+                if (s_tracks[i].name.empty()) continue;
+                if (line.find(s_tracks[i].name) != std::string::npos) {
+                    evaded.push_back(i);
+                    break;
+                }
+            }
+        }
+
+        s_lastChatSeen = newest;
+    }
+
+    static void ClearLockout(PlayerState& st, Instant now)
+    {
+        st.lockoutUntil = now;
+        st.handled      = false;
+        st.blockStarted = now;
+        st.lastSeen     = now;
     }
 
     static Entity HoveredEntity(Minecraft& mc)
@@ -260,6 +329,19 @@ namespace AntiEvadeModule
                 hovered = FindTrack(target.GetInstance());
         }
 
+        std::vector<size_t> evaded;
+        CollectEvadeMessages(mc, now, evaded);
+
+        std::string targetUuid;
+        if (hovered != kNoTrack) {
+            targetUuid      = s_tracks[hovered].uuid;
+            s_lastHovered   = targetUuid;
+            s_lastHoveredAt = now;
+        }
+        else if (!s_lastHovered.empty() && now - s_lastHoveredAt < kHoverGrace) {
+            targetUuid = s_lastHovered;
+        }
+
         bool        hold = false;
         std::string holdTarget;
         std::string activeTarget;
@@ -272,11 +354,16 @@ namespace AntiEvadeModule
                 Expire(now);
             }
 
+            for (size_t index : evaded) {
+                auto it = s_states.find(s_tracks[index].uuid);
+                if (it != s_states.end()) ClearLockout(it->second, now);
+            }
+
             for (const Observation& ob : s_observations)
                 ApplyObservation(s_tracks[ob.track].uuid, ob.blocking, now);
 
-            if (hovered != kNoTrack) {
-                activeTarget = s_tracks[hovered].uuid;
+            if (!targetUuid.empty()) {
+                activeTarget = targetUuid;
                 auto it = s_states.find(activeTarget);
                 if (it != s_states.end()) hold = it->second.holdingClicks;
                 if (hold) holdTarget = activeTarget;
@@ -333,6 +420,8 @@ namespace AntiEvadeModule
                     s_hold.store(false, std::memory_order_relaxed);
                     ClearTracks();
                     s_observations.clear();
+                    s_lastHovered.clear();
+                    s_lastChatSeen.clear();
                     std::lock_guard<std::mutex> lk(s_mutex);
                     s_states.clear();
                     s_holdTarget.clear();

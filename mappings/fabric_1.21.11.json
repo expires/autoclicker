@@ -166,6 +166,11 @@
   "mtd_ItemStack_isEmpty":         "method_7960",
   "mtd_ItemStack_getDescriptionId": "",
   "mtd_Item_getDescriptionId":      "method_7876",
+  "fld_ChatComponent_messages":    "field_2061",
+  "desc_ChatComponent_messages":   "Ljava/util/List;",
+  "class_ChatMessage":             "net.minecraft.class_303",
+  "mtd_ChatMessage_content":       "comp_893",
+  "desc_ChatMessage_content":      "()Lnet/minecraft/class_2561;",
 
   "class_BlockPos":                "net.minecraft.class_2338",
   "class_BlockState":              "net.minecraft.class_2680",

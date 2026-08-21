@@ -110,6 +110,9 @@ foreach(KEY
     mtd_ItemStack_isEmpty
     mtd_ItemStack_getDescriptionId
     mtd_Item_getDescriptionId
+    fld_ChatComponent_messages  desc_ChatComponent_messages
+    class_ChatMessage
+    mtd_ChatMessage_content     desc_ChatMessage_content
     class_BlockPos class_BlockState
     mtd_Level_getBlockState     desc_Level_getBlockState
     mtd_BlockState_isAir

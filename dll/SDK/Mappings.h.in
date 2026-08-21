@@ -171,6 +171,11 @@
 #define MTD_ItemStack_isEmpty         "@mtd_ItemStack_isEmpty@"
 #define MTD_ItemStack_getDescriptionId "@mtd_ItemStack_getDescriptionId@"
 #define MTD_Item_getDescriptionId      "@mtd_Item_getDescriptionId@"
+#define FLD_ChatComponent_messages    "@fld_ChatComponent_messages@"
+#define DESC_ChatComponent_messages   "@desc_ChatComponent_messages@"
+#define MC_ChatMessage                "@class_ChatMessage@"
+#define MTD_ChatMessage_content       "@mtd_ChatMessage_content@"
+#define DESC_ChatMessage_content      "@desc_ChatMessage_content@"
 
 #define MC_BlockPos                   "@class_BlockPos@"
 #define MC_BlockState                 "@class_BlockState@"
