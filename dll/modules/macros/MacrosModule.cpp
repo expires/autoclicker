@@ -174,22 +174,12 @@ namespace MacrosModule
                         const bool sneakForRecall =
                             g_settings.shiftRecallEnabled && !alreadySneaking && HasSlowness(mc);
 
-                        if (sneakForRecall) {
-                            SetSneak(true);
-                            if (g_settings.shiftRecallDelay > 0)
-                                std::this_thread::sleep_for(
-                                    std::chrono::milliseconds(g_settings.shiftRecallDelay));
-                        }
+                        if (sneakForRecall) SetSneak(true);
 
                         if (kNativeDropOverride)
                             FireDrop(mc, entireStack);
 
-                        if (sneakForRecall) {
-                            if (g_settings.shiftRecallHold > 0)
-                                std::this_thread::sleep_for(
-                                    std::chrono::milliseconds(g_settings.shiftRecallHold));
-                            SetSneak(false);
-                        }
+                        if (sneakForRecall) SetSneak(false);
                     }
                     dropHeldPrev = held;
                 }

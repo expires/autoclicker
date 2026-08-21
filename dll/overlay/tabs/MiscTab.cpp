@@ -31,11 +31,6 @@ namespace OverlayTabs
         ImGui::PushID("shiftrecall");
         dirty |= ModuleHeader("Auto Shift Recall", &g_settings.shiftRecallEnabled,
                               &g_settings.shiftRecallKey);
-        if (g_settings.shiftRecallEnabled) {
-            dirty |= RowSlider("Shift lead (ms)", &g_settings.shiftRecallDelay, 0, 500);
-            dirty |= RowSlider("Shift hold (ms)", &g_settings.shiftRecallHold,  0, 500);
-            ImGui::Dummy(ImVec2(0, Theme::M::BodyPad));
-        }
         ImGui::PopID();
 
         ImGui::PushID("scaffold");

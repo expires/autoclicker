@@ -73,8 +73,6 @@ struct Settings
 
     bool shiftRecallEnabled = false;
     int  shiftRecallKey     = 0;
-    int  shiftRecallDelay   = 60;
-    int  shiftRecallHold    = 120;
 
     bool notificationsEnabled = true;
 

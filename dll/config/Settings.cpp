@@ -83,8 +83,6 @@ void Settings::Save()
 
     fprintf(f, "shiftRecallEnabled=%d\n", shiftRecallEnabled ? 1 : 0);
     fprintf(f, "shiftRecallKey=%d\n",     shiftRecallKey);
-    fprintf(f, "shiftRecallDelay=%d\n",   shiftRecallDelay);
-    fprintf(f, "shiftRecallHold=%d\n",    shiftRecallHold);
 
     fprintf(f, "notificationsEnabled=%d\n", notificationsEnabled ? 1 : 0);
 
@@ -168,8 +166,6 @@ void Settings::Load()
         else if (k == "sprintResetDuration")   sprintResetDuration   = val;
         else if (k == "shiftRecallEnabled")    shiftRecallEnabled    = (val != 0);
         else if (k == "shiftRecallKey")        shiftRecallKey        = val;
-        else if (k == "shiftRecallDelay")      shiftRecallDelay      = val;
-        else if (k == "shiftRecallHold")       shiftRecallHold       = val;
         else if (k == "notificationsEnabled")  notificationsEnabled  = (val != 0);
         else if (k == "friendKey")               friendKey               = val;
         else if (k == "friendCount") {
@@ -255,10 +251,6 @@ void Settings::Load()
     if (sprintResetDuration > 200) sprintResetDuration = 200;
 
     shiftRecallKey = clampVK(shiftRecallKey);
-    if (shiftRecallDelay < 0)   shiftRecallDelay = 0;
-    if (shiftRecallDelay > 500) shiftRecallDelay = 500;
-    if (shiftRecallHold  < 0)   shiftRecallHold  = 0;
-    if (shiftRecallHold  > 500) shiftRecallHold  = 500;
 
     friendKey = clampVK(friendKey);
 
