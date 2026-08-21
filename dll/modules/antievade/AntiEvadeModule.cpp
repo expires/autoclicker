@@ -201,6 +201,19 @@ namespace AntiEvadeModule
         return false;
     }
 
+    static std::string SlotId(LivingEntity& entity, int slot)
+    {
+        ItemStack piece = entity.getArmorItem(slot);
+        if (piece.GetInstance() == nullptr || piece.isEmpty()) return "empty";
+
+        std::string id = piece.getDescriptionId();
+        if (id.empty()) {
+            Component name = piece.getHoverName();
+            if (name.GetInstance() != nullptr) id = name.getString();
+        }
+        return id.empty() ? "unknown" : id;
+    }
+
     static bool HoldingSword(LivingEntity& entity)
     {
         ItemStack held = entity.getItemInHand();
@@ -436,11 +449,12 @@ namespace AntiEvadeModule
 
             if (!track.logged) {
                 track.logged = true;
+                const std::string chest = SlotId(living, 1);
+                const std::string feet  = SlotId(living, 3);
                 std::lock_guard<std::mutex> lk(s_mutex);
-                PushEvent(now, "%s in range, leather %d", track.name.c_str(), track.leather ? 1 : 0);
+                PushEvent(now, "%s in range, leather %d, chest %s, feet %s",
+                          track.name.c_str(), track.leather ? 1 : 0, chest.c_str(), feet.c_str());
             }
-
-            if (!track.leather) continue;
 
             s_observations.push_back(Observation{ index, track.usingItem && track.sword });
         }
@@ -497,7 +511,7 @@ namespace AntiEvadeModule
 
             if (!hold) {
                 for (const Track& t : s_tracks) {
-                    if (!t.seen || !t.leather || t.distSq > kReachRadiusSq) continue;
+                    if (!t.seen || t.distSq > kReachRadiusSq) continue;
                     auto it = s_states.find(t.uuid);
                     if (it == s_states.end() || !it->second.holdingClicks) continue;
                     hold       = true;
