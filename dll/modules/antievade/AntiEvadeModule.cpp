@@ -4,7 +4,9 @@
 #include "../autoclicker/AutoclickerModule.h"
 #include "../ModuleCommon.h"
 #include "../../logger/Logger.h"
+#include "../../overlay/Overlay.h"
 #include "Mappings.h"
+#include "Platform.h"
 #include <atomic>
 #include <cctype>
 #include <chrono>
@@ -92,6 +94,8 @@ namespace AntiEvadeModule
     static std::deque<DebugEvent> s_events;
     static DebugState             s_debug;
     static int                    s_chatLines = 0;
+    static HWND                   s_window = nullptr;
+    static bool                   s_buttonReleased = false;
     static std::atomic<int>       s_swings{0};
     static std::atomic<int>       s_skips{0};
 
@@ -388,6 +392,55 @@ namespace AntiEvadeModule
         st.lastSeen     = now;
     }
 
+    static bool GameHasFocus()
+    {
+        return s_window != nullptr
+            && GetForegroundWindow() == s_window
+            && !Overlay::IsMenuVisible();
+    }
+
+    static void ApplyButtonState(bool hold, Instant now)
+    {
+        if (s_window == nullptr) s_window = FindGameWindow();
+        if (s_window == nullptr) return;
+        if (hold == s_buttonReleased) return;
+
+        const bool lmb = (GetAsyncKeyState(VK_LBUTTON) & 0x8000) != 0;
+
+        POINT pt;
+        GetCursorPos(&pt);
+
+        if (hold) {
+            if (!lmb || !GameHasFocus()) return;
+            SendMessageW(s_window, WM_LBUTTONUP, 0, MAKELPARAM(pt.x, pt.y));
+            s_buttonReleased = true;
+
+            std::lock_guard<std::mutex> lk(s_mutex);
+            PushEvent(now, "mouse RELEASED (button held)");
+            return;
+        }
+
+        s_buttonReleased = false;
+        if (!lmb || !GameHasFocus()) return;
+
+        SendMessageW(s_window, WM_LBUTTONDOWN, MK_LBUTTON, MAKELPARAM(pt.x, pt.y));
+
+        std::lock_guard<std::mutex> lk(s_mutex);
+        PushEvent(now, "mouse REPRESSED");
+    }
+
+    static void RestoreButton()
+    {
+        if (!s_buttonReleased) return;
+        s_buttonReleased = false;
+        if (s_window == nullptr) return;
+        if (!(GetAsyncKeyState(VK_LBUTTON) & 0x8000)) return;
+
+        POINT pt;
+        GetCursorPos(&pt);
+        SendMessageW(s_window, WM_LBUTTONDOWN, MK_LBUTTON, MAKELPARAM(pt.x, pt.y));
+    }
+
     static Entity HoveredEntity(Minecraft& mc)
     {
         HitResult hr = mc.getHitResult();
@@ -559,6 +612,7 @@ namespace AntiEvadeModule
         if (lc->env->ExceptionCheck()) lc->env->ExceptionClear();
 
         s_hold.store(hold, std::memory_order_relaxed);
+        ApplyButtonState(hold, now);
         return "ticking";
     }
 
@@ -632,6 +686,7 @@ namespace AntiEvadeModule
                 if (wasEnabled) {
                     wasEnabled = false;
                     s_hold.store(false, std::memory_order_relaxed);
+                    RestoreButton();
                     ClearTracks();
                     s_observations.clear();
                     s_lastHovered.clear();
@@ -657,6 +712,7 @@ namespace AntiEvadeModule
         }
 
         LOG("antievade: loop exit; detaching");
+        RestoreButton();
         ClearTracks();
         lc->vm->DetachCurrentThread();
         return 0;

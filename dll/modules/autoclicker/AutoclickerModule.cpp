@@ -162,22 +162,6 @@ namespace AutoclickerModule
                     clicker.invClick(mcWindow);
                 }
 
-                bool evadeHold = false;
-
-                auto setEvadeHold = [&](bool on) {
-                    if (on == evadeHold) return;
-                    if (on && !(GetAsyncKeyState(VK_LBUTTON) & 0x8000)) return;
-
-                    evadeHold = on;
-
-                    POINT pt;
-                    GetCursorPos(&pt);
-                    if (on)
-                        SendMessageW(mcWindow, WM_LBUTTONUP, 0, MAKELPARAM(pt.x, pt.y));
-                    else if (GetAsyncKeyState(VK_LBUTTON) & 0x8000)
-                        SendMessageW(mcWindow, WM_LBUTTONDOWN, MK_LBUTTON, MAKELPARAM(pt.x, pt.y));
-                };
-
                 while (!destruct && GetForegroundWindow() == mcWindow
                        && (GetAsyncKeyState(VK_LBUTTON) & 0x8000) && g_settings.acEnabled)
                 {
@@ -262,12 +246,9 @@ namespace AutoclickerModule
                         if (!usingItem) {
                             if (AntiEvadeModule::ShouldHoldClicks()) {
                                 AntiEvadeModule::NoteSkip();
-                                setEvadeHold(true);
                                 DELAY(10);
                             }
                             else {
-                                setEvadeHold(false);
-
                                 const int js = g_settings.jitterEnabled
                                     ? g_settings.jitterStrength
                                     : 0;
@@ -276,8 +257,6 @@ namespace AutoclickerModule
                         }
                     }
                 }
-
-                setEvadeHold(false);
             }
             LOG("autoclicker: loop exited; detaching");
             lc->vm->DetachCurrentThread();
