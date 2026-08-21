@@ -21,6 +21,7 @@
 #include "../modules/esp/EspModule.h"
 #include "../modules/scaffold/ScaffoldModule.h"
 #include "../modules/sprintreset/SprintResetModule.h"
+#include "../modules/macros/MacrosModule.h"
 #include "../SDK/Lunar.h"
 #include "Mappings.h"
 #include "../SDK/Capabilities.h"
@@ -645,7 +646,8 @@ static LRESULT CALLBACK HookedWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM
     {
         const int dropVk = g_settings.dropKey;
         if (dropVk > 0 && dropVk <= 0xFE && (int)wParam == dropVk
-            && !s_gameScreenOpen.load(std::memory_order_relaxed))
+            && !s_gameScreenOpen.load(std::memory_order_relaxed)
+            && !MacrosModule::IsRecallDropPassThrough())
         {
             switch (msg)
             {

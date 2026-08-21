@@ -7,6 +7,7 @@
 #include "../../overlay/Overlay.h"
 #include "../../logger/Logger.h"
 #include "Platform.h"
+#include <atomic>
 #include <chrono>
 #include <mutex>
 #include <string>
@@ -14,6 +15,13 @@
 
 namespace MacrosModule
 {
+    static std::atomic<bool> s_recallDropPassThrough{false};
+
+    bool IsRecallDropPassThrough()
+    {
+        return s_recallDropPassThrough.load(std::memory_order_relaxed);
+    }
+
     static void SendKey(HWND hwnd, WORD vk)
     {
         UINT  scan = MapVirtualKeyW(vk, MAPVK_VK_TO_VSC);
@@ -174,12 +182,20 @@ namespace MacrosModule
                         const bool sneakForRecall =
                             g_settings.shiftRecallEnabled && !alreadySneaking && HasSlowness(mc);
 
-                        if (sneakForRecall) SetSneak(true);
+                        if (sneakForRecall) {
+                            SetSneak(true);
 
-                        if (kNativeDropOverride)
+                            if (kNativeDropOverride) {
+                                s_recallDropPassThrough.store(true, std::memory_order_relaxed);
+                                SendKey(mcWindow, (WORD)dropKey);
+                                s_recallDropPassThrough.store(false, std::memory_order_relaxed);
+                            }
+
+                            SetSneak(false);
+                        }
+                        else if (kNativeDropOverride) {
                             FireDrop(mc, entireStack);
-
-                        if (sneakForRecall) SetSneak(false);
+                        }
                     }
                     dropHeldPrev = held;
                 }
