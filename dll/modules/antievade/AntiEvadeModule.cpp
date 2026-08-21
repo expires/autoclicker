@@ -13,6 +13,9 @@
 #include <thread>
 #include <unordered_map>
 #include <vector>
+#include <cstdarg>
+#include <cstdio>
+#include <deque>
 
 namespace AntiEvadeModule
 {
@@ -31,6 +34,9 @@ namespace AntiEvadeModule
 
     static constexpr int  kChatScan       = 8;
     static constexpr const char* kEvadeMarker = "used evade";
+
+    static constexpr size_t kDebugEvents   = 10;
+    static constexpr double kReachRadiusSq = 4.5 * 4.5;
 
     static constexpr double kTrackRadiusSq = 8.0 * 8.0;
 
@@ -55,6 +61,9 @@ namespace AntiEvadeModule
         bool        leather   = false;
         Instant     checkedAt{};
         bool        seen      = false;
+        bool        usingItem = false;
+        bool        sword     = false;
+        double      distSq    = 0.0;
     };
 
     struct Observation
@@ -71,6 +80,28 @@ namespace AntiEvadeModule
 
     static std::vector<Track>       s_tracks;
     static std::vector<Observation> s_observations;
+
+    struct DebugEvent
+    {
+        Instant     at{};
+        std::string text;
+    };
+
+    static std::deque<DebugEvent> s_events;
+    static DebugState             s_debug;
+    static int                    s_chatLines = 0;
+
+    static void PushEvent(Instant now, const char* format, ...)
+    {
+        char line[160];
+        va_list args;
+        va_start(args, format);
+        vsnprintf(line, sizeof(line), format, args);
+        va_end(args);
+
+        s_events.push_front(DebugEvent{ now, line });
+        while (s_events.size() > kDebugEvents) s_events.pop_back();
+    }
 
     static std::string s_lastHovered;
     static Instant     s_lastHoveredAt{};
@@ -184,9 +215,9 @@ namespace AntiEvadeModule
         }
     }
 
-    static void ApplyObservation(const std::string& uuid, bool blocking, Instant now)
+    static void ApplyObservation(const Track& track, bool blocking, Instant now)
     {
-        PlayerState& st = s_states[uuid];
+        PlayerState& st = s_states[track.uuid];
         st.lastSeen = now;
 
         if (blocking) {
@@ -197,6 +228,7 @@ namespace AntiEvadeModule
                 st.handled          = false;
                 st.holdingClicks    = false;
                 st.struckBlock      = false;
+                PushEvent(now, "%s block start", track.name.c_str());
             }
 
             if (!st.handled && now - st.blockStarted > kBlockThreshold) {
@@ -207,18 +239,31 @@ namespace AntiEvadeModule
                     st.holdingClicks = true;
                     st.holdUntil     = now + kHoldWindow;
                     st.lockoutUntil  = now + kAbilityCooldown;
+                    PushEvent(now, "%s TRIGGER hold %dms", track.name.c_str(),
+                              (int)std::chrono::duration_cast<std::chrono::milliseconds>(kHoldWindow).count());
+                }
+                else {
+                    const auto left = std::chrono::duration_cast<std::chrono::milliseconds>(
+                                          st.lockoutUntil - now).count();
+                    PushEvent(now, "%s block IGNORED lockout %dms", track.name.c_str(), (int)left);
                 }
             }
 
-            if (st.holdingClicks && now >= st.holdUntil)
+            if (st.holdingClicks && now >= st.holdUntil) {
                 st.holdingClicks = false;
+                PushEvent(now, "%s hold expired", track.name.c_str());
+            }
         }
         else if (st.blocking) {
+            const bool wasHolding = st.holdingClicks;
+
             st.blocking         = false;
             st.thresholdReached = false;
             st.handled          = false;
             st.holdingClicks    = false;
             st.struckBlock      = false;
+
+            PushEvent(now, "%s unblock%s", track.name.c_str(), wasHolding ? " (resume)" : "");
         }
     }
 
@@ -234,6 +279,7 @@ namespace AntiEvadeModule
         if (chat.GetInstance() == nullptr) return;
 
         std::vector<ChatMessage> messages = chat.getRecentMessages(kChatScan);
+        s_chatLines = (int)messages.size();
         if (messages.empty()) return;
 
         const int  newest = messages.front().addedTime;
@@ -329,16 +375,21 @@ namespace AntiEvadeModule
             Track& track = s_tracks[index];
             track.seen = true;
 
+            track.distSq = dx * dx + dy * dy + dz * dz;
+
             LivingEntity living(p.GetInstance());
 
             if (now - track.checkedAt > kArmorTtl) {
                 track.leather   = WearingLeather(living);
                 track.checkedAt = now;
             }
+
+            track.usingItem = living.isUsingItem();
+            track.sword     = track.usingItem && HoldingSword(living);
+
             if (!track.leather) continue;
 
-            const bool blocking = living.isUsingItem() && HoldingSword(living);
-            s_observations.push_back(Observation{ index, blocking });
+            s_observations.push_back(Observation{ index, track.usingItem && track.sword });
         }
 
         size_t hovered = kNoTrack;
@@ -376,16 +427,51 @@ namespace AntiEvadeModule
             for (size_t index : evaded) {
                 auto it = s_states.find(s_tracks[index].uuid);
                 if (it != s_states.end()) ClearLockout(it->second, now);
+                PushEvent(now, "%s EVADE msg, lockout cleared", s_tracks[index].name.c_str());
             }
 
             for (const Observation& ob : s_observations)
-                ApplyObservation(s_tracks[ob.track].uuid, ob.blocking, now);
+                ApplyObservation(s_tracks[ob.track], ob.blocking, now);
 
             if (!targetUuid.empty()) {
                 activeTarget = targetUuid;
                 auto it = s_states.find(activeTarget);
                 if (it != s_states.end()) hold = it->second.holdingClicks;
                 if (hold) holdTarget = activeTarget;
+            }
+
+            if (!hold) {
+                for (const Track& t : s_tracks) {
+                    if (!t.seen || !t.leather || t.distSq > kReachRadiusSq) continue;
+                    auto it = s_states.find(t.uuid);
+                    if (it == s_states.end() || !it->second.holdingClicks) continue;
+                    hold       = true;
+                    holdTarget = t.uuid;
+                    break;
+                }
+            }
+
+            s_debug = DebugState{};
+            s_debug.chatLines = s_chatLines;
+            s_debug.tracked  = (int)s_tracks.size();
+            s_debug.holding  = hold;
+            s_debug.hovering = hovered != kNoTrack;
+            if (hovered != kNoTrack) {
+                const Track& t   = s_tracks[hovered];
+                s_debug.target    = t.name;
+                s_debug.leather   = t.leather;
+                s_debug.usingItem = t.usingItem;
+                s_debug.sword     = t.sword;
+
+                auto it = s_states.find(t.uuid);
+                if (it != s_states.end()) {
+                    if (it->second.blocking)
+                        s_debug.blockMs = (int)std::chrono::duration_cast<std::chrono::milliseconds>(
+                                              now - it->second.blockStarted).count();
+                    if (now < it->second.lockoutUntil)
+                        s_debug.lockoutMs = (int)std::chrono::duration_cast<std::chrono::milliseconds>(
+                                                it->second.lockoutUntil - now).count();
+                }
             }
 
             s_holdTarget   = std::move(holdTarget);
@@ -397,6 +483,23 @@ namespace AntiEvadeModule
         if (lc->env->ExceptionCheck()) lc->env->ExceptionClear();
 
         s_hold.store(hold, std::memory_order_relaxed);
+    }
+
+    DebugState Debug()
+    {
+        std::lock_guard<std::mutex> lk(s_mutex);
+
+        DebugState out = s_debug;
+        const Instant now = Clock::now();
+
+        out.events.reserve(s_events.size());
+        for (const DebugEvent& e : s_events) {
+            const double age = std::chrono::duration<double>(now - e.at).count();
+            char line[192];
+            snprintf(line, sizeof(line), "%5.1fs  %s", age, e.text.c_str());
+            out.events.emplace_back(line);
+        }
+        return out;
     }
 
     bool ShouldHoldClicks()

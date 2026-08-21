@@ -1,6 +1,7 @@
 #include "Tabs.h"
 #include "../OverlayWidgets.h"
 #include "../../config/Settings.h"
+#include "../../modules/antievade/AntiEvadeModule.h"
 #include "imgui.h"
 
 namespace OverlayTabs
@@ -36,6 +37,28 @@ namespace OverlayTabs
         ImGui::PushID("antievade");
         dirty |= ModuleHeader("AntiEvade", &g_settings.antiEvadeEnabled,
                               &g_settings.antiEvadeKey);
+        if (g_settings.antiEvadeEnabled) {
+            const AntiEvadeModule::DebugState dbg = AntiEvadeModule::Debug();
+
+            ImGui::TextDisabled("tracked %d   chat %d   %s",
+                                dbg.tracked, dbg.chatLines,
+                                dbg.holding ? "HOLDING" : "swinging");
+
+            if (dbg.hovering) {
+                ImGui::TextDisabled("%s  leather %d  using %d  sword %d",
+                                    dbg.target.empty() ? "?" : dbg.target.c_str(),
+                                    dbg.leather ? 1 : 0, dbg.usingItem ? 1 : 0, dbg.sword ? 1 : 0);
+                ImGui::TextDisabled("block %dms   lockout %dms", dbg.blockMs, dbg.lockoutMs);
+            }
+            else {
+                ImGui::TextDisabled("no target under crosshair");
+            }
+
+            for (const std::string& line : dbg.events)
+                ImGui::TextDisabled("%s", line.c_str());
+
+            ImGui::Dummy(ImVec2(0, Theme::M::BodyPad));
+        }
         ImGui::PopID();
 
         ImGui::PushID("scaffold");
