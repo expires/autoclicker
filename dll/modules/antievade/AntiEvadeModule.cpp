@@ -21,8 +21,9 @@ namespace AntiEvadeModule
     using Clock   = std::chrono::steady_clock;
     using Instant = Clock::time_point;
 
-    static constexpr int  kHoldBaseMs     = 800;
-    static constexpr int  kHoldMaxMs      = 1500;
+    static constexpr int  kHoldBaseMs     = 700;
+    static constexpr int  kMaxPingMs      = 800;
+    static constexpr auto kEvadeCooldown  = std::chrono::seconds(18);
     static constexpr auto kEntryTtl       = std::chrono::seconds(18);
     static constexpr auto kPollInterval   = std::chrono::milliseconds(5);
     static constexpr auto kExpiryInterval = std::chrono::seconds(1);
@@ -42,9 +43,13 @@ namespace AntiEvadeModule
         Instant blockStarted{};
         Instant holdUntil{};
         Instant lastSeen{};
-        bool    blocking      = false;
-        bool    handled       = false;
-        bool    holdingClicks = false;
+        bool    blocking       = false;
+        bool    handled        = false;
+        bool    holdingClicks  = false;
+        Instant cooldownUntil{};
+        bool    evadedThisBlock = false;
+        bool    blockHadEvade   = false;
+        int     endPingMs       = 0;
     };
 
     struct Track
@@ -60,7 +65,8 @@ namespace AntiEvadeModule
     {
         size_t track;
         bool   blocking;
-        int    holdMs;
+        int    pingMs;
+        float  health;
     };
 
     static std::mutex                                    s_mutex;
@@ -193,40 +199,52 @@ namespace AntiEvadeModule
         }
     }
 
-    static void ApplyObservation(const Track& track, bool blocking, Instant now, int holdMs)
+    static void ApplyObservation(const Track& track, bool blocking, Instant now, int pingMs, float health)
     {
         PlayerState& st = s_states[track.uuid];
         st.lastSeen = now;
 
-        if (blocking) {
-            if (!st.blocking) {
-                st.blocking      = true;
-                st.blockStarted  = now;
-                st.handled       = false;
-                st.holdingClicks = false;
-            }
+        if (st.cooldownUntil > now && health > -0.5f && health <= 0.0f)
+            st.cooldownUntil = now;
 
-            if (!st.handled) {
-                st.handled       = true;
-                st.holdingClicks = true;
-                st.holdUntil     = now + std::chrono::milliseconds(holdMs);
-            }
+        const bool onCooldown = now < st.cooldownUntil;
 
-            if (st.holdingClicks && now >= st.holdUntil)
-                st.holdingClicks = false;
+        if (blocking && !st.blocking) {
+            st.blocking        = true;
+            st.blockStarted    = now;
+            st.handled         = false;
+            st.evadedThisBlock = false;
+            st.blockHadEvade   = !onCooldown;
         }
-        else if (st.blocking) {
-            st.blocking      = false;
-            st.handled       = false;
-            st.holdingClicks = false;
+        else if (!blocking && st.blocking) {
+            st.blocking = false;
+            if (st.blockHadEvade && !st.evadedThisBlock)
+                st.cooldownUntil = now + kEvadeCooldown;
+
+            if (st.handled) {
+                const Instant drain = now + std::chrono::milliseconds(st.endPingMs);
+                if (drain < st.holdUntil) st.holdUntil = drain;
+            }
         }
+
+        if (blocking && st.blockHadEvade && !st.handled) {
+            st.handled   = true;
+            st.endPingMs = pingMs;
+            st.holdUntil = now + std::chrono::milliseconds(kHoldBaseMs)
+                             + std::chrono::milliseconds(pingMs);
+        }
+
+        st.holdingClicks = st.handled && now < st.holdUntil;
     }
 
     static void RearmAfterEvade(PlayerState& st, Instant now)
     {
-        st.handled      = false;
-        st.blockStarted = now;
-        st.lastSeen     = now;
+        st.handled         = false;
+        st.blockStarted    = now;
+        st.lastSeen        = now;
+        st.cooldownUntil   = now;
+        st.evadedThisBlock = true;
+        st.blockHadEvade   = true;
     }
 
     static void CollectEvadeMessages(Minecraft& mc, Instant now, std::vector<size_t>& evaded)
@@ -380,16 +398,17 @@ namespace AntiEvadeModule
             bool blocking = living.isUsingItem() && HoldingSword(living);
             if (blocking && !ArmorQualifies(living)) blocking = false;
 
-            int holdMs = kHoldBaseMs;
+            int pingMs = 0;
             if (blocking) {
                 const int lp = lping > 0 ? lping : 0;
                 const int vp = living.getLatency();
-                const int avgPing = (lp + (vp > 0 ? vp : 0)) / 2;
-                holdMs = kHoldBaseMs + avgPing;
-                if (holdMs > kHoldMaxMs) holdMs = kHoldMaxMs;
+                pingMs = (lp + (vp > 0 ? vp : 0)) / 2;
+                if (pingMs > kMaxPingMs) pingMs = kMaxPingMs;
             }
 
-            s_observations.push_back(Observation{ index, blocking, holdMs });
+            const float health = living.getHealth();
+
+            s_observations.push_back(Observation{ index, blocking, pingMs, health });
         }
 
         size_t hovered = kNoTrack;
@@ -428,7 +447,7 @@ namespace AntiEvadeModule
             }
 
             for (const Observation& ob : s_observations)
-                ApplyObservation(s_tracks[ob.track], ob.blocking, now, ob.holdMs);
+                ApplyObservation(s_tracks[ob.track], ob.blocking, now, ob.pingMs, ob.health);
 
             if (!targetUuid.empty()) {
                 auto it = s_states.find(targetUuid);

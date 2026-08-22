@@ -20,7 +20,7 @@ namespace OverlayTabs
             }
             dirty |= RowSlider  ("Horizontal Speed", &g_settings.aimSpeedH, 0, 20);
             dirty |= RowSlider  ("Vertical Speed",   &g_settings.aimSpeedV, 0, 20);
-            dirty |= RowSlider  ("FOV (deg)",        &g_settings.aimFov,    1, 180);
+            dirty |= RowSlider  ("FOV (deg)",        &g_settings.aimFov,    1, 360);
             dirty |= RowSlider  ("Range (blocks)",   &g_settings.aimRange,  1, 64);
         }
         

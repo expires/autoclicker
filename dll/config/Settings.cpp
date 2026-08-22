@@ -243,7 +243,7 @@ void Settings::Load()
 
     if (aimSpeedH < 0)  aimSpeedH = 0;  if (aimSpeedH > 20) aimSpeedH = 20;
     if (aimSpeedV < 0)  aimSpeedV = 0;  if (aimSpeedV > 20) aimSpeedV = 20;
-    if (aimFov    < 1)  aimFov    = 1;  if (aimFov    > 180) aimFov   = 180;
+    if (aimFov    < 1)  aimFov    = 1;  if (aimFov    > 360) aimFov   = 360;
     if (aimRange  < 1)  aimRange  = 1;  if (aimRange  > 64)  aimRange = 64;
     aimKey = clampVK(aimKey);
     if (aimMode < 0 || aimMode > 1) aimMode = 0;
