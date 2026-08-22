@@ -7,7 +7,6 @@
 #include "../../overlay/Overlay.h"
 #include "Mappings.h"
 #include "Platform.h"
-#include <algorithm>
 #include <atomic>
 #include <cctype>
 #include <chrono>
@@ -383,8 +382,11 @@ namespace AntiEvadeModule
 
             int holdMs = kHoldBaseMs;
             if (blocking) {
-                const int avgPing = (std::max(0, lping) + std::max(0, living.getLatency())) / 2;
-                holdMs = std::min(kHoldMaxMs, kHoldBaseMs + avgPing);
+                const int lp = lping > 0 ? lping : 0;
+                const int vp = living.getLatency();
+                const int avgPing = (lp + (vp > 0 ? vp : 0)) / 2;
+                holdMs = kHoldBaseMs + avgPing;
+                if (holdMs > kHoldMaxMs) holdMs = kHoldMaxMs;
             }
 
             s_observations.push_back(Observation{ index, blocking, holdMs });
