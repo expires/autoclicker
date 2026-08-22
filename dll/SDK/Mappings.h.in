@@ -82,6 +82,9 @@
 
 #define MC_ClientLevel             "@class_ClientLevel@"
 #define MC_AbstractClientPlayer    "@class_AbstractClientPlayer@"
+#define MTD_AbstractClientPlayer_getPlayerInfo  "@mtd_AbstractClientPlayer_getPlayerInfo@"
+#define DESC_AbstractClientPlayer_getPlayerInfo "@desc_AbstractClientPlayer_getPlayerInfo@"
+#define MTD_PlayerInfo_getLatency               "@mtd_PlayerInfo_getLatency@"
 #define MC_Camera                  "@class_Camera@"
 #define MC_GameRenderer            "@class_GameRenderer@"
 #define MC_AABB                    "@class_AABB@"

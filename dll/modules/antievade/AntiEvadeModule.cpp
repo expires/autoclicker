@@ -7,6 +7,7 @@
 #include "../../overlay/Overlay.h"
 #include "Mappings.h"
 #include "Platform.h"
+#include <algorithm>
 #include <atomic>
 #include <cctype>
 #include <chrono>
@@ -21,7 +22,8 @@ namespace AntiEvadeModule
     using Clock   = std::chrono::steady_clock;
     using Instant = Clock::time_point;
 
-    static constexpr auto kHoldWindow     = std::chrono::milliseconds(750);
+    static constexpr int  kHoldBaseMs     = 800;
+    static constexpr int  kHoldMaxMs      = 1500;
     static constexpr auto kEntryTtl       = std::chrono::seconds(18);
     static constexpr auto kPollInterval   = std::chrono::milliseconds(5);
     static constexpr auto kExpiryInterval = std::chrono::seconds(1);
@@ -59,6 +61,7 @@ namespace AntiEvadeModule
     {
         size_t track;
         bool   blocking;
+        int    holdMs;
     };
 
     static std::mutex                                    s_mutex;
@@ -92,6 +95,47 @@ namespace AntiEvadeModule
         }
         for (char& c : id) c = (char)std::tolower((unsigned char)c);
         return id.find("sword") != std::string::npos;
+    }
+
+    static int ArmorTierOf(const std::string& lower)
+    {
+        if (lower.find("netherite") != std::string::npos) return 7;
+        if (lower.find("diamond")   != std::string::npos) return 6;
+        if (lower.find("iron")      != std::string::npos) return 5;
+        if (lower.find("turtle")    != std::string::npos) return 4;
+        if (lower.find("chain")     != std::string::npos) return 3;
+        if (lower.find("gold")      != std::string::npos) return 2;
+        if (lower.find("leather")   != std::string::npos) return 1;
+        if (lower.find("cloth")     != std::string::npos) return 1;
+        return 0;
+    }
+
+    static int SlotArmorTier(LivingEntity& e, int slot)
+    {
+        ItemStack piece = e.getArmorItem(slot);
+        if (piece.GetInstance() == nullptr || piece.isEmpty()) return 0;
+
+        std::string id = piece.getDescriptionId();
+        if (!id.empty()) {
+            for (char& c : id) c = (char)std::tolower((unsigned char)c);
+            return ArmorTierOf(id);
+        }
+
+        Component hn = piece.getHoverName();
+        if (hn.GetInstance() == nullptr) return 0;
+        std::string s = hn.getString();
+        for (char& c : s) c = (char)std::tolower((unsigned char)c);
+        return ArmorTierOf(s);
+    }
+
+    static bool ArmorQualifies(LivingEntity& e)
+    {
+        int tier = SlotArmorTier(e, 1);
+        for (int slot : { 2, 0, 3 }) {
+            const int t = SlotArmorTier(e, slot);
+            if (t > tier) tier = t;
+        }
+        return tier == 1 || tier == 3;
     }
 
     static size_t FindTrack(jobject inst)
@@ -150,7 +194,7 @@ namespace AntiEvadeModule
         }
     }
 
-    static void ApplyObservation(const Track& track, bool blocking, Instant now)
+    static void ApplyObservation(const Track& track, bool blocking, Instant now, int holdMs)
     {
         PlayerState& st = s_states[track.uuid];
         st.lastSeen = now;
@@ -166,7 +210,7 @@ namespace AntiEvadeModule
             if (!st.handled) {
                 st.handled       = true;
                 st.holdingClicks = true;
-                st.holdUntil     = now + kHoldWindow;
+                st.holdUntil     = now + std::chrono::milliseconds(holdMs);
             }
 
             if (st.holdingClicks && now >= st.holdUntil)
@@ -307,6 +351,8 @@ namespace AntiEvadeModule
         const double ly = local.getY();
         const double lz = local.getZ();
 
+        const int lping = local.getLatency();
+
         jobject localInst = local.GetInstance();
 
         for (auto& t : s_tracks) t.seen = false;
@@ -332,9 +378,16 @@ namespace AntiEvadeModule
             track.distSq = distSq;
 
             LivingEntity living(p.GetInstance());
-            const bool blocking = living.isUsingItem() && HoldingSword(living);
+            bool blocking = living.isUsingItem() && HoldingSword(living);
+            if (blocking && !ArmorQualifies(living)) blocking = false;
 
-            s_observations.push_back(Observation{ index, blocking });
+            int holdMs = kHoldBaseMs;
+            if (blocking) {
+                const int avgPing = (std::max(0, lping) + std::max(0, living.getLatency())) / 2;
+                holdMs = std::min(kHoldMaxMs, kHoldBaseMs + avgPing);
+            }
+
+            s_observations.push_back(Observation{ index, blocking, holdMs });
         }
 
         size_t hovered = kNoTrack;
@@ -373,14 +426,13 @@ namespace AntiEvadeModule
             }
 
             for (const Observation& ob : s_observations)
-                ApplyObservation(s_tracks[ob.track], ob.blocking, now);
+                ApplyObservation(s_tracks[ob.track], ob.blocking, now, ob.holdMs);
 
             if (!targetUuid.empty()) {
                 auto it = s_states.find(targetUuid);
                 if (it != s_states.end()) hold = it->second.holdingClicks;
             }
-
-            if (!hold) {
+            else {
                 for (const Track& t : s_tracks) {
                     if (!t.seen || t.distSq > kReachRadiusSq) continue;
                     auto it = s_states.find(t.uuid);

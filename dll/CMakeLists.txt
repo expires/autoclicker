@@ -142,6 +142,8 @@ foreach(KEY
     fld_ActiveRenderInfo_viewport   desc_ActiveRenderInfo_viewport
     mtd_Entity_getDisplayName       desc_Entity_getDisplayName
     mtd_GameType_getId
+    mtd_AbstractClientPlayer_getPlayerInfo desc_AbstractClientPlayer_getPlayerInfo
+    mtd_PlayerInfo_getLatency
 )
     string(JSON ${KEY} ERROR_VARIABLE _keyErr GET "${MAPPING_JSON}" "${KEY}")
     if(_keyErr)

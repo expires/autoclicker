@@ -14,6 +14,8 @@ public:
 
     ItemStack getArmorItem(int index);
 
+    int getLatency();
+
     bool isUsingItem();
 
     float getHealth();

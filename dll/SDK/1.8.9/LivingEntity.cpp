@@ -27,3 +27,34 @@ ItemStack LivingEntity::getArmorItem(int index)
 
 	return ItemStack(rtn);
 }
+
+int LivingEntity::getLatency()
+{
+	jobject inst = this->GetInstance();
+	if (inst == nullptr) return -1;
+
+	static jclass acp = nullptr;
+	JClass(acp, MC_AbstractClientPlayer);
+	if (!acp) { lc->env->ExceptionClear(); return -1; }
+
+	static jmethodID getInfo = nullptr;
+	JMethod(getInfo, acp, MTD_AbstractClientPlayer_getPlayerInfo, DESC_AbstractClientPlayer_getPlayerInfo);
+	if (!getInfo) { lc->env->ExceptionClear(); return -1; }
+
+	jobject info = lc->env->CallObjectMethod(inst, getInfo);
+	if (lc->env->ExceptionCheck()) { lc->env->ExceptionClear(); return -1; }
+	if (info == nullptr) return -1;
+
+	static jmethodID getLat = nullptr;
+	if (!getLat) {
+		jclass ic = lc->env->GetObjectClass(info);
+		JMethod(getLat, ic, MTD_PlayerInfo_getLatency, "()I");
+		lc->env->DeleteLocalRef(ic);
+	}
+	if (!getLat) { lc->env->DeleteLocalRef(info); lc->env->ExceptionClear(); return -1; }
+
+	jint lat = lc->env->CallIntMethod(info, getLat);
+	lc->env->DeleteLocalRef(info);
+	if (lc->env->ExceptionCheck()) { lc->env->ExceptionClear(); return -1; }
+	return (int)lat;
+}

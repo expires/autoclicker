@@ -78,6 +78,9 @@
 
   "class_ClientLevel":             "net.minecraft.client.multiplayer.ClientLevel",
   "class_AbstractClientPlayer":    "net.minecraft.client.player.AbstractClientPlayer",
+  "mtd_AbstractClientPlayer_getPlayerInfo":  "getPlayerInfo",
+  "desc_AbstractClientPlayer_getPlayerInfo": "()Lnet/minecraft/client/multiplayer/PlayerInfo;",
+  "mtd_PlayerInfo_getLatency":               "getLatency",
   "class_Camera":                  "net.minecraft.client.Camera",
   "class_GameRenderer":            "net.minecraft.client.renderer.GameRenderer",
   "class_AABB":                    "net.minecraft.world.phys.AABB",
