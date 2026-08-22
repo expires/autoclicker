@@ -21,7 +21,8 @@ namespace AntiEvadeModule
     using Clock   = std::chrono::steady_clock;
     using Instant = Clock::time_point;
 
-    static constexpr int  kHoldBaseMs     = 700;
+    static constexpr int  kEvadeWindowMs  = 700;
+    static constexpr int  kWindowMarginMs = 100;
     static constexpr int  kMaxPingMs      = 800;
     static constexpr auto kEvadeCooldown  = std::chrono::seconds(18);
     static constexpr auto kEntryTtl       = std::chrono::seconds(18);
@@ -49,6 +50,7 @@ namespace AntiEvadeModule
         Instant cooldownUntil{};
         bool    evadedThisBlock = false;
         bool    blockHadEvade   = false;
+        bool    blockFailed     = false;
         int     endPingMs       = 0;
     };
 
@@ -214,13 +216,15 @@ namespace AntiEvadeModule
             st.blockStarted    = now;
             st.handled         = false;
             st.evadedThisBlock = false;
+            st.blockFailed     = false;
             st.blockHadEvade   = !onCooldown;
         }
         else if (!blocking && st.blocking) {
             st.blocking = false;
-            if (st.blockHadEvade && !st.evadedThisBlock)
+            if (st.blockHadEvade && !st.evadedThisBlock && !st.blockFailed) {
                 st.cooldownUntil = now + kEvadeCooldown;
-
+                st.blockFailed   = true;
+            }
             if (st.handled) {
                 const Instant drain = now + std::chrono::milliseconds(st.endPingMs);
                 if (drain < st.holdUntil) st.holdUntil = drain;
@@ -230,8 +234,15 @@ namespace AntiEvadeModule
         if (blocking && st.blockHadEvade && !st.handled) {
             st.handled   = true;
             st.endPingMs = pingMs;
-            st.holdUntil = now + std::chrono::milliseconds(kHoldBaseMs)
+            st.holdUntil = st.blockStarted
+                             + std::chrono::milliseconds(kEvadeWindowMs + kWindowMarginMs)
                              + std::chrono::milliseconds(pingMs);
+        }
+
+        if (blocking && st.blockHadEvade && !st.evadedThisBlock && !st.blockFailed
+            && now - st.blockStarted >= std::chrono::milliseconds(kEvadeWindowMs)) {
+            st.cooldownUntil = now + kEvadeCooldown;
+            st.blockFailed   = true;
         }
 
         st.holdingClicks = st.handled && now < st.holdUntil;
