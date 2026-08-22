@@ -7,8 +7,6 @@ namespace MacrosModule
 {
 
     DWORD WINAPI init(LPVOID lpParam);
-
-    bool IsRecallDropPassThrough();
 }
 
 #endif

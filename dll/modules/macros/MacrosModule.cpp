@@ -7,7 +7,6 @@
 #include "../../overlay/Overlay.h"
 #include "../../logger/Logger.h"
 #include "Platform.h"
-#include <atomic>
 #include <chrono>
 #include <mutex>
 #include <string>
@@ -15,15 +14,8 @@
 
 namespace MacrosModule
 {
-    static constexpr int kRecallLeadMs = 40;
-    static constexpr int kRecallHoldMs = 15;
-
-    static std::atomic<bool> s_recallDropPassThrough{false};
-
-    bool IsRecallDropPassThrough()
-    {
-        return s_recallDropPassThrough.load(std::memory_order_relaxed);
-    }
+    static constexpr int kRecallLeadMs = 50;
+    static constexpr int kRecallHoldMs = 25;
 
     static void SendKey(HWND hwnd, WORD vk)
     {
@@ -190,9 +182,7 @@ namespace MacrosModule
                             std::this_thread::sleep_for(std::chrono::milliseconds(kRecallLeadMs));
 
                             if (kNativeDropOverride) {
-                                s_recallDropPassThrough.store(true, std::memory_order_relaxed);
-                                SendKey(mcWindow, (WORD)dropKey);
-                                s_recallDropPassThrough.store(false, std::memory_order_relaxed);
+                                FireDrop(mc, entireStack);
                             }
 
                             std::this_thread::sleep_for(std::chrono::milliseconds(kRecallHoldMs));
