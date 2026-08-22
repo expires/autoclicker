@@ -20,6 +20,7 @@ namespace EspModule
         bool        isFriend = false;
         float       health    = -1.0f;
         float       maxHealth = -1.0f;
+        bool        cloaked   = false;
     };
 
     struct CameraState

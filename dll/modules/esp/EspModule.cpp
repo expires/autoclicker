@@ -10,6 +10,7 @@
 #include "../../logger/Logger.h"
 #include <cctype>
 #include <chrono>
+#include <cmath>
 #include <mutex>
 #include <thread>
 
@@ -164,6 +165,27 @@ namespace EspModule
         return cache[found];
     }
 
+    static double probeGroundY(Level& level, double x, double z, double aroundY)
+    {
+        JLocalFrame frame(256);
+        if (!frame.ok()) return aroundY;
+
+        const int bx = (int)std::floor(x);
+        const int bz = (int)std::floor(z);
+        const int top    = (int)std::floor(aroundY) + 4;
+        const int bottom = (int)std::floor(aroundY) - 24;
+
+        for (int by = top; by >= bottom; --by) {
+            BlockPos bp = BlockPos::make(bx, by, bz);
+            if (bp.GetInstance() == nullptr) { lc->env->ExceptionClear(); continue; }
+            BlockState bs = level.getBlockState(bp);
+            if (bs.GetInstance() != nullptr && bs.blocksMotion())
+                return (double)(by + 1);
+            if (lc->env->ExceptionCheck()) lc->env->ExceptionClear();
+        }
+        return aroundY;
+    }
+
     DWORD WINAPI init(LPVOID lpParam)
     {
         LOG("esp: thread start");
@@ -257,6 +279,13 @@ namespace EspModule
                 t.prevY = p.getYo();
                 t.prevZ = p.getZo();
 
+                if (t.y - back->cam.y > 100.0) {
+                    const double realY = probeGroundY(level, t.x, t.z, back->cam.y);
+                    t.y       = realY;
+                    t.prevY   = realY;
+                    t.cloaked = true;
+                }
+
                 double dx = t.x - back->cam.x, dy = t.y - back->cam.y, dz = t.z - back->cam.z;
                 double distSq = dx*dx + dy*dy + dz*dz;
                 if (distSq > maxDistSq) continue;
@@ -282,6 +311,9 @@ namespace EspModule
                     t.armorColor = ni.armorColor;
                 }
 
+                if (t.cloaked)
+                    t.nameChunks.push_back({ std::string(" [cloak]"), packColor(255, 80, 255) });
+
                 t.health    = p.getHealth();
                 t.maxHealth = p.getMaxHealth();
 
@@ -297,6 +329,7 @@ namespace EspModule
                         if (!it->first.empty()) { t.boxColor = it->second; break; }
                     }
                 }
+                if (t.cloaked) t.boxColor = packColor(255, 80, 255);
 
                 back->targets.push_back(std::move(t));
             }
