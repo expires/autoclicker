@@ -336,21 +336,21 @@ namespace EspModule
 
                 back->smoke.reserve(n);
                 for (int i = 0; i < n; ++i) {
-                    int near = 0;
-                    for (int ox = -1; ox <= 1 && near < kMinNeighbors; ++ox)
-                    for (int oy = -1; oy <= 1 && near < kMinNeighbors; ++oy)
-                    for (int oz = -1; oz <= 1 && near < kMinNeighbors; ++oz) {
+                    int neighbors = 0;
+                    for (int ox = -1; ox <= 1 && neighbors < kMinNeighbors; ++ox)
+                    for (int oy = -1; oy <= 1 && neighbors < kMinNeighbors; ++oy)
+                    for (int oz = -1; oz <= 1 && neighbors < kMinNeighbors; ++oz) {
                         auto it = grid.find(keyOf(cell[i][0] + ox, cell[i][1] + oy, cell[i][2] + oz));
                         if (it == grid.end()) continue;
                         for (int j : it->second) {
                             const double dx = pts[i].x - pts[j].x;
                             const double dy = pts[i].y - pts[j].y;
                             const double dz = pts[i].z - pts[j].z;
-                            if (dx*dx + dy*dy + dz*dz <= kRadiusSq && ++near >= kMinNeighbors)
+                            if (dx*dx + dy*dy + dz*dz <= kRadiusSq && ++neighbors >= kMinNeighbors)
                                 break;
                         }
                     }
-                    if (near >= kMinNeighbors)
+                    if (neighbors >= kMinNeighbors)
                         back->smoke.push_back({ pts[i].x, pts[i].y, pts[i].z });
                 }
             }
