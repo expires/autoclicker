@@ -11,8 +11,10 @@
 #include "../../logger/Logger.h"
 #include <cctype>
 #include <chrono>
+#include <cmath>
 #include <mutex>
 #include <thread>
+#include <unordered_map>
 
 namespace EspModule
 {
@@ -39,6 +41,15 @@ namespace EspModule
         uint32_t armorColor = 0u;
         std::chrono::steady_clock::time_point refreshedAt{};
         bool seen = false;
+    };
+
+    struct PlayerTrack { double x, y, z, vx, vy, vz; };
+
+    struct VanishEvent
+    {
+        double x, y, z, vx, vy, vz;
+        std::string ign;
+        std::chrono::steady_clock::time_point at;
     };
 
     static constexpr uint32_t packColor(uint32_t r, uint32_t g, uint32_t b)
@@ -174,6 +185,9 @@ namespace EspModule
         Minecraft mc;
         bool clearedWhileDisabled = false;
         std::vector<NameEntry> nameCache;
+        std::unordered_map<std::string, PlayerTrack> tracks;
+        std::vector<VanishEvent> vanishEvents;
+        std::chrono::steady_clock::time_point lastFullScan{};
 
         while (!AutoclickerModule::destruct)
         {
@@ -244,6 +258,8 @@ namespace EspModule
             for (auto& e : nameCache) e.seen = false;
             size_t cacheHint = 0;
 
+            std::unordered_map<std::string, PlayerTrack> present;
+
             for (auto& p : players)
             {
                 if (lc->env->IsSameObject(p.GetInstance(), localInst)) continue;
@@ -299,7 +315,75 @@ namespace EspModule
                     }
                 }
 
+                if (g_settings.smokeEspEnabled && !t.playerName.empty()) {
+                    present[t.playerName] = PlayerTrack{
+                        t.x, t.y, t.z,
+                        t.x - t.prevX, t.y - t.prevY, t.z - t.prevZ
+                    };
+                }
+
                 back->targets.push_back(std::move(t));
+            }
+
+            if (g_settings.smokeEspEnabled) {
+                const double gapMs =
+                    (lastFullScan.time_since_epoch().count() == 0)
+                        ? 1e9
+                        : std::chrono::duration<double, std::milli>(scanNow - lastFullScan).count();
+                const bool freshSequence = gapMs > 250.0;
+                lastFullScan = scanNow;
+
+                std::vector<const std::pair<const std::string, PlayerTrack>*> gone;
+                for (const auto& kv : tracks)
+                    if (present.find(kv.first) == present.end())
+                        gone.push_back(&kv);
+
+                if (!freshSequence && gone.size() <= 3) {
+                    const double innerR =
+                        (g_settings.maxDistance > 8) ? (double)(g_settings.maxDistance - 8)
+                                                     : (double)g_settings.maxDistance;
+                    const double innerRSq = innerR * innerR;
+                    for (auto* g : gone) {
+                        const PlayerTrack& tr = g->second;
+                        const double dx = tr.x - back->cam.x;
+                        const double dy = tr.y - back->cam.y;
+                        const double dz = tr.z - back->cam.z;
+                        if (dx*dx + dy*dy + dz*dz <= innerRSq)
+                            vanishEvents.push_back(
+                                VanishEvent{ tr.x, tr.y, tr.z, tr.vx, tr.vy, tr.vz, g->first, scanNow });
+                    }
+                }
+
+                tracks = std::move(present);
+
+                for (size_t i = 0; i < vanishEvents.size(); ) {
+                    const double ageMs =
+                        std::chrono::duration<double, std::milli>(scanNow - vanishEvents[i].at).count();
+                    if (ageMs > 2500.0) {
+                        vanishEvents[i] = std::move(vanishEvents.back());
+                        vanishEvents.pop_back();
+                    } else {
+                        ++i;
+                    }
+                }
+
+                back->vanishes.reserve(vanishEvents.size());
+                for (const auto& v : vanishEvents) {
+                    const double ageMs =
+                        std::chrono::duration<double, std::milli>(scanNow - v.at).count();
+                    const double ticks = ageMs / 50.0;
+                    double ex = v.vx * ticks, ey = v.vy * ticks, ez = v.vz * ticks;
+                    const double disp = std::sqrt(ex*ex + ey*ey + ez*ez);
+                    if (disp > 6.0 && disp > 1e-6) {
+                        const double s = 6.0 / disp;
+                        ex *= s; ey *= s; ez *= s;
+                    }
+                    back->vanishes.push_back(
+                        VanishMark{ v.x + ex, v.y + ey, v.z + ez, v.ign, (float)ageMs });
+                }
+            } else {
+                tracks.clear();
+                vanishEvents.clear();
             }
 
             if (g_settings.smokeEspEnabled && Particles::Supported()) {
@@ -307,9 +391,50 @@ namespace EspModule
                 Particles::CollectSmoke(pts,
                                         back->cam.x, back->cam.y, back->cam.z,
                                         (double)g_settings.maxDistance, 600);
-                back->smoke.reserve(pts.size());
-                for (const auto& pp : pts)
-                    back->smoke.push_back({ pp.x, pp.y, pp.z });
+
+                const int minN = g_settings.smokeMinParticles;
+                if (minN <= 1) {
+                    back->smoke.reserve(pts.size());
+                    for (const auto& pp : pts)
+                        back->smoke.push_back({ pp.x, pp.y, pp.z });
+                } else {
+                    constexpr double kCell     = 2.0;
+                    constexpr double kRadiusSq = 2.0 * 2.0;
+                    const int n = (int)pts.size();
+                    std::vector<int> cx(n), cy(n), cz(n);
+                    std::unordered_map<long long, std::vector<int>> grid;
+                    grid.reserve(n * 2);
+                    auto keyOf = [](int gx, int gy, int gz) -> long long {
+                        return ((long long)(gx & 0x1FFFFF))
+                             | ((long long)(gy & 0x1FFFFF) << 21)
+                             | ((long long)(gz & 0x1FFFFF) << 42);
+                    };
+                    for (int i = 0; i < n; ++i) {
+                        cx[i] = (int)std::floor((pts[i].x - back->cam.x) / kCell);
+                        cy[i] = (int)std::floor((pts[i].y - back->cam.y) / kCell);
+                        cz[i] = (int)std::floor((pts[i].z - back->cam.z) / kCell);
+                        grid[keyOf(cx[i], cy[i], cz[i])].push_back(i);
+                    }
+                    back->smoke.reserve(n);
+                    for (int i = 0; i < n; ++i) {
+                        int neighbors = 0;
+                        for (int ox = -1; ox <= 1 && neighbors < minN; ++ox)
+                        for (int oy = -1; oy <= 1 && neighbors < minN; ++oy)
+                        for (int oz = -1; oz <= 1 && neighbors < minN; ++oz) {
+                            auto it = grid.find(keyOf(cx[i] + ox, cy[i] + oy, cz[i] + oz));
+                            if (it == grid.end()) continue;
+                            for (int j : it->second) {
+                                const double dx = pts[i].x - pts[j].x;
+                                const double dy = pts[i].y - pts[j].y;
+                                const double dz = pts[i].z - pts[j].z;
+                                if (dx*dx + dy*dy + dz*dz <= kRadiusSq && ++neighbors >= minN)
+                                    break;
+                            }
+                        }
+                        if (neighbors >= minN)
+                            back->smoke.push_back({ pts[i].x, pts[i].y, pts[i].z });
+                    }
+                }
             }
 
             for (size_t i = 0; i < nameCache.size(); ) {

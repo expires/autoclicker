@@ -46,6 +46,10 @@ namespace OverlayTabs
         ImGui::PushID("smokeesp");
         dirty |= ModuleHeader("Smoke ESP", &g_settings.smokeEspEnabled,
                               &g_settings.smokeEspKey);
+        if (g_settings.smokeEspEnabled) {
+            dirty |= RowSlider("Min Particles", &g_settings.smokeMinParticles, 0, 60);
+            ImGui::Dummy(ImVec2(0, Theme::M::BodyPad));
+        }
         ImGui::PopID();
 
         ImGui::PushID("scaffold");

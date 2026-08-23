@@ -2,6 +2,7 @@
 #include <Windows.h>
 #include <gl/GL.h>
 #include <atomic>
+#include <cctype>
 #include <chrono>
 #include <climits>
 #include <cmath>
@@ -326,6 +327,92 @@ static void DrawSmoke(float dispW, float dispH)
             dl->AddRectFilled(ImVec2(qx, qy), ImVec2(qx + px, qy + px),
                               IM_COL32(shade, shade, shade + 4, alpha));
         }
+    }
+}
+
+static void DrawVanishes(float dispW, float dispH)
+{
+    std::shared_ptr<const EspModule::Snapshot> snapPtr = EspModule::Acquire();
+    if (!snapPtr || !snapPtr->valid || snapPtr->vanishes.empty()) return;
+    const EspModule::Snapshot& snap = *snapPtr;
+
+    EspModule::CameraState cam = snap.cam;
+    float partial = snap.partialTick;
+    RefreshCameraFromRenderThread(cam, partial);
+
+    ImDrawList* dl = ImGui::GetBackgroundDrawList();
+
+    constexpr double HALF_W = 0.3;
+    constexpr double HEIGHT = 1.8;
+    constexpr float  TTL_MS = 2500.0f;
+
+    for (const auto& v : snap.vanishes)
+    {
+        float fade = 1.0f - v.ageMs / TTL_MS;
+        if (fade < 0.0f) fade = 0.0f;
+        const int boxA = 90 + (int)(150.0f * fade);
+
+        const double minX = v.x - HALF_W, maxX = v.x + HALF_W;
+        const double minY = v.y,          maxY = v.y + HEIGHT;
+        const double minZ = v.z - HALF_W, maxZ = v.z + HALF_W;
+
+        const double cx[2] = {minX, maxX};
+        const double cyv[2] = {minY, maxY};
+        const double cz[2] = {minZ, maxZ};
+
+        ImVec2 sp[8];
+        bool   ok[8];
+        bool   any = false;
+        for (int i = 0; i < 8; ++i) {
+            const double wx = cx[(i >> 0) & 1];
+            const double wy = cyv[(i >> 1) & 1];
+            const double wz = cz[(i >> 2) & 1];
+            ImVec2 p;
+            ok[i] = ProjectWorld(wx, wy, wz, cam, dispW, dispH, p);
+            if (!ok[i]) continue;
+            sp[i].x = std::floor(p.x + 0.5f);
+            sp[i].y = std::floor(p.y + 0.5f);
+            any = true;
+        }
+        if (!any) continue;
+
+        static const int edges[12][2] = {
+            {0,1},{1,3},{3,2},{2,0},
+            {4,5},{5,7},{7,6},{6,4},
+            {0,4},{1,5},{2,6},{3,7},
+        };
+        const ImU32 colBox = IM_COL32(235, 120, 255, boxA);
+        for (int e = 0; e < 12; ++e) {
+            const int a = edges[e][0], b = edges[e][1];
+            if (!ok[a] || !ok[b]) continue;
+            dl->AddLine(sp[a], sp[b], colBox, 2.0f);
+        }
+
+        ImVec2 tagPos;
+        if (!ProjectWorld(v.x, v.y + HEIGHT + 0.5, v.z, cam, dispW, dispH, tagPos))
+            continue;
+
+        std::string label = v.ign;
+        for (char& ch : label) ch = (char)std::toupper((unsigned char)ch);
+        label += " [SMOKE]";
+
+        ImFont* font = ImGui::GetFont();
+        const float fontSize = 16.0f;
+        const ImVec2 sz = font->CalcTextSizeA(fontSize, FLT_MAX, 0.0f, label.c_str());
+        const float padX = 5.0f, padY = 3.0f;
+        const float bgLeft   = tagPos.x - sz.x * 0.5f - padX;
+        const float bgRight  = tagPos.x + sz.x * 0.5f + padX;
+        const float bgTop    = tagPos.y - sz.y * 0.5f - padY;
+        const float bgBottom = tagPos.y + sz.y * 0.5f + padY;
+
+        const int bgA = 150 + (int)(60.0f * fade);
+        dl->AddRectFilled(ImVec2(bgLeft, bgTop), ImVec2(bgRight, bgBottom),
+                          IM_COL32(20, 8, 24, bgA), 4.0f);
+        dl->AddRect(ImVec2(bgLeft, bgTop), ImVec2(bgRight, bgBottom),
+                    IM_COL32(235, 120, 255, bgA), 4.0f, 0, 1.0f);
+        dl->AddText(font, fontSize,
+                    ImVec2(tagPos.x - sz.x * 0.5f, bgTop + padY),
+                    IM_COL32(245, 220, 255, 235), label.c_str());
     }
 }
 
@@ -1026,7 +1113,10 @@ static BOOL WINAPI hk_wglSwapBuffers(HDC hdc)
             DrawEsp(display.x, display.y);
 
         if (g_settings.smokeEspEnabled && !screenOrMenuOpen)
+        {
             DrawSmoke(display.x, display.y);
+            DrawVanishes(display.x, display.y);
+        }
 
         if (s_visible)
         {

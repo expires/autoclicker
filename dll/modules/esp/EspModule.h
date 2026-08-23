@@ -24,6 +24,13 @@ namespace EspModule
 
     struct SmokePoint { double x, y, z; };
 
+    struct VanishMark
+    {
+        double x, y, z;
+        std::string ign;
+        float ageMs = 0.0f;
+    };
+
     struct CameraState
     {
         double x, y, z;
@@ -40,6 +47,7 @@ namespace EspModule
     {
         std::vector<Target>     targets;
         std::vector<SmokePoint> smoke;
+        std::vector<VanishMark> vanishes;
         CameraState         cam{};
         float               partialTick = 1.0f;
         bool                valid = false;
