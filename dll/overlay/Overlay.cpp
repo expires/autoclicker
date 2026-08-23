@@ -274,8 +274,13 @@ static void RefreshCameraFromRenderThread(EspModule::CameraState& cam, float& pa
 static void DrawPlayerMarker(ImDrawList* dl, const EspModule::CameraState& cam,
                              float dispW, float dispH,
                              double px, double py, double pz,
-                             int boxA, int tagA)
+                             float alpha)
 {
+    if (alpha <= 0.003f) return;
+    if (alpha > 1.0f) alpha = 1.0f;
+    const int boxA  = (int)(235.0f * alpha);
+    const int bgA   = (int)(210.0f * alpha);
+    const int textA = (int)(235.0f * alpha);
     constexpr double HALF_W = 0.3;
     constexpr double HEIGHT = 1.8;
 
@@ -331,12 +336,12 @@ static void DrawPlayerMarker(ImDrawList* dl, const EspModule::CameraState& cam,
     const float bgBottom = tagPos.y + sz.y * 0.5f + padY;
 
     dl->AddRectFilled(ImVec2(bgLeft, bgTop), ImVec2(bgRight, bgBottom),
-                      IM_COL32(20, 8, 24, tagA), 4.0f);
+                      IM_COL32(20, 8, 24, bgA), 4.0f);
     dl->AddRect(ImVec2(bgLeft, bgTop), ImVec2(bgRight, bgBottom),
-                IM_COL32(235, 120, 255, tagA), 4.0f, 0, 1.0f);
+                IM_COL32(235, 120, 255, bgA), 4.0f, 0, 1.0f);
     dl->AddText(font, fontSize,
                 ImVec2(tagPos.x - sz.x * 0.5f, bgTop + padY),
-                IM_COL32(245, 220, 255, 235), label);
+                IM_COL32(245, 220, 255, textA), label);
 }
 
 static void DrawSmokeBoxes(float dispW, float dispH)
@@ -351,7 +356,7 @@ static void DrawSmokeBoxes(float dispW, float dispH)
 
     ImDrawList* dl = ImGui::GetBackgroundDrawList();
     for (const auto& b : snap.smokeBoxes)
-        DrawPlayerMarker(dl, cam, dispW, dispH, b.x, b.y, b.z, 240, 210);
+        DrawPlayerMarker(dl, cam, dispW, dispH, b.x, b.y, b.z, b.alpha);
 }
 
 static void DrawVanishes(float dispW, float dispH)
@@ -372,9 +377,7 @@ static void DrawVanishes(float dispW, float dispH)
     {
         float fade = 1.0f - v.ageMs / TTL_MS;
         if (fade < 0.0f) fade = 0.0f;
-        const int boxA = 90  + (int)(150.0f * fade);
-        const int tagA = 150 + (int)(60.0f  * fade);
-        DrawPlayerMarker(dl, cam, dispW, dispH, v.x, v.y, v.z, boxA, tagA);
+        DrawPlayerMarker(dl, cam, dispW, dispH, v.x, v.y, v.z, fade);
     }
 }
 

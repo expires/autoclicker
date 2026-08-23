@@ -102,6 +102,14 @@ namespace EspModule
 
     struct PlayerTrack { double x, y, z, vx, vy, vz; };
 
+    struct SmokeTrack
+    {
+        double x, y, z;
+        std::chrono::steady_clock::time_point birth;
+        std::chrono::steady_clock::time_point lastSeen;
+        bool seenThisScan;
+    };
+
     struct VanishEvent
     {
         double x, y, z, vx, vy, vz;
@@ -244,6 +252,7 @@ namespace EspModule
         std::vector<NameEntry> nameCache;
         std::unordered_map<std::string, PlayerTrack> tracks;
         std::vector<VanishEvent> vanishEvents;
+        std::vector<SmokeTrack> smokeTracks;
         std::chrono::steady_clock::time_point lastFullScan{};
 
         while (!AutoclickerModule::destruct)
@@ -441,6 +450,7 @@ namespace EspModule
             } else {
                 tracks.clear();
                 vanishEvents.clear();
+                smokeTracks.clear();
             }
 
             if (g_settings.smokeEspEnabled && Particles::Supported()) {
@@ -497,6 +507,9 @@ namespace EspModule
                     }
                 }
 
+                for (auto& tk : smokeTracks) tk.seenThisScan = false;
+
+                constexpr double kMatchSq = 3.0 * 3.0;
                 for (const auto& c : clusters) {
                     if (c.count < kMinCluster) continue;
                     const double cx = c.sumX / c.count;
@@ -514,7 +527,46 @@ namespace EspModule
                         back->vanishes.erase(back->vanishes.begin() + vidx);
 
                     const double feetY = groundYAt(level, cx, cz, c.minY + 1.0);
-                    back->smokeBoxes.push_back({ cx, feetY, cz });
+
+                    int match = -1;
+                    double matchSq = kMatchSq;
+                    for (int i = 0; i < (int)smokeTracks.size(); ++i) {
+                        if (smokeTracks[i].seenThisScan) continue;
+                        const double dx = cx - smokeTracks[i].x;
+                        const double dz = cz - smokeTracks[i].z;
+                        const double d = dx*dx + dz*dz;
+                        if (d < matchSq) { matchSq = d; match = i; }
+                    }
+                    if (match < 0) {
+                        smokeTracks.push_back({ cx, feetY, cz, scanNow, scanNow, true });
+                    } else {
+                        smokeTracks[match].x = cx;
+                        smokeTracks[match].y = feetY;
+                        smokeTracks[match].z = cz;
+                        smokeTracks[match].lastSeen = scanNow;
+                        smokeTracks[match].seenThisScan = true;
+                    }
+                }
+
+                constexpr double kFadeInMs  = 150.0;
+                constexpr double kFadeOutMs = 250.0;
+                for (size_t i = 0; i < smokeTracks.size(); ) {
+                    SmokeTrack& tk = smokeTracks[i];
+                    const double sinceSeen =
+                        std::chrono::duration<double, std::milli>(scanNow - tk.lastSeen).count();
+                    if (!tk.seenThisScan && sinceSeen > kFadeOutMs) {
+                        tk = std::move(smokeTracks.back());
+                        smokeTracks.pop_back();
+                        continue;
+                    }
+                    double inA =
+                        std::chrono::duration<double, std::milli>(scanNow - tk.birth).count() / kFadeInMs;
+                    if (inA > 1.0) inA = 1.0;
+                    double outA = tk.seenThisScan ? 1.0 : (1.0 - sinceSeen / kFadeOutMs);
+                    if (outA < 0.0) outA = 0.0;
+                    const double a = inA < outA ? inA : outA;
+                    back->smokeBoxes.push_back({ tk.x, tk.y, tk.z, (float)a });
+                    ++i;
                 }
             }
 

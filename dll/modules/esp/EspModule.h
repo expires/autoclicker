@@ -25,6 +25,7 @@ namespace EspModule
     struct SmokeBox
     {
         double x, y, z;
+        float  alpha = 1.0f;
     };
 
     struct VanishMark
