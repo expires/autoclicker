@@ -287,7 +287,7 @@ static void DrawSmoke(float dispW, float dispH)
     const double f = 1.0 / std::tan(fovRad / 2.0);
 
     constexpr double PUFF_R = 0.85;   // world radius of one amplified puff
-    constexpr int    BLOBS  = 8;      // circles per particle = the "multiply"
+    constexpr int    BLOBS  = 12;     // squares per particle = the "multiply"
 
     for (const auto& s : snap.smoke)
     {
@@ -303,20 +303,29 @@ static void DrawSmoke(float dispW, float dispH)
         if (r < 3.0f)   r = 3.0f;
         if (r > 140.0f) r = 140.0f;
 
+        float px = r * 0.30f;
+        if (px < 2.0f)  px = 2.0f;
+        if (px > 22.0f) px = 22.0f;
+
         uint32_t h = (uint32_t)((int)std::floor(s.x * 16.0) * 73856093
                               ^ (int)std::floor(s.y * 16.0) * 19349663
                               ^ (int)std::floor(s.z * 16.0) * 83492791);
         for (int i = 0; i < BLOBS; ++i)
         {
             h = h * 1664525u + 1013904223u;
-            const float ox = ((float)(h & 0xFF) / 255.0f - 0.5f) * r * 1.6f;
+            const float ox = ((float)(h & 0xFF) / 255.0f - 0.5f) * r * 1.7f;
             h = h * 1664525u + 1013904223u;
-            const float oy = ((float)(h & 0xFF) / 255.0f - 0.5f) * r * 1.6f;
-            const float rr = r * (0.55f + (float)((h >> 8) & 0x7F) / 200.0f);
-            dl->AddCircleFilled(ImVec2(c.x + ox, c.y + oy), rr,
-                                IM_COL32(48, 48, 54, 42), 14);
+            const float oy = ((float)(h & 0xFF) / 255.0f - 0.5f) * r * 1.7f;
+
+            const float qx = std::floor((c.x + ox) / px) * px;
+            const float qy = std::floor((c.y + oy) / px) * px;
+
+            h = h * 1664525u + 1013904223u;
+            const int shade = 36 + (int)((h >> 4) & 0x1F);
+            const int alpha = 150 + (int)((h >> 10) & 0x3F);
+            dl->AddRectFilled(ImVec2(qx, qy), ImVec2(qx + px, qy + px),
+                              IM_COL32(shade, shade, shade + 4, alpha));
         }
-        dl->AddCircleFilled(c, r * 0.45f, IM_COL32(235, 120, 255, 95), 14);
     }
 }
 
