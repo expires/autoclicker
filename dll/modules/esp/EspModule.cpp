@@ -313,7 +313,8 @@ namespace EspModule
 
                 constexpr double kCell      = 2.0;
                 constexpr double kRadiusSq  = 2.0 * 2.0;
-                constexpr int    kMinNeighbors = 8;
+                constexpr int    kMinNeighbors = 6;
+                constexpr double kMinSpread    = 1.3;
 
                 const int n = (int)pts.size();
                 std::vector<std::array<int, 3>> cell(n);
@@ -337,20 +338,27 @@ namespace EspModule
                 back->smoke.reserve(n);
                 for (int i = 0; i < n; ++i) {
                     int neighbors = 0;
-                    for (int ox = -1; ox <= 1 && neighbors < kMinNeighbors; ++ox)
-                    for (int oy = -1; oy <= 1 && neighbors < kMinNeighbors; ++oy)
-                    for (int oz = -1; oz <= 1 && neighbors < kMinNeighbors; ++oz) {
+                    double minX = pts[i].x, maxX = pts[i].x;
+                    double minZ = pts[i].z, maxZ = pts[i].z;
+                    for (int ox = -1; ox <= 1; ++ox)
+                    for (int oy = -1; oy <= 1; ++oy)
+                    for (int oz = -1; oz <= 1; ++oz) {
                         auto it = grid.find(keyOf(cell[i][0] + ox, cell[i][1] + oy, cell[i][2] + oz));
                         if (it == grid.end()) continue;
                         for (int j : it->second) {
                             const double dx = pts[i].x - pts[j].x;
                             const double dy = pts[i].y - pts[j].y;
                             const double dz = pts[i].z - pts[j].z;
-                            if (dx*dx + dy*dy + dz*dz <= kRadiusSq && ++neighbors >= kMinNeighbors)
-                                break;
+                            if (dx*dx + dy*dy + dz*dz > kRadiusSq) continue;
+                            ++neighbors;
+                            if (pts[j].x < minX) minX = pts[j].x;
+                            if (pts[j].x > maxX) maxX = pts[j].x;
+                            if (pts[j].z < minZ) minZ = pts[j].z;
+                            if (pts[j].z > maxZ) maxZ = pts[j].z;
                         }
                     }
-                    if (neighbors >= kMinNeighbors)
+                    const double spread = (maxX - minX) > (maxZ - minZ) ? (maxX - minX) : (maxZ - minZ);
+                    if (neighbors >= kMinNeighbors && spread >= kMinSpread)
                         back->smoke.push_back({ pts[i].x, pts[i].y, pts[i].z });
                 }
             }
