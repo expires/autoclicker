@@ -9,13 +9,10 @@
 #include "../autoclicker/AutoclickerModule.h"
 #include "../ModuleCommon.h"
 #include "../../logger/Logger.h"
-#include <array>
 #include <cctype>
 #include <chrono>
-#include <cmath>
 #include <mutex>
 #include <thread>
-#include <unordered_map>
 
 namespace EspModule
 {
@@ -310,57 +307,9 @@ namespace EspModule
                 Particles::CollectSmoke(pts,
                                         back->cam.x, back->cam.y, back->cam.z,
                                         (double)g_settings.maxDistance, 600);
-
-                constexpr double kCell      = 2.0;
-                constexpr double kRadiusSq  = 2.0 * 2.0;
-                constexpr int    kMinNeighbors = 6;
-                constexpr double kMinSpread    = 1.3;
-
-                const int n = (int)pts.size();
-                std::vector<std::array<int, 3>> cell(n);
-                std::unordered_map<long long, std::vector<int>> grid;
-                grid.reserve(n * 2);
-
-                auto keyOf = [](int cx, int cy, int cz) -> long long {
-                    return ((long long)(cx & 0xFFFFF))
-                         | ((long long)(cy & 0xFFFFF) << 20)
-                         | ((long long)(cz & 0xFFFFF) << 40);
-                };
-
-                for (int i = 0; i < n; ++i) {
-                    const int cx = (int)std::floor((pts[i].x - back->cam.x) / kCell);
-                    const int cy = (int)std::floor((pts[i].y - back->cam.y) / kCell);
-                    const int cz = (int)std::floor((pts[i].z - back->cam.z) / kCell);
-                    cell[i] = { cx, cy, cz };
-                    grid[keyOf(cx, cy, cz)].push_back(i);
-                }
-
-                back->smoke.reserve(n);
-                for (int i = 0; i < n; ++i) {
-                    int neighbors = 0;
-                    double minX = pts[i].x, maxX = pts[i].x;
-                    double minZ = pts[i].z, maxZ = pts[i].z;
-                    for (int ox = -1; ox <= 1; ++ox)
-                    for (int oy = -1; oy <= 1; ++oy)
-                    for (int oz = -1; oz <= 1; ++oz) {
-                        auto it = grid.find(keyOf(cell[i][0] + ox, cell[i][1] + oy, cell[i][2] + oz));
-                        if (it == grid.end()) continue;
-                        for (int j : it->second) {
-                            const double dx = pts[i].x - pts[j].x;
-                            const double dy = pts[i].y - pts[j].y;
-                            const double dz = pts[i].z - pts[j].z;
-                            if (dx*dx + dy*dy + dz*dz > kRadiusSq) continue;
-                            ++neighbors;
-                            if (pts[j].x < minX) minX = pts[j].x;
-                            if (pts[j].x > maxX) maxX = pts[j].x;
-                            if (pts[j].z < minZ) minZ = pts[j].z;
-                            if (pts[j].z > maxZ) maxZ = pts[j].z;
-                        }
-                    }
-                    const double spread = (maxX - minX) > (maxZ - minZ) ? (maxX - minX) : (maxZ - minZ);
-                    if (neighbors >= kMinNeighbors && spread >= kMinSpread)
-                        back->smoke.push_back({ pts[i].x, pts[i].y, pts[i].z });
-                }
+                back->smoke.reserve(pts.size());
+                for (const auto& pp : pts)
+                    back->smoke.push_back({ pp.x, pp.y, pp.z });
             }
 
             for (size_t i = 0; i < nameCache.size(); ) {
