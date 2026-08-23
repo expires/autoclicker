@@ -393,7 +393,8 @@ namespace EspModule
                                         (double)g_settings.maxDistance, 600);
 
                 const int minN = g_settings.smokeMinParticles;
-                if (minN <= 1) {
+                const int maxN = g_settings.smokeMaxParticles;
+                if (minN <= 1 && maxN >= 100) {
                     back->smoke.reserve(pts.size());
                     for (const auto& pp : pts)
                         back->smoke.push_back({ pp.x, pp.y, pp.z });
@@ -418,20 +419,20 @@ namespace EspModule
                     back->smoke.reserve(n);
                     for (int i = 0; i < n; ++i) {
                         int neighbors = 0;
-                        for (int ox = -1; ox <= 1 && neighbors < minN; ++ox)
-                        for (int oy = -1; oy <= 1 && neighbors < minN; ++oy)
-                        for (int oz = -1; oz <= 1 && neighbors < minN; ++oz) {
+                        for (int ox = -1; ox <= 1; ++ox)
+                        for (int oy = -1; oy <= 1; ++oy)
+                        for (int oz = -1; oz <= 1; ++oz) {
                             auto it = grid.find(keyOf(cx[i] + ox, cy[i] + oy, cz[i] + oz));
                             if (it == grid.end()) continue;
                             for (int j : it->second) {
                                 const double dx = pts[i].x - pts[j].x;
                                 const double dy = pts[i].y - pts[j].y;
                                 const double dz = pts[i].z - pts[j].z;
-                                if (dx*dx + dy*dy + dz*dz <= kRadiusSq && ++neighbors >= minN)
-                                    break;
+                                if (dx*dx + dy*dy + dz*dz <= kRadiusSq)
+                                    ++neighbors;
                             }
                         }
-                        if (neighbors >= minN)
+                        if (neighbors >= minN && neighbors <= maxN)
                             back->smoke.push_back({ pts[i].x, pts[i].y, pts[i].z });
                     }
                 }

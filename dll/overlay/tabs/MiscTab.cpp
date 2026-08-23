@@ -47,7 +47,8 @@ namespace OverlayTabs
         dirty |= ModuleHeader("Smoke ESP", &g_settings.smokeEspEnabled,
                               &g_settings.smokeEspKey);
         if (g_settings.smokeEspEnabled) {
-            dirty |= RowSlider("Min Particles", &g_settings.smokeMinParticles, 0, 60);
+            dirty |= RowRangeSlider("Particle Count", &g_settings.smokeMinParticles,
+                                    &g_settings.smokeMaxParticles, 0, 100);
             ImGui::Dummy(ImVec2(0, Theme::M::BodyPad));
         }
         ImGui::PopID();

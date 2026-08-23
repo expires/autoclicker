@@ -84,6 +84,7 @@ struct Settings
     bool smokeEspEnabled = false;
     int  smokeEspKey     = 0;
     int  smokeMinParticles = 0;
+    int  smokeMaxParticles = 100;
 
     bool notificationsEnabled = true;
 
