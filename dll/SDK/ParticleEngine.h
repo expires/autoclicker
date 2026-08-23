@@ -10,5 +10,5 @@ namespace Particles
 
     void CollectSmoke(std::vector<Point>& out,
                       double camX, double camY, double camZ,
-                      double maxDist, size_t cap);
+                      double maxDist, size_t cap, int maxAge);
 }

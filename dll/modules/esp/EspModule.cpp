@@ -81,6 +81,25 @@ namespace EspModule
         return hit;
     }
 
+    static double groundYAt(Level& level, double wx, double wz, double startY)
+    {
+        const int bx = (int)std::floor(wx);
+        const int bz = (int)std::floor(wz);
+        const int sy = (int)std::floor(startY);
+        for (int y = sy; y >= sy - 12; --y) {
+            BlockPos bp = BlockPos::make(bx, y, bz);
+            jobject bpInst = bp.GetInstance();
+            if (bpInst == nullptr) continue;
+            BlockState bs = level.getBlockState(bp);
+            jobject bsInst = bs.GetInstance();
+            bool solid = false;
+            if (bsInst != nullptr) { solid = bs.blocksMotion(); lc->env->DeleteLocalRef(bsInst); }
+            lc->env->DeleteLocalRef(bpInst);
+            if (solid) return (double)(y + 1);
+        }
+        return startY;
+    }
+
     struct PlayerTrack { double x, y, z, vx, vy, vz; };
 
     struct VanishEvent
@@ -397,7 +416,7 @@ namespace EspModule
                 for (size_t i = 0; i < vanishEvents.size(); ) {
                     const double ageMs =
                         std::chrono::duration<double, std::milli>(scanNow - vanishEvents[i].at).count();
-                    if (ageMs > 2500.0) {
+                    if (ageMs > 1200.0) {
                         vanishEvents[i] = std::move(vanishEvents.back());
                         vanishEvents.pop_back();
                     } else {
@@ -428,7 +447,7 @@ namespace EspModule
                 std::vector<Particles::Point> pts;
                 Particles::CollectSmoke(pts,
                                         back->cam.x, back->cam.y, back->cam.z,
-                                        (double)g_settings.maxDistance, 600);
+                                        (double)g_settings.maxDistance, 600, 5);
 
                 auto packBlock = [](int x, int y, int z) -> long long {
                     return ((long long)(x & 0x1FFFFF))
@@ -448,7 +467,7 @@ namespace EspModule
                 struct Cluster { double sumX, sumZ, minY; int count; };
                 std::vector<Cluster> clusters;
                 constexpr double kMergeSq   = 2.5 * 2.5;
-                constexpr int    kMinCluster = 5;
+                constexpr int    kMinCluster = 4;
 
                 for (const auto& pp : pts) {
                     const int bx = (int)std::floor(pp.x);
@@ -494,7 +513,8 @@ namespace EspModule
                     if (vidx >= 0)
                         back->vanishes.erase(back->vanishes.begin() + vidx);
 
-                    back->smokeBoxes.push_back({ cx, c.minY, cz });
+                    const double feetY = groundYAt(level, cx, cz, c.minY + 1.0);
+                    back->smokeBoxes.push_back({ cx, feetY, cz });
                 }
             }
 

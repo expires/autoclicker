@@ -186,5 +186,7 @@
   "desc_ParticleGroup_getAll": "()Ljava/util/Queue;",
   "fld_Particle_x": "x",
   "fld_Particle_y": "y",
-  "fld_Particle_z": "z"
+  "fld_Particle_z": "z",
+  "fld_Particle_age": "age",
+  "fld_Particle_lifetime": "lifetime"
 }

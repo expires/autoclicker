@@ -27,7 +27,7 @@ namespace Particles
 
     void CollectSmoke(std::vector<Point>& out,
                       double camX, double camY, double camZ,
-                      double maxDist, size_t cap)
+                      double maxDist, size_t cap, int maxAge)
     {
         if (!s_mapped()) return;
 
@@ -83,6 +83,15 @@ namespace Particles
         JField(fz, partCls, FLD_Particle_z, "D");
         if (!fx || !fy || !fz) return;
 
+        static jfieldID fage = nullptr;
+        static bool ageResolved = false;
+        if (!ageResolved) {
+            ageResolved = true;
+            if (FLD_Particle_age[0] != '\0')
+                JField(fage, partCls, FLD_Particle_age, "I");
+        }
+        const bool ageFilter = (maxAge > 0) && (fage != nullptr);
+
         static jclass smoke[4] = { nullptr, nullptr, nullptr, nullptr };
         JClass(smoke[0], MC_BaseAshSmokeParticle);
         JClass(smoke[1], MC_SmokeParticle);
@@ -124,6 +133,11 @@ namespace Particles
 
                 const double dx = px - camX, dy = py - camY, dz = pz - camZ;
                 if (dx*dx + dy*dy + dz*dz > maxDistSq) { lc->env->DeleteLocalRef(part); continue; }
+
+                if (ageFilter) {
+                    const jint age = lc->env->GetIntField(part, fage);
+                    if (age > maxAge) { lc->env->DeleteLocalRef(part); continue; }
+                }
 
                 bool isSmoke = false;
                 for (int i = 0; i < 4 && !isSmoke; ++i)

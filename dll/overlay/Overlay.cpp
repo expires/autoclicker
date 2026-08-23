@@ -366,7 +366,7 @@ static void DrawVanishes(float dispW, float dispH)
 
     ImDrawList* dl = ImGui::GetBackgroundDrawList();
 
-    constexpr float TTL_MS = 2500.0f;
+    constexpr float TTL_MS = 1200.0f;
 
     for (const auto& v : snap.vanishes)
     {

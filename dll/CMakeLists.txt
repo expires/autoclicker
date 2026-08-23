@@ -149,7 +149,7 @@ foreach(KEY
     fld_Minecraft_particleEngine desc_Minecraft_particleEngine
     fld_ParticleEngine_particles desc_ParticleEngine_particles
     mtd_ParticleGroup_getAll     desc_ParticleGroup_getAll
-    fld_Particle_x fld_Particle_y fld_Particle_z
+    fld_Particle_x fld_Particle_y fld_Particle_z fld_Particle_age fld_Particle_lifetime
 )
     string(JSON ${KEY} ERROR_VARIABLE _keyErr GET "${MAPPING_JSON}" "${KEY}")
     if(_keyErr)

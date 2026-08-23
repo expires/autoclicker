@@ -253,3 +253,5 @@
 #define FLD_Particle_x                  "@fld_Particle_x@"
 #define FLD_Particle_y                  "@fld_Particle_y@"
 #define FLD_Particle_z                  "@fld_Particle_z@"
+#define FLD_Particle_age                "@fld_Particle_age@"
+#define FLD_Particle_lifetime           "@fld_Particle_lifetime@"
