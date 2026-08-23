@@ -265,6 +265,8 @@ namespace EspModule
             for (auto& e : nameCache) e.seen = false;
             size_t cacheHint = 0;
 
+            double dbgMaxYDelta = 0.0;
+
             for (auto& p : players)
             {
                 if (lc->env->IsSameObject(p.GetInstance(), localInst)) continue;
@@ -279,7 +281,12 @@ namespace EspModule
                 t.prevY = p.getYo();
                 t.prevZ = p.getZo();
 
-                if (t.y - back->cam.y > 100.0) {
+                {
+                    const double yd = t.y - back->cam.y;
+                    if (std::fabs(yd) > std::fabs(dbgMaxYDelta)) dbgMaxYDelta = yd;
+                }
+
+                if (std::fabs(t.y - back->cam.y) > 100.0) {
                     const double realY = probeGroundY(level, t.x, t.z, back->cam.y);
                     t.y       = realY;
                     t.prevY   = realY;
@@ -332,6 +339,14 @@ namespace EspModule
                 if (t.cloaked) t.boxColor = packColor(255, 80, 255);
 
                 back->targets.push_back(std::move(t));
+            }
+
+            {
+                static auto lastLog = std::chrono::steady_clock::now();
+                if (scanNow - lastLog >= std::chrono::seconds(1)) {
+                    lastLog = scanNow;
+                    LOG("esp diag: players=%d maxYDelta=%.1f", (int)players.size(), dbgMaxYDelta);
+                }
             }
 
             for (size_t i = 0; i < nameCache.size(); ) {
