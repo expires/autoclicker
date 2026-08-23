@@ -144,6 +144,12 @@ foreach(KEY
     mtd_GameType_getId
     mtd_AbstractClientPlayer_getPlayerInfo desc_AbstractClientPlayer_getPlayerInfo
     mtd_PlayerInfo_getLatency
+    class_ParticleEngine class_ParticleGroup class_Particle
+    class_SmokeParticle class_LargeSmokeParticle class_CampfireSmokeParticle class_BaseAshSmokeParticle
+    fld_Minecraft_particleEngine desc_Minecraft_particleEngine
+    fld_ParticleEngine_particles desc_ParticleEngine_particles
+    mtd_ParticleGroup_getAll     desc_ParticleGroup_getAll
+    fld_Particle_x fld_Particle_y fld_Particle_z
 )
     string(JSON ${KEY} ERROR_VARIABLE _keyErr GET "${MAPPING_JSON}" "${KEY}")
     if(_keyErr)

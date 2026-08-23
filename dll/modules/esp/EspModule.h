@@ -20,8 +20,9 @@ namespace EspModule
         bool        isFriend = false;
         float       health    = -1.0f;
         float       maxHealth = -1.0f;
-        bool        cloaked   = false;
     };
+
+    struct SmokePoint { double x, y, z; };
 
     struct CameraState
     {
@@ -37,7 +38,8 @@ namespace EspModule
 
     struct Snapshot
     {
-        std::vector<Target> targets;
+        std::vector<Target>     targets;
+        std::vector<SmokePoint> smoke;
         CameraState         cam{};
         float               partialTick = 1.0f;
         bool                valid = false;

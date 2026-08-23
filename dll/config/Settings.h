@@ -81,6 +81,9 @@ struct Settings
     bool evadeUnblockEnabled = false;
     int  evadeUnblockKey     = 0;
 
+    bool smokeEspEnabled = false;
+    int  smokeEspKey     = 0;
+
     bool notificationsEnabled = true;
 
     mutable std::mutex       friendsMutex;

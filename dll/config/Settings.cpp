@@ -88,6 +88,8 @@ void Settings::Save()
     fprintf(f, "antiEvadeKey=%d\n",       antiEvadeKey);
     fprintf(f, "evadeUnblockEnabled=%d\n", evadeUnblockEnabled ? 1 : 0);
     fprintf(f, "evadeUnblockKey=%d\n",    evadeUnblockKey);
+    fprintf(f, "smokeEspEnabled=%d\n",    smokeEspEnabled ? 1 : 0);
+    fprintf(f, "smokeEspKey=%d\n",        smokeEspKey);
 
     fprintf(f, "notificationsEnabled=%d\n", notificationsEnabled ? 1 : 0);
 
@@ -176,6 +178,8 @@ void Settings::Load()
         else if (k == "antiEvadeKey")          antiEvadeKey          = val;
         else if (k == "evadeUnblockEnabled")   evadeUnblockEnabled   = (val != 0);
         else if (k == "evadeUnblockKey")       evadeUnblockKey       = val;
+        else if (k == "smokeEspEnabled")       smokeEspEnabled       = (val != 0);
+        else if (k == "smokeEspKey")           smokeEspKey           = val;
         else if (k == "notificationsEnabled")  notificationsEnabled  = (val != 0);
         else if (k == "friendKey")               friendKey               = val;
         else if (k == "friendCount") {
@@ -264,6 +268,7 @@ void Settings::Load()
     shiftRecallKey = clampVK(shiftRecallKey);
     antiEvadeKey   = clampVK(antiEvadeKey);
     evadeUnblockKey = clampVK(evadeUnblockKey);
+    smokeEspKey    = clampVK(smokeEspKey);
 
     friendKey = clampVK(friendKey);
 

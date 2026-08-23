@@ -270,6 +270,56 @@ static void RefreshCameraFromRenderThread(EspModule::CameraState& cam, float& pa
     lc->env->PopLocalFrame(nullptr);
 }
 
+static void DrawSmoke(float dispW, float dispH)
+{
+    std::shared_ptr<const EspModule::Snapshot> snapPtr = EspModule::Acquire();
+    if (!snapPtr || !snapPtr->valid || snapPtr->smoke.empty()) return;
+    const EspModule::Snapshot& snap = *snapPtr;
+
+    EspModule::CameraState cam = snap.cam;
+    float partial = snap.partialTick;
+    RefreshCameraFromRenderThread(cam, partial);
+
+    ImDrawList* dl = ImGui::GetBackgroundDrawList();
+
+    double fovRad = cam.fov * M_PI / 180.0;
+    if (fovRad <= 0.01) fovRad = 70.0 * M_PI / 180.0;
+    const double f = 1.0 / std::tan(fovRad / 2.0);
+
+    constexpr double PUFF_R = 0.85;   // world radius of one amplified puff
+    constexpr int    BLOBS  = 8;      // circles per particle = the "multiply"
+
+    for (const auto& s : snap.smoke)
+    {
+        const double ddx = s.x - cam.x, ddy = s.y - cam.y, ddz = s.z - cam.z;
+        const double dist = std::sqrt(ddx*ddx + ddy*ddy + ddz*ddz);
+        if (dist < 0.1) continue;
+
+        ImVec2 c;
+        if (!ProjectWorld(s.x, s.y, s.z, cam, dispW, dispH, c)) continue;
+        if (c.x < -80 || c.x > dispW + 80 || c.y < -80 || c.y > dispH + 80) continue;
+
+        float r = (float)(PUFF_R * f * dispH * 0.5 / dist);
+        if (r < 3.0f)   r = 3.0f;
+        if (r > 140.0f) r = 140.0f;
+
+        uint32_t h = (uint32_t)((int)std::floor(s.x * 16.0) * 73856093
+                              ^ (int)std::floor(s.y * 16.0) * 19349663
+                              ^ (int)std::floor(s.z * 16.0) * 83492791);
+        for (int i = 0; i < BLOBS; ++i)
+        {
+            h = h * 1664525u + 1013904223u;
+            const float ox = ((float)(h & 0xFF) / 255.0f - 0.5f) * r * 1.6f;
+            h = h * 1664525u + 1013904223u;
+            const float oy = ((float)(h & 0xFF) / 255.0f - 0.5f) * r * 1.6f;
+            const float rr = r * (0.55f + (float)((h >> 8) & 0x7F) / 200.0f);
+            dl->AddCircleFilled(ImVec2(c.x + ox, c.y + oy), rr,
+                                IM_COL32(48, 48, 54, 42), 14);
+        }
+        dl->AddCircleFilled(c, r * 0.45f, IM_COL32(235, 120, 255, 95), 14);
+    }
+}
+
 static void DrawEsp(float dispW, float dispH)
 {
     std::shared_ptr<const EspModule::Snapshot> snapPtr = EspModule::Acquire();
@@ -861,6 +911,7 @@ static BOOL WINAPI hk_wglSwapBuffers(HDC hdc)
         static bool s_shiftRecallKeyHeldPrev = false;
         static bool s_antiEvadeKeyHeldPrev = false;
         static bool s_evadeUnblockKeyHeldPrev = false;
+        static bool s_smokeEspKeyHeldPrev = false;
         static bool s_destructKeyHeldPrev = false;
 
         const bool espHeld =
@@ -884,6 +935,9 @@ static BOOL WINAPI hk_wglSwapBuffers(HDC hdc)
         const bool evadeUnblockHeld =
             (g_settings.evadeUnblockKey > 0 && g_settings.evadeUnblockKey <= 0xFE) &&
             (GetAsyncKeyState(g_settings.evadeUnblockKey) & 0x8000);
+        const bool smokeEspHeld =
+            (g_settings.smokeEspKey > 0 && g_settings.smokeEspKey <= 0xFE) &&
+            (GetAsyncKeyState(g_settings.smokeEspKey) & 0x8000);
         const bool sprintResetHeld =
             (g_settings.sprintResetKey > 0 && g_settings.sprintResetKey <= 0xFE) &&
             (GetAsyncKeyState(g_settings.sprintResetKey) & 0x8000);
@@ -905,6 +959,7 @@ static BOOL WINAPI hk_wglSwapBuffers(HDC hdc)
             if (shiftRecallHeld && !s_shiftRecallKeyHeldPrev) { g_settings.shiftRecallEnabled = !g_settings.shiftRecallEnabled; notifyToggle("Auto Shift Recall", g_settings.shiftRecallEnabled); }
             if (antiEvadeHeld && !s_antiEvadeKeyHeldPrev) { g_settings.antiEvadeEnabled = !g_settings.antiEvadeEnabled; notifyToggle("AntiEvade", g_settings.antiEvadeEnabled); }
             if (evadeUnblockHeld && !s_evadeUnblockKeyHeldPrev) { g_settings.evadeUnblockEnabled = !g_settings.evadeUnblockEnabled; notifyToggle("Evade Unblock", g_settings.evadeUnblockEnabled); }
+            if (smokeEspHeld && !s_smokeEspKeyHeldPrev) { g_settings.smokeEspEnabled = !g_settings.smokeEspEnabled; notifyToggle("Smoke ESP", g_settings.smokeEspEnabled); }
             if (destructHeld && !s_destructKeyHeldPrev) { g_settings.selfDestruct = true; Notifications::Push("Unloading...", Notifications::Kind::Alert); }
         }
         s_espKeyHeldPrev      = espHeld;
@@ -915,12 +970,13 @@ static BOOL WINAPI hk_wglSwapBuffers(HDC hdc)
         s_shiftRecallKeyHeldPrev = shiftRecallHeld;
         s_antiEvadeKeyHeldPrev = antiEvadeHeld;
         s_evadeUnblockKeyHeldPrev = evadeUnblockHeld;
+        s_smokeEspKeyHeldPrev = smokeEspHeld;
         s_destructKeyHeldPrev = destructHeld;
     }
 
     ScaffoldModule::Tick();
 
-    const bool needFrame = s_visible || g_settings.espEnabled || Notifications::HasActive();
+    const bool needFrame = s_visible || g_settings.espEnabled || g_settings.smokeEspEnabled || Notifications::HasActive();
     if (needFrame)
     {
         ImGui_ImplOpenGL3_NewFrame();
@@ -959,6 +1015,9 @@ static BOOL WINAPI hk_wglSwapBuffers(HDC hdc)
 
         if (g_settings.espEnabled && !screenOrMenuOpen)
             DrawEsp(display.x, display.y);
+
+        if (g_settings.smokeEspEnabled && !screenOrMenuOpen)
+            DrawSmoke(display.x, display.y);
 
         if (s_visible)
         {

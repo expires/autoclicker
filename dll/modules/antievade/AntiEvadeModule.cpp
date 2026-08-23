@@ -21,7 +21,7 @@ namespace AntiEvadeModule
     using Clock   = std::chrono::steady_clock;
     using Instant = Clock::time_point;
 
-    static constexpr int  kHoldBaseMs     = 700;
+    static constexpr int  kHoldBaseMs     = 800;
     static constexpr int  kMaxPingMs      = 800;
     static constexpr auto kEvadeCooldown  = std::chrono::seconds(18);
     static constexpr auto kEntryTtl       = std::chrono::seconds(18);

@@ -43,6 +43,11 @@ namespace OverlayTabs
                               &g_settings.evadeUnblockKey);
         ImGui::PopID();
 
+        ImGui::PushID("smokeesp");
+        dirty |= ModuleHeader("Smoke ESP", &g_settings.smokeEspEnabled,
+                              &g_settings.smokeEspKey);
+        ImGui::PopID();
+
         ImGui::PushID("scaffold");
         dirty |= ModuleHeader("Legit Scaffold", &g_settings.scaffoldEnabled, &g_settings.scaffoldKey);
         ImGui::PopID();

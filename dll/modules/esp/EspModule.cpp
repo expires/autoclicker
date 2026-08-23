@@ -3,6 +3,7 @@
 #include "../../SDK/Minecraft.h"
 #include "../../SDK/ItemStack.h"
 #include "../../SDK/Component.h"
+#include "../../SDK/ParticleEngine.h"
 #include "../../SDK/View.h"
 #include "Mappings.h"
 #include "../autoclicker/AutoclickerModule.h"
@@ -10,7 +11,6 @@
 #include "../../logger/Logger.h"
 #include <cctype>
 #include <chrono>
-#include <cmath>
 #include <mutex>
 #include <thread>
 
@@ -165,27 +165,6 @@ namespace EspModule
         return cache[found];
     }
 
-    static double probeGroundY(Level& level, double x, double z, double aroundY)
-    {
-        JLocalFrame frame(256);
-        if (!frame.ok()) return aroundY;
-
-        const int bx = (int)std::floor(x);
-        const int bz = (int)std::floor(z);
-        const int top    = (int)std::floor(aroundY) + 4;
-        const int bottom = (int)std::floor(aroundY) - 24;
-
-        for (int by = top; by >= bottom; --by) {
-            BlockPos bp = BlockPos::make(bx, by, bz);
-            if (bp.GetInstance() == nullptr) { lc->env->ExceptionClear(); continue; }
-            BlockState bs = level.getBlockState(bp);
-            if (bs.GetInstance() != nullptr && bs.blocksMotion())
-                return (double)(by + 1);
-            if (lc->env->ExceptionCheck()) lc->env->ExceptionClear();
-        }
-        return aroundY;
-    }
-
     DWORD WINAPI init(LPVOID lpParam)
     {
         LOG("esp: thread start");
@@ -198,7 +177,7 @@ namespace EspModule
 
         while (!AutoclickerModule::destruct)
         {
-            if (!g_settings.espEnabled)
+            if (!g_settings.espEnabled && !g_settings.smokeEspEnabled)
             {
                 if (!clearedWhileDisabled)
                 {
@@ -265,8 +244,6 @@ namespace EspModule
             for (auto& e : nameCache) e.seen = false;
             size_t cacheHint = 0;
 
-            double dbgMaxYDelta = 0.0;
-
             for (auto& p : players)
             {
                 if (lc->env->IsSameObject(p.GetInstance(), localInst)) continue;
@@ -280,18 +257,6 @@ namespace EspModule
                 t.prevX = p.getXo();
                 t.prevY = p.getYo();
                 t.prevZ = p.getZo();
-
-                {
-                    const double yd = t.y - back->cam.y;
-                    if (std::fabs(yd) > std::fabs(dbgMaxYDelta)) dbgMaxYDelta = yd;
-                }
-
-                if (std::fabs(t.y - back->cam.y) > 100.0) {
-                    const double realY = probeGroundY(level, t.x, t.z, back->cam.y);
-                    t.y       = realY;
-                    t.prevY   = realY;
-                    t.cloaked = true;
-                }
 
                 double dx = t.x - back->cam.x, dy = t.y - back->cam.y, dz = t.z - back->cam.z;
                 double distSq = dx*dx + dy*dy + dz*dz;
@@ -318,9 +283,6 @@ namespace EspModule
                     t.armorColor = ni.armorColor;
                 }
 
-                if (t.cloaked)
-                    t.nameChunks.push_back({ std::string(" [cloak]"), packColor(255, 80, 255) });
-
                 t.health    = p.getHealth();
                 t.maxHealth = p.getMaxHealth();
 
@@ -336,17 +298,14 @@ namespace EspModule
                         if (!it->first.empty()) { t.boxColor = it->second; break; }
                     }
                 }
-                if (t.cloaked) t.boxColor = packColor(255, 80, 255);
 
                 back->targets.push_back(std::move(t));
             }
 
-            {
-                static auto lastLog = std::chrono::steady_clock::now();
-                if (scanNow - lastLog >= std::chrono::seconds(1)) {
-                    lastLog = scanNow;
-                    LOG("esp diag: players=%d maxYDelta=%.1f", (int)players.size(), dbgMaxYDelta);
-                }
+            if (g_settings.smokeEspEnabled && Particles::Supported()) {
+                Particles::CollectSmoke(back->smoke,
+                                        back->cam.x, back->cam.y, back->cam.z,
+                                        (double)g_settings.maxDistance, 600);
             }
 
             for (size_t i = 0; i < nameCache.size(); ) {
