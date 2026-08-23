@@ -303,9 +303,13 @@ namespace EspModule
             }
 
             if (g_settings.smokeEspEnabled && Particles::Supported()) {
-                Particles::CollectSmoke(back->smoke,
+                std::vector<Particles::Point> pts;
+                Particles::CollectSmoke(pts,
                                         back->cam.x, back->cam.y, back->cam.z,
                                         (double)g_settings.maxDistance, 600);
+                back->smoke.reserve(pts.size());
+                for (const auto& pp : pts)
+                    back->smoke.push_back({ pp.x, pp.y, pp.z });
             }
 
             for (size_t i = 0; i < nameCache.size(); ) {
