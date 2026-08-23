@@ -5,6 +5,7 @@
 #include "../../SDK/Component.h"
 #include "../../SDK/ParticleEngine.h"
 #include "../../SDK/View.h"
+#include "../../SDK/BlockPos.h"
 #include "Mappings.h"
 #include "../autoclicker/AutoclickerModule.h"
 #include "../ModuleCommon.h"
@@ -12,6 +13,7 @@
 #include <cctype>
 #include <chrono>
 #include <cmath>
+#include <cstring>
 #include <mutex>
 #include <thread>
 #include <unordered_map>
@@ -42,6 +44,42 @@ namespace EspModule
         std::chrono::steady_clock::time_point refreshedAt{};
         bool seen = false;
     };
+
+    static bool blockIsTorch(Level& level, int bx, int by, int bz)
+    {
+        BlockPos bp = BlockPos::make(bx, by, bz);
+        jobject bpInst = bp.GetInstance();
+        if (bpInst == nullptr) return false;
+
+        BlockState bs = level.getBlockState(bp);
+        jobject bsInst = bs.GetInstance();
+        if (bsInst == nullptr) { lc->env->DeleteLocalRef(bpInst); return false; }
+
+        static jmethodID toStr = nullptr;
+        if (toStr == nullptr) {
+            jclass oc = lc->env->FindClass("java/lang/Object");
+            if (oc) { toStr = lc->env->GetMethodID(oc, "toString", "()Ljava/lang/String;"); lc->env->DeleteLocalRef(oc); }
+            if (toStr == nullptr) lc->env->ExceptionClear();
+        }
+
+        bool hit = false;
+        if (toStr) {
+            jstring js = (jstring)lc->env->CallObjectMethod(bsInst, toStr);
+            if (lc->env->ExceptionCheck()) { lc->env->ExceptionClear(); }
+            else if (js) {
+                const char* c = lc->env->GetStringUTFChars(js, nullptr);
+                if (c) {
+                    hit = (std::strstr(c, "torch") != nullptr) || (std::strstr(c, "Torch") != nullptr);
+                    lc->env->ReleaseStringUTFChars(js, c);
+                }
+            }
+            if (js) lc->env->DeleteLocalRef(js);
+        }
+
+        lc->env->DeleteLocalRef(bsInst);
+        lc->env->DeleteLocalRef(bpInst);
+        return hit;
+    }
 
     struct PlayerTrack { double x, y, z, vx, vy, vz; };
 
@@ -392,49 +430,31 @@ namespace EspModule
                                         back->cam.x, back->cam.y, back->cam.z,
                                         (double)g_settings.maxDistance, 600);
 
-                const int minN = g_settings.smokeMinParticles;
-                const int maxN = g_settings.smokeMaxParticles;
-                if (minN <= 1 && maxN >= 100) {
-                    back->smoke.reserve(pts.size());
-                    for (const auto& pp : pts)
+                auto packBlock = [](int x, int y, int z) -> long long {
+                    return ((long long)(x & 0x1FFFFF))
+                         | ((long long)(y & 0x1FFFFF) << 21)
+                         | ((long long)(z & 0x1FFFFF) << 42);
+                };
+                std::unordered_map<long long, char> torchCache;
+                auto isTorchAt = [&](int x, int y, int z) -> bool {
+                    const long long k = packBlock(x, y, z);
+                    auto it = torchCache.find(k);
+                    if (it != torchCache.end()) return it->second == 1;
+                    const bool t = blockIsTorch(level, x, y, z);
+                    torchCache[k] = t ? 1 : 2;
+                    return t;
+                };
+
+                back->smoke.reserve(pts.size());
+                for (const auto& pp : pts) {
+                    const int bx = (int)std::floor(pp.x);
+                    const int by = (int)std::floor(pp.y);
+                    const int bz = (int)std::floor(pp.z);
+                    bool torch = false;
+                    for (int dy = 0; dy <= 2 && !torch; ++dy)
+                        if (isTorchAt(bx, by - dy, bz)) torch = true;
+                    if (!torch)
                         back->smoke.push_back({ pp.x, pp.y, pp.z });
-                } else {
-                    constexpr double kCell     = 2.0;
-                    constexpr double kRadiusSq = 2.0 * 2.0;
-                    const int n = (int)pts.size();
-                    std::vector<int> cx(n), cy(n), cz(n);
-                    std::unordered_map<long long, std::vector<int>> grid;
-                    grid.reserve(n * 2);
-                    auto keyOf = [](int gx, int gy, int gz) -> long long {
-                        return ((long long)(gx & 0x1FFFFF))
-                             | ((long long)(gy & 0x1FFFFF) << 21)
-                             | ((long long)(gz & 0x1FFFFF) << 42);
-                    };
-                    for (int i = 0; i < n; ++i) {
-                        cx[i] = (int)std::floor((pts[i].x - back->cam.x) / kCell);
-                        cy[i] = (int)std::floor((pts[i].y - back->cam.y) / kCell);
-                        cz[i] = (int)std::floor((pts[i].z - back->cam.z) / kCell);
-                        grid[keyOf(cx[i], cy[i], cz[i])].push_back(i);
-                    }
-                    back->smoke.reserve(n);
-                    for (int i = 0; i < n; ++i) {
-                        int neighbors = 0;
-                        for (int ox = -1; ox <= 1; ++ox)
-                        for (int oy = -1; oy <= 1; ++oy)
-                        for (int oz = -1; oz <= 1; ++oz) {
-                            auto it = grid.find(keyOf(cx[i] + ox, cy[i] + oy, cz[i] + oz));
-                            if (it == grid.end()) continue;
-                            for (int j : it->second) {
-                                const double dx = pts[i].x - pts[j].x;
-                                const double dy = pts[i].y - pts[j].y;
-                                const double dz = pts[i].z - pts[j].z;
-                                if (dx*dx + dy*dy + dz*dz <= kRadiusSq)
-                                    ++neighbors;
-                            }
-                        }
-                        if (neighbors >= minN && neighbors <= maxN)
-                            back->smoke.push_back({ pts[i].x, pts[i].y, pts[i].z });
-                    }
                 }
             }
 
