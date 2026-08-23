@@ -271,10 +271,78 @@ static void RefreshCameraFromRenderThread(EspModule::CameraState& cam, float& pa
     lc->env->PopLocalFrame(nullptr);
 }
 
-static void DrawSmoke(float dispW, float dispH)
+static void DrawPlayerMarker(ImDrawList* dl, const EspModule::CameraState& cam,
+                             float dispW, float dispH,
+                             double px, double py, double pz,
+                             int boxA, int tagA)
+{
+    constexpr double HALF_W = 0.3;
+    constexpr double HEIGHT = 1.8;
+
+    const double minX = px - HALF_W, maxX = px + HALF_W;
+    const double minY = py,          maxY = py + HEIGHT;
+    const double minZ = pz - HALF_W, maxZ = pz + HALF_W;
+
+    const double cx[2]  = {minX, maxX};
+    const double cyv[2] = {minY, maxY};
+    const double cz[2]  = {minZ, maxZ};
+
+    ImVec2 sp[8];
+    bool   ok[8];
+    bool   any = false;
+    for (int i = 0; i < 8; ++i) {
+        const double wx = cx[(i >> 0) & 1];
+        const double wy = cyv[(i >> 1) & 1];
+        const double wz = cz[(i >> 2) & 1];
+        ImVec2 p;
+        ok[i] = ProjectWorld(wx, wy, wz, cam, dispW, dispH, p);
+        if (!ok[i]) continue;
+        sp[i].x = std::floor(p.x + 0.5f);
+        sp[i].y = std::floor(p.y + 0.5f);
+        any = true;
+    }
+    if (!any) return;
+
+    static const int edges[12][2] = {
+        {0,1},{1,3},{3,2},{2,0},
+        {4,5},{5,7},{7,6},{6,4},
+        {0,4},{1,5},{2,6},{3,7},
+    };
+    const ImU32 colBox = IM_COL32(235, 120, 255, boxA);
+    for (int e = 0; e < 12; ++e) {
+        const int a = edges[e][0], b = edges[e][1];
+        if (!ok[a] || !ok[b]) continue;
+        dl->AddLine(sp[a], sp[b], colBox, 2.0f);
+    }
+
+    ImVec2 tagPos;
+    if (!ProjectWorld(px, py + HEIGHT + 0.5, pz, cam, dispW, dispH, tagPos))
+        return;
+
+    const char* label = "[SMOKE]";
+
+    ImFont* font = ImGui::GetFont();
+    const float fontSize = 16.0f;
+    const ImVec2 sz = font->CalcTextSizeA(fontSize, FLT_MAX, 0.0f, label);
+    const float padX = 5.0f, padY = 3.0f;
+    const float bgLeft   = tagPos.x - sz.x * 0.5f - padX;
+    const float bgRight  = tagPos.x + sz.x * 0.5f + padX;
+    const float bgTop    = tagPos.y - sz.y * 0.5f - padY;
+    const float bgBottom = tagPos.y + sz.y * 0.5f + padY;
+
+    dl->AddRectFilled(ImVec2(bgLeft, bgTop), ImVec2(bgRight, bgBottom),
+                      IM_COL32(20, 8, 24, tagA), 4.0f);
+    dl->AddRect(ImVec2(bgLeft, bgTop), ImVec2(bgRight, bgBottom),
+                IM_COL32(235, 120, 255, tagA), 4.0f, 0, 1.0f);
+    dl->AddText(font, fontSize,
+                ImVec2(tagPos.x - sz.x * 0.5f, bgTop + padY),
+                IM_COL32(245, 220, 255, 235), label);
+}
+
+static void DrawSmokeBoxes(float dispW, float dispH)
 {
     std::shared_ptr<const EspModule::Snapshot> snapPtr = EspModule::Acquire();
-    if (!snapPtr || !snapPtr->valid || snapPtr->smoke.empty()) return;
+    if (!snapPtr || !snapPtr->valid || snapPtr->smokeBoxes.empty()) return;
     const EspModule::Snapshot& snap = *snapPtr;
 
     EspModule::CameraState cam = snap.cam;
@@ -282,52 +350,8 @@ static void DrawSmoke(float dispW, float dispH)
     RefreshCameraFromRenderThread(cam, partial);
 
     ImDrawList* dl = ImGui::GetBackgroundDrawList();
-
-    double fovRad = cam.fov * M_PI / 180.0;
-    if (fovRad <= 0.01) fovRad = 70.0 * M_PI / 180.0;
-    const double f = 1.0 / std::tan(fovRad / 2.0);
-
-    constexpr double PUFF_R = 0.85;   // world radius of one amplified puff
-    constexpr int    BLOBS  = 12;     // squares per particle = the "multiply"
-
-    for (const auto& s : snap.smoke)
-    {
-        const double ddx = s.x - cam.x, ddy = s.y - cam.y, ddz = s.z - cam.z;
-        const double dist = std::sqrt(ddx*ddx + ddy*ddy + ddz*ddz);
-        if (dist < 0.1) continue;
-
-        ImVec2 c;
-        if (!ProjectWorld(s.x, s.y, s.z, cam, dispW, dispH, c)) continue;
-        if (c.x < -80 || c.x > dispW + 80 || c.y < -80 || c.y > dispH + 80) continue;
-
-        float r = (float)(PUFF_R * f * dispH * 0.5 / dist);
-        if (r < 3.0f)   r = 3.0f;
-        if (r > 140.0f) r = 140.0f;
-
-        float px = r * 0.30f;
-        if (px < 2.0f)  px = 2.0f;
-        if (px > 22.0f) px = 22.0f;
-
-        uint32_t h = (uint32_t)((int)std::floor(s.x * 16.0) * 73856093
-                              ^ (int)std::floor(s.y * 16.0) * 19349663
-                              ^ (int)std::floor(s.z * 16.0) * 83492791);
-        for (int i = 0; i < BLOBS; ++i)
-        {
-            h = h * 1664525u + 1013904223u;
-            const float ox = ((float)(h & 0xFF) / 255.0f - 0.5f) * r * 1.7f;
-            h = h * 1664525u + 1013904223u;
-            const float oy = ((float)(h & 0xFF) / 255.0f - 0.5f) * r * 1.7f;
-
-            const float qx = std::floor((c.x + ox) / px) * px;
-            const float qy = std::floor((c.y + oy) / px) * px;
-
-            h = h * 1664525u + 1013904223u;
-            const int shade = 36 + (int)((h >> 4) & 0x1F);
-            const int alpha = 150 + (int)((h >> 10) & 0x3F);
-            dl->AddRectFilled(ImVec2(qx, qy), ImVec2(qx + px, qy + px),
-                              IM_COL32(shade, shade, shade + 4, alpha));
-        }
-    }
+    for (const auto& b : snap.smokeBoxes)
+        DrawPlayerMarker(dl, cam, dispW, dispH, b.x, b.y, b.z, 240, 210);
 }
 
 static void DrawVanishes(float dispW, float dispH)
@@ -342,77 +366,15 @@ static void DrawVanishes(float dispW, float dispH)
 
     ImDrawList* dl = ImGui::GetBackgroundDrawList();
 
-    constexpr double HALF_W = 0.3;
-    constexpr double HEIGHT = 1.8;
-    constexpr float  TTL_MS = 2500.0f;
+    constexpr float TTL_MS = 2500.0f;
 
     for (const auto& v : snap.vanishes)
     {
         float fade = 1.0f - v.ageMs / TTL_MS;
         if (fade < 0.0f) fade = 0.0f;
-        const int boxA = 90 + (int)(150.0f * fade);
-
-        const double minX = v.x - HALF_W, maxX = v.x + HALF_W;
-        const double minY = v.y,          maxY = v.y + HEIGHT;
-        const double minZ = v.z - HALF_W, maxZ = v.z + HALF_W;
-
-        const double cx[2] = {minX, maxX};
-        const double cyv[2] = {minY, maxY};
-        const double cz[2] = {minZ, maxZ};
-
-        ImVec2 sp[8];
-        bool   ok[8];
-        bool   any = false;
-        for (int i = 0; i < 8; ++i) {
-            const double wx = cx[(i >> 0) & 1];
-            const double wy = cyv[(i >> 1) & 1];
-            const double wz = cz[(i >> 2) & 1];
-            ImVec2 p;
-            ok[i] = ProjectWorld(wx, wy, wz, cam, dispW, dispH, p);
-            if (!ok[i]) continue;
-            sp[i].x = std::floor(p.x + 0.5f);
-            sp[i].y = std::floor(p.y + 0.5f);
-            any = true;
-        }
-        if (!any) continue;
-
-        static const int edges[12][2] = {
-            {0,1},{1,3},{3,2},{2,0},
-            {4,5},{5,7},{7,6},{6,4},
-            {0,4},{1,5},{2,6},{3,7},
-        };
-        const ImU32 colBox = IM_COL32(235, 120, 255, boxA);
-        for (int e = 0; e < 12; ++e) {
-            const int a = edges[e][0], b = edges[e][1];
-            if (!ok[a] || !ok[b]) continue;
-            dl->AddLine(sp[a], sp[b], colBox, 2.0f);
-        }
-
-        ImVec2 tagPos;
-        if (!ProjectWorld(v.x, v.y + HEIGHT + 0.5, v.z, cam, dispW, dispH, tagPos))
-            continue;
-
-        std::string label = v.ign;
-        for (char& ch : label) ch = (char)std::toupper((unsigned char)ch);
-        label += " [SMOKE]";
-
-        ImFont* font = ImGui::GetFont();
-        const float fontSize = 16.0f;
-        const ImVec2 sz = font->CalcTextSizeA(fontSize, FLT_MAX, 0.0f, label.c_str());
-        const float padX = 5.0f, padY = 3.0f;
-        const float bgLeft   = tagPos.x - sz.x * 0.5f - padX;
-        const float bgRight  = tagPos.x + sz.x * 0.5f + padX;
-        const float bgTop    = tagPos.y - sz.y * 0.5f - padY;
-        const float bgBottom = tagPos.y + sz.y * 0.5f + padY;
-
-        const int bgA = 150 + (int)(60.0f * fade);
-        dl->AddRectFilled(ImVec2(bgLeft, bgTop), ImVec2(bgRight, bgBottom),
-                          IM_COL32(20, 8, 24, bgA), 4.0f);
-        dl->AddRect(ImVec2(bgLeft, bgTop), ImVec2(bgRight, bgBottom),
-                    IM_COL32(235, 120, 255, bgA), 4.0f, 0, 1.0f);
-        dl->AddText(font, fontSize,
-                    ImVec2(tagPos.x - sz.x * 0.5f, bgTop + padY),
-                    IM_COL32(245, 220, 255, 235), label.c_str());
+        const int boxA = 90  + (int)(150.0f * fade);
+        const int tagA = 150 + (int)(60.0f  * fade);
+        DrawPlayerMarker(dl, cam, dispW, dispH, v.x, v.y, v.z, boxA, tagA);
     }
 }
 
@@ -1114,7 +1076,7 @@ static BOOL WINAPI hk_wglSwapBuffers(HDC hdc)
 
         if (g_settings.smokeEspEnabled && !screenOrMenuOpen)
         {
-            DrawSmoke(display.x, display.y);
+            DrawSmokeBoxes(display.x, display.y);
             DrawVanishes(display.x, display.y);
         }
 

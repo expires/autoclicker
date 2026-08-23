@@ -22,7 +22,10 @@ namespace EspModule
         float       maxHealth = -1.0f;
     };
 
-    struct SmokePoint { double x, y, z; };
+    struct SmokeBox
+    {
+        double x, y, z;
+    };
 
     struct VanishMark
     {
@@ -46,7 +49,7 @@ namespace EspModule
     struct Snapshot
     {
         std::vector<Target>     targets;
-        std::vector<SmokePoint> smoke;
+        std::vector<SmokeBox>   smokeBoxes;
         std::vector<VanishMark> vanishes;
         CameraState         cam{};
         float               partialTick = 1.0f;

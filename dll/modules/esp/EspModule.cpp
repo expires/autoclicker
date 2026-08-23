@@ -445,7 +445,11 @@ namespace EspModule
                     return t;
                 };
 
-                back->smoke.reserve(pts.size());
+                struct Cluster { double sumX, sumZ, minY; int count; };
+                std::vector<Cluster> clusters;
+                constexpr double kMergeSq   = 2.5 * 2.5;
+                constexpr int    kMinCluster = 5;
+
                 for (const auto& pp : pts) {
                     const int bx = (int)std::floor(pp.x);
                     const int by = (int)std::floor(pp.y);
@@ -453,8 +457,44 @@ namespace EspModule
                     bool torch = false;
                     for (int dy = 0; dy <= 2 && !torch; ++dy)
                         if (isTorchAt(bx, by - dy, bz)) torch = true;
-                    if (!torch)
-                        back->smoke.push_back({ pp.x, pp.y, pp.z });
+                    if (torch) continue;
+
+                    int best = -1;
+                    double bestSq = kMergeSq;
+                    for (int c = 0; c < (int)clusters.size(); ++c) {
+                        const double cx = clusters[c].sumX / clusters[c].count;
+                        const double cz = clusters[c].sumZ / clusters[c].count;
+                        const double dx = pp.x - cx, dz = pp.z - cz;
+                        const double d = dx*dx + dz*dz;
+                        if (d < bestSq) { bestSq = d; best = c; }
+                    }
+                    if (best < 0) {
+                        clusters.push_back({ pp.x, pp.z, pp.y, 1 });
+                    } else {
+                        clusters[best].sumX += pp.x;
+                        clusters[best].sumZ += pp.z;
+                        if (pp.y < clusters[best].minY) clusters[best].minY = pp.y;
+                        clusters[best].count++;
+                    }
+                }
+
+                for (const auto& c : clusters) {
+                    if (c.count < kMinCluster) continue;
+                    const double cx = c.sumX / c.count;
+                    const double cz = c.sumZ / c.count;
+
+                    double bestSq = 5.0 * 5.0;
+                    int vidx = -1;
+                    for (int v = 0; v < (int)back->vanishes.size(); ++v) {
+                        const double dx = cx - back->vanishes[v].x;
+                        const double dz = cz - back->vanishes[v].z;
+                        const double d = dx*dx + dz*dz;
+                        if (d < bestSq) { bestSq = d; vidx = v; }
+                    }
+                    if (vidx >= 0)
+                        back->vanishes.erase(back->vanishes.begin() + vidx);
+
+                    back->smokeBoxes.push_back({ cx, c.minY, cz });
                 }
             }
 
