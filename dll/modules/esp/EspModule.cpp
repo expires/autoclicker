@@ -510,10 +510,28 @@ namespace EspModule
                 for (auto& tk : smokeTracks) tk.seenThisScan = false;
 
                 constexpr double kMatchSq = 3.0 * 3.0;
+                constexpr double kMaxFloorGap   = 1.0;
+                constexpr double kPlayerBlockSq = 1.5 * 1.5;
+
                 for (const auto& c : clusters) {
                     if (c.count < kMinCluster) continue;
                     const double cx = c.sumX / c.count;
                     const double cz = c.sumZ / c.count;
+
+                    const double feetY = groundYAt(level, cx, cz, c.minY + 1.0);
+                    if (c.minY - feetY > kMaxFloorGap) continue;
+
+                    bool playerHere = false;
+                    {
+                        const double dxl = cx - back->cam.x, dzl = cz - back->cam.z;
+                        if (dxl*dxl + dzl*dzl < kPlayerBlockSq) playerHere = true;
+                        for (size_t p = 0; p < back->targets.size() && !playerHere; ++p) {
+                            const double dxt = cx - back->targets[p].x;
+                            const double dzt = cz - back->targets[p].z;
+                            if (dxt*dxt + dzt*dzt < kPlayerBlockSq) playerHere = true;
+                        }
+                    }
+                    if (playerHere) continue;
 
                     double bestSq = 5.0 * 5.0;
                     int vidx = -1;
@@ -525,8 +543,6 @@ namespace EspModule
                     }
                     if (vidx >= 0)
                         back->vanishes.erase(back->vanishes.begin() + vidx);
-
-                    const double feetY = groundYAt(level, cx, cz, c.minY + 1.0);
 
                     int match = -1;
                     double matchSq = kMatchSq;
